@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
@@ -31,11 +30,6 @@ const Index = () => {
             <p className="text-muted-foreground">
               Welcome to migii Worker Management System
             </p>
-            <img 
-              src="/lovable-uploads/5ede207d-253d-4ac9-8178-0a277c03b2be.png"
-              alt="Migii System Features"
-              className="max-w-[200px] opacity-60 mt-2 hidden md:block"
-            />
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline">
