@@ -42,8 +42,8 @@ interface WorkersTableProps {
 
 export function WorkersTable({ workers, onViewDetails }: WorkersTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterSkill, setFilterSkill] = useState<string>("");
-  const [filterState, setFilterState] = useState<string>("");
+  const [filterSkill, setFilterSkill] = useState<string>("all-skills");
+  const [filterState, setFilterState] = useState<string>("all-states");
 
   // Get unique skills and states for filters
   const uniqueSkills = Array.from(new Set(workers.map((worker) => worker.skill)));
@@ -56,8 +56,8 @@ export function WorkersTable({ workers, onViewDetails }: WorkersTableProps) {
       worker.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       worker.phone.includes(searchTerm);
 
-    const matchesSkill = filterSkill ? worker.skill === filterSkill : true;
-    const matchesState = filterState ? worker.originState === filterState : true;
+    const matchesSkill = filterSkill === "all-skills" ? true : worker.skill === filterSkill;
+    const matchesState = filterState === "all-states" ? true : worker.originState === filterState;
 
     return matchesSearch && matchesSkill && matchesState;
   });
@@ -74,6 +74,13 @@ export function WorkersTable({ workers, onViewDetails }: WorkersTableProps) {
       default:
         return null;
     }
+  };
+
+  // Function to clear filters
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterSkill("all-skills");
+    setFilterState("all-states");
   };
 
   return (
@@ -118,6 +125,14 @@ export function WorkersTable({ workers, onViewDetails }: WorkersTableProps) {
           </Select>
         </div>
       </div>
+
+      {(filterSkill !== "all-skills" || filterState !== "all-states" || searchTerm) && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={clearFilters}>
+            Clear Filters
+          </Button>
+        </div>
+      )}
 
       <div className="rounded-md border">
         <Table>

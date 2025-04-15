@@ -32,6 +32,11 @@ const AdminDashboard = () => {
     console.log(`Request ${requestId} status changed to ${newStatus}`);
   };
 
+  // Filter help requests based on status
+  const filteredRequests = requestFilter === "all" 
+    ? mockHelpRequests 
+    : mockHelpRequests.filter(req => req.status === requestFilter);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -104,7 +109,7 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <HelpRequestsList 
-                  requests={mockHelpRequests} 
+                  requests={filteredRequests} 
                   onStatusChange={handleRequestStatusChange}
                 />
               </CardContent>
