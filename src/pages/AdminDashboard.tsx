@@ -18,6 +18,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("workers");
   const [searchTerm, setSearchTerm] = useState("");
   const [workerDetailsOpen, setWorkerDetailsOpen] = useState(false);
+  const [requestFilter, setRequestFilter] = useState("all");
   
   // Handle worker details view
   const handleViewWorkerDetails = (worker: Worker) => {
@@ -87,7 +88,7 @@ const AdminDashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                 <CardTitle className="text-xl">Help Requests</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Select defaultValue="all">
+                  <Select value={requestFilter} onValueChange={setRequestFilter}>
                     <SelectTrigger className="w-[150px]">
                       <Filter className="h-4 w-4 mr-2" />
                       <SelectValue placeholder="Filter by status" />

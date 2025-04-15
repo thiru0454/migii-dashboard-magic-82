@@ -94,7 +94,7 @@ export function WorkersTable({ workers, onViewDetails }: WorkersTableProps) {
               <SelectValue placeholder="Filter by skill" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Skills</SelectItem>
+              <SelectItem value="all-skills">All Skills</SelectItem>
               {uniqueSkills.map((skill) => (
                 <SelectItem key={skill} value={skill}>
                   {skill}
@@ -108,7 +108,7 @@ export function WorkersTable({ workers, onViewDetails }: WorkersTableProps) {
               <SelectValue placeholder="Filter by state" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All States</SelectItem>
+              <SelectItem value="all-states">All States</SelectItem>
               {uniqueStates.map((state) => (
                 <SelectItem key={state} value={state}>
                   {state}
