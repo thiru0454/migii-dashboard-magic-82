@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
+import { useWorkers } from "@/hooks/useWorkers";
+import { Worker } from "@/components/admin/WorkersTable";
 
 // Define the skills and states options
 const SKILLS = [
@@ -82,11 +83,12 @@ const formSchema = z.object({
 });
 
 interface WorkerRegistrationFormProps {
-  onSuccess?: (data: z.infer<typeof formSchema> & { workerId: string }) => void;
+  onSuccess?: (data: Worker) => void;
 }
 
 export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProps) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const { registerWorker } = useWorkers();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -102,27 +104,25 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      // In a real application, this would be a server call
-      // For demo purposes, we'll generate a fake ID
-      const today = new Date();
-      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-      const randomNum = Math.floor(10000 + Math.random() * 90000);
-      const workerId = `TN-MIG-${dateStr}-${randomNum}`;
-      
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      toast.success("Worker registered successfully!", {
-        description: `Worker ID: ${workerId}`,
+      const result = await registerWorker.mutateAsync({
+        name: values.name,
+        age: values.age,
+        phone: values.phone,
+        originState: values.originState,
+        skill: values.skill,
+        photoUrl: photoPreview || undefined,
       });
       
       if (onSuccess) {
-        onSuccess({ ...values, workerId });
+        onSuccess(result);
       }
+      
+      // Reset the form
+      form.reset();
+      setPhotoPreview(null);
+      
     } catch (error) {
-      toast.error("Failed to register worker", {
-        description: "Please try again later",
-      });
+      // Error is handled by the mutation
     }
   };
 

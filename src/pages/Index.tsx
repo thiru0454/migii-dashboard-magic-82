@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
@@ -6,7 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkersTable } from "@/components/admin/WorkersTable";
 import { HelpRequestsList } from "@/components/admin/HelpRequestsList";
-import { mockWorkers, mockHelpRequests, dashboardStats } from "@/data/mockData";
+import { mockHelpRequests, dashboardStats } from "@/data/mockData";
+import { useWorkers } from "@/hooks/useWorkers";
 import {
   UserPlus,
   Users,
@@ -20,6 +22,37 @@ import {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const { workers, isLoadingWorkers } = useWorkers();
+  
+  // Calculate dashboard statistics based on real data
+  const activeWorkers = workers.filter(w => w.status === "active").length;
+  const pendingRegistrations = workers.filter(w => w.status === "pending").length;
+  
+  // Calculate skill distribution
+  const skillCounts: Record<string, number> = {};
+  workers.forEach(worker => {
+    if (worker.skill) {
+      skillCounts[worker.skill] = (skillCounts[worker.skill] || 0) + 1;
+    }
+  });
+  
+  const popularSkills = Object.entries(skillCounts)
+    .map(([skill, count]) => ({ skill, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  
+  // Calculate state distribution
+  const stateCounts: Record<string, number> = {};
+  workers.forEach(worker => {
+    if (worker.originState) {
+      stateCounts[worker.originState] = (stateCounts[worker.originState] || 0) + 1;
+    }
+  });
+  
+  const stateDistribution = Object.entries(stateCounts)
+    .map(([state, count]) => ({ state, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
   
   return (
     <DashboardLayout>
@@ -60,7 +93,7 @@ const Index = () => {
                 title="Total Workers"
                 icon={<Users size={16} />}
               >
-                <div className="text-2xl font-bold">{dashboardStats.totalWorkers}</div>
+                <div className="text-2xl font-bold">{workers.length}</div>
                 <p className="text-xs text-muted-foreground">
                   +{dashboardStats.recentRegistrations} new this month
                 </p>
@@ -70,9 +103,9 @@ const Index = () => {
                 title="Active Workers"
                 icon={<Activity size={16} />}
               >
-                <div className="text-2xl font-bold">{dashboardStats.activeWorkers}</div>
+                <div className="text-2xl font-bold">{activeWorkers}</div>
                 <Progress 
-                  value={(dashboardStats.activeWorkers / dashboardStats.totalWorkers) * 100} 
+                  value={(activeWorkers / (workers.length || 1)) * 100} 
                   className="h-2 mt-2"
                 />
               </DashboardCard>
@@ -81,7 +114,7 @@ const Index = () => {
                 title="Pending Registrations"
                 icon={<Clock size={16} />}
               >
-                <div className="text-2xl font-bold">{dashboardStats.pendingRegistrations}</div>
+                <div className="text-2xl font-bold">{pendingRegistrations}</div>
                 <p className="text-xs text-muted-foreground">
                   Requires verification
                 </p>
@@ -91,7 +124,7 @@ const Index = () => {
                 title="Help Requests"
                 icon={<MessageSquare size={16} />}
               >
-                <div className="text-2xl font-bold">{dashboardStats.helpRequests}</div>
+                <div className="text-2xl font-bold">{mockHelpRequests.length}</div>
                 <p className="text-xs text-muted-foreground">
                   {mockHelpRequests.filter(req => req.status === "pending").length} pending requests
                 </p>
@@ -104,20 +137,26 @@ const Index = () => {
                 icon={<BarChart3 size={16} />}
               >
                 <div className="space-y-4">
-                  {dashboardStats.popularSkills.map((item) => (
-                    <div key={item.skill} className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">{item.skill}</p>
+                  {popularSkills.length > 0 ? (
+                    popularSkills.map((item) => (
+                      <div key={item.skill} className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">{item.skill}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Progress 
+                            value={(item.count / (workers.length || 1)) * 100} 
+                            className="h-2 w-24"
+                          />
+                          <span className="text-sm text-muted-foreground">{item.count}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Progress 
-                          value={(item.count / dashboardStats.totalWorkers) * 100} 
-                          className="h-2 w-24"
-                        />
-                        <span className="text-sm text-muted-foreground">{item.count}</span>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      No worker data available
                     </div>
-                  ))}
+                  )}
                 </div>
               </DashboardCard>
               
@@ -126,20 +165,26 @@ const Index = () => {
                 icon={<Map size={16} />}
               >
                 <div className="space-y-4">
-                  {dashboardStats.stateDistribution.map((item) => (
-                    <div key={item.state} className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">{item.state}</p>
+                  {stateDistribution.length > 0 ? (
+                    stateDistribution.map((item) => (
+                      <div key={item.state} className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">{item.state}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Progress 
+                            value={(item.count / (workers.length || 1)) * 100} 
+                            className="h-2 w-24"
+                          />
+                          <span className="text-sm text-muted-foreground">{item.count}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Progress 
-                          value={(item.count / dashboardStats.totalWorkers) * 100} 
-                          className="h-2 w-24"
-                        />
-                        <span className="text-sm text-muted-foreground">{item.count}</span>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      No worker data available
                     </div>
-                  ))}
+                  )}
                 </div>
               </DashboardCard>
             </div>
@@ -150,21 +195,27 @@ const Index = () => {
                 icon={<UserPlus size={16} />}
               >
                 <div className="space-y-2">
-                  {mockWorkers.slice(0, 5).map((worker) => (
-                    <div key={worker.id} className="flex items-center justify-between border-b pb-2">
-                      <div className="space-y-1">
-                        <p className="font-medium">{worker.name}</p>
-                        <p className="text-xs text-muted-foreground">{worker.skill}</p>
+                  {workers.length > 0 ? (
+                    workers.slice(0, 5).map((worker) => (
+                      <div key={worker.id} className="flex items-center justify-between border-b pb-2">
+                        <div className="space-y-1">
+                          <p className="font-medium">{worker.name}</p>
+                          <p className="text-xs text-muted-foreground">{worker.skill}</p>
+                        </div>
+                        <div className="flex items-center">
+                          <Button variant="ghost" size="icon" asChild>
+                            <a href={`/worker/${worker.id}`}>
+                              <ChevronRight className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center">
-                        <Button variant="ghost" size="icon" asChild>
-                          <a href={`/worker/${worker.id}`}>
-                            <ChevronRight className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      No recent workers
                     </div>
-                  ))}
+                  )}
                 </div>
                 <div className="mt-4 text-center">
                   <Button variant="outline" size="sm" asChild>
@@ -176,7 +227,7 @@ const Index = () => {
           </TabsContent>
           
           <TabsContent value="workers" className="space-y-4">
-            <WorkersTable workers={mockWorkers} />
+            <WorkersTable workers={workers} isLoading={isLoadingWorkers} />
           </TabsContent>
           
           <TabsContent value="help-requests" className="space-y-4">

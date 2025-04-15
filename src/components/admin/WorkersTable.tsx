@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, MoreVertical, FileText, Edit, Phone, MessageSquare } from "lucide-react";
+import { Search, MoreVertical, FileText, Edit, Phone, MessageSquare, Loader2 } from "lucide-react";
 
 export type Worker = {
   id: string;
@@ -38,9 +38,10 @@ export type Worker = {
 interface WorkersTableProps {
   workers: Worker[];
   onViewDetails?: (worker: Worker) => void;
+  isLoading?: boolean;
 }
 
-export function WorkersTable({ workers, onViewDetails }: WorkersTableProps) {
+export function WorkersTable({ workers, onViewDetails, isLoading = false }: WorkersTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSkill, setFilterSkill] = useState<string>("all-skills");
   const [filterState, setFilterState] = useState<string>("all-states");
@@ -148,7 +149,16 @@ export function WorkersTable({ workers, onViewDetails }: WorkersTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredWorkers.length > 0 ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  <div className="flex justify-center items-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                    <span>Loading workers...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : filteredWorkers.length > 0 ? (
               filteredWorkers.map((worker) => (
                 <TableRow key={worker.id}>
                   <TableCell>

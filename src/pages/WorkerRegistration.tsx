@@ -4,25 +4,13 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WorkerRegistrationForm } from "@/components/forms/WorkerRegistrationForm";
 import { WorkerIDCard } from "@/components/worker/WorkerIDCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { z } from "zod";
-
-const formSchema = z.object({
-  name: z.string(),
-  age: z.number(),
-  phone: z.string(),
-  originState: z.string(),
-  skill: z.string(),
-  aadhaar: z.string().optional(),
-  workerId: z.string(),
-});
-
-type FormData = z.infer<typeof formSchema>;
+import { Worker } from "@/components/admin/WorkersTable";
 
 const WorkerRegistration = () => {
-  const [registeredWorker, setRegisteredWorker] = useState<FormData | null>(null);
+  const [registeredWorker, setRegisteredWorker] = useState<Worker | null>(null);
   
-  const handleRegistrationSuccess = (data: FormData) => {
-    setRegisteredWorker(data);
+  const handleRegistrationSuccess = (worker: Worker) => {
+    setRegisteredWorker(worker);
   };
 
   return (
@@ -49,7 +37,7 @@ const WorkerRegistration = () => {
                     Registration successful!
                   </p>
                   <p className="text-sm leading-5 text-green-700 mt-1">
-                    Worker has been registered with ID: {registeredWorker.workerId}
+                    Worker has been registered with ID: {registeredWorker.id}
                   </p>
                 </div>
               </div>
@@ -62,11 +50,12 @@ const WorkerRegistration = () => {
               </TabsList>
               <TabsContent value="id-card" className="pt-6">
                 <WorkerIDCard
-                  workerId={registeredWorker.workerId}
+                  workerId={registeredWorker.id}
                   name={registeredWorker.name}
                   phone={registeredWorker.phone}
                   skill={registeredWorker.skill}
                   originState={registeredWorker.originState}
+                  photoUrl={registeredWorker.photoUrl}
                 />
                 <div className="mt-6 text-center">
                   <p className="text-sm text-muted-foreground mb-4">

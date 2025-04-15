@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,15 +9,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { WorkersTable, Worker } from "@/components/admin/WorkersTable";
 import { HelpRequestsList, HelpRequest } from "@/components/admin/HelpRequestsList";
 import { WorkerIDCard } from "@/components/worker/WorkerIDCard";
-import { mockWorkers, mockHelpRequests } from "@/data/mockData";
-import { Search, Download, Users, MessageSquare, Filter } from "lucide-react";
+import { mockHelpRequests } from "@/data/mockData";
+import { useWorkers } from "@/hooks/useWorkers";
+import { Download, Users, MessageSquare, Filter } from "lucide-react";
 
 const AdminDashboard = () => {
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [activeTab, setActiveTab] = useState("workers");
-  const [searchTerm, setSearchTerm] = useState("");
   const [workerDetailsOpen, setWorkerDetailsOpen] = useState(false);
   const [requestFilter, setRequestFilter] = useState("all");
+  const { workers, isLoadingWorkers } = useWorkers();
   
   // Handle worker details view
   const handleViewWorkerDetails = (worker: Worker) => {
@@ -75,14 +75,15 @@ const AdminDashboard = () => {
                 <CardTitle className="text-xl">Worker Database</CardTitle>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">
-                    {mockWorkers.length} workers
+                    {workers.length} workers
                   </span>
                 </div>
               </CardHeader>
               <CardContent>
                 <WorkersTable 
-                  workers={mockWorkers} 
-                  onViewDetails={handleViewWorkerDetails} 
+                  workers={workers} 
+                  onViewDetails={handleViewWorkerDetails}
+                  isLoading={isLoadingWorkers}
                 />
               </CardContent>
             </Card>
