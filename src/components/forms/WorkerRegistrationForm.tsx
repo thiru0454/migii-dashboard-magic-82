@@ -63,6 +63,7 @@ const STATES = [
   "West Bengal",
 ];
 
+// Update the formSchema to make aadhaar required with validation
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "Name must be at least 2 characters.",
@@ -79,7 +80,10 @@ const formSchema = z.object({
   skill: z.string({
     required_error: "Please select your primary skill.",
   }),
-  aadhaar: z.string().optional(),
+  aadhaar: z.string()
+    .min(12, { message: "Aadhaar number must be 12 digits." })
+    .max(12, { message: "Aadhaar number must be 12 digits." })
+    .regex(/^\d+$/, { message: "Aadhaar number must contain only digits." }),
 });
 
 interface WorkerRegistrationFormProps {
@@ -110,6 +114,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         phone: values.phone,
         originState: values.originState,
         skill: values.skill,
+        aadhaar: values.aadhaar,
         photoUrl: photoPreview || undefined,
       });
       
@@ -185,6 +190,25 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
 
           <FormField
             control={form.control}
+            name="aadhaar"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Aadhaar Number <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="123456789012" {...field} />
+                </FormControl>
+                <FormDescription>
+                  Required for verification. Will be kept confidential.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="originState"
             render={({ field }) => (
               <FormItem>
@@ -228,25 +252,6 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
                     ))}
                   </SelectContent>
                 </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="aadhaar"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Aadhaar Number <span className="text-muted-foreground">(Optional)</span>
-                </FormLabel>
-                <FormControl>
-                  <Input placeholder="XXXX XXXX XXXX" {...field} />
-                </FormControl>
-                <FormDescription>
-                  This is optional and will be kept confidential.
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

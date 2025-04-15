@@ -26,7 +26,13 @@ export function useWorkers() {
   });
 
   const registerWorker = useMutation({
-    mutationFn: (worker: Omit<Worker, "id" | "status" | "registrationDate">) => {
+    mutationFn: (worker: Omit<Worker, "id" | "status" | "registrationDate"> & { aadhaar: string }) => {
+      // Check if aadhaar already exists
+      const existingWorker = mockWorkers.find(w => w.aadhaar === worker.aadhaar);
+      if (existingWorker) {
+        throw new Error("Aadhaar number already registered");
+      }
+      
       const today = new Date();
       const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
       const randomNum = Math.floor(10000 + Math.random() * 90000);
@@ -38,7 +44,7 @@ export function useWorkers() {
         day: "numeric",
       });
       
-      const newWorker: Worker = {
+      const newWorker: Worker & { aadhaar: string } = {
         id: workerId,
         name: worker.name,
         age: worker.age,
@@ -48,6 +54,7 @@ export function useWorkers() {
         status: "active",
         registrationDate,
         photoUrl: worker.photoUrl,
+        aadhaar: worker.aadhaar, // Store the aadhaar number
       };
       
       // Add to our mock data
@@ -68,9 +75,9 @@ export function useWorkers() {
         description: `Worker ID: ${newWorker.id}`,
       });
     },
-    onError: () => {
-      toast.error("Failed to register worker", {
-        description: "Please try again later",
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to register worker", {
+        description: "Please try with a different Aadhaar number",
       });
     },
   });
@@ -82,9 +89,9 @@ export function useWorkers() {
   };
 }
 
-// Add type definition for the window object
+// Update the Worker type to include the aadhaar property
 declare global {
   interface Window {
-    mockWorkers?: Worker[];
+    mockWorkers?: (Worker & { aadhaar: string })[];
   }
 }
