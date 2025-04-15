@@ -61,6 +61,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				migii: {
+					DEFAULT: '#9b87f5',
+					foreground: '#ffffff',
+					dark: '#6E59A5',
+					light: '#D6BCFA',
+					muted: '#E5DEFF',
+					bg: '#1A1F2C'
 				}
 			},
 			borderRadius: {
