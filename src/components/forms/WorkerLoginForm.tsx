@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useClerk, useSignIn } from "@clerk/clerk-react";
+import { useSignIn } from "@clerk/clerk-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const loginSchema = z.object({
@@ -37,8 +37,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationId, setVerificationId] = useState("");
-  const { isLoaded } = useClerk();
-  const { signIn, setActive } = useSignIn();
+  const { signIn, setActive, isLoaded } = useSignIn();
   
   // Phone form
   const phoneForm = useForm<z.infer<typeof loginSchema>>({
@@ -83,12 +82,12 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       }
 
       // Start the phone code verification
-      const { phoneCodeId } = await signIn.prepareFirstFactor({
+      const phoneVerification = await signIn.prepareFirstFactor({
         strategy: "phone_code",
-        phoneNumberId: (phoneCodeFactor.safeIdentifier as string),
+        phoneNumberId: phoneCodeFactor.safeIdentifier as string,
       });
 
-      setVerificationId(phoneCodeId);
+      setVerificationId(phoneVerification.firstFactorVerification.verificationId);
       setPhoneNumber(values.phone);
       setStep("otp");
       
@@ -117,7 +116,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       const result = await signIn.attemptFirstFactor({
         strategy: "phone_code",
         code: values.otp,
-        phoneCodeId: verificationId,
+        verificationId: verificationId,
       });
 
       if (result.status === "complete") {
