@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useUser, useAuth, SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
 import { cn } from "@/lib/utils";
 import {
   Database,
@@ -13,7 +14,8 @@ import {
   UserPlus,
   ShieldAlert,
   Search,
-  X
+  X,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -33,6 +35,10 @@ const sidebarLinks = [
     href: "/worker-login",
     icon: LogIn,
   },
+];
+
+// Admin-only links
+const adminLinks = [
   {
     title: "Admin Dashboard",
     href: "/admin-dashboard",
@@ -43,6 +49,8 @@ const sidebarLinks = [
 export function Sidebar() {
   const [expanded, setExpanded] = useState(true);
   const location = useLocation();
+  const { isSignedIn } = useUser();
+  const { signOut } = useAuth();
 
   return (
     <div className="relative">
@@ -92,6 +100,71 @@ export function Sidebar() {
               </Link>
             );
           })}
+
+          <SignedIn>
+            {adminLinks.map((link) => {
+              const isActive = location.pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
+                    expanded ? "" : "justify-center",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <link.icon size={20} />
+                  {expanded && <span>{link.title}</span>}
+                </Link>
+              );
+            })}
+          </SignedIn>
+
+          <SignedIn>
+            <div className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all cursor-pointer",
+              expanded ? "" : "justify-center",
+              "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground mt-4"
+            )}>
+              {expanded ? (
+                <div className="flex w-full justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <UserButton />
+                    {expanded && <span>Account</span>}
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => signOut()} 
+                    className="text-sidebar-foreground"
+                  >
+                    <LogOut size={16} />
+                  </Button>
+                </div>
+              ) : (
+                <UserButton />
+              )}
+            </div>
+          </SignedIn>
+
+          <SignedOut>
+            <Link
+              to="/login"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all mt-4",
+                expanded ? "" : "justify-center",
+                location.pathname === "/login"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <LogIn size={20} />
+              {expanded && <span>Sign In</span>}
+            </Link>
+          </SignedOut>
         </nav>
 
         <div className="border-t border-sidebar-border p-4">
