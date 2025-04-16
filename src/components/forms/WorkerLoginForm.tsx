@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useClerk } from "@clerk/clerk-react";
+import { useClerk, useSignIn } from "@clerk/clerk-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const loginSchema = z.object({
@@ -37,7 +37,8 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationId, setVerificationId] = useState("");
-  const { clerk } = useClerk();
+  const { isLoaded } = useClerk();
+  const { signIn, setActive } = useSignIn();
   
   // Phone form
   const phoneForm = useForm<z.infer<typeof loginSchema>>({
@@ -57,6 +58,10 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
 
   const onPhoneSubmit = async (values: z.infer<typeof loginSchema>) => {
     try {
+      if (!isLoaded || !signIn) {
+        throw new Error("Clerk is not loaded yet");
+      }
+
       // Format the phone number with country code if not already present
       let formattedPhone = values.phone;
       if (!formattedPhone.startsWith("+")) {
@@ -64,12 +69,26 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       }
       
       // Send SMS using Clerk
-      const { id } = await clerk.signIn.prepareFirstFactor({
-        strategy: "phone_code",
-        phoneNumber: formattedPhone,
+      const { supportedFirstFactors } = await signIn.create({
+        identifier: formattedPhone,
       });
-      
-      setVerificationId(id);
+
+      // Find the phone code factor
+      const phoneCodeFactor = supportedFirstFactors.find(
+        factor => factor.strategy === "phone_code"
+      );
+
+      if (!phoneCodeFactor) {
+        throw new Error("Phone code authentication not supported");
+      }
+
+      // Start the phone code verification
+      const { phoneCodeId } = await signIn.prepareFirstFactor({
+        strategy: "phone_code",
+        phoneNumberId: (phoneCodeFactor.safeIdentifier as string),
+      });
+
+      setVerificationId(phoneCodeId);
       setPhoneNumber(values.phone);
       setStep("otp");
       
@@ -86,23 +105,34 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
 
   const onOtpSubmit = async (values: z.infer<typeof otpSchema>) => {
     try {
+      if (!isLoaded || !signIn) {
+        throw new Error("Clerk is not loaded yet");
+      }
+
       if (!verificationId) {
         throw new Error("Verification session expired");
       }
       
       // Verify OTP with Clerk
-      await clerk.signIn.attemptFirstFactor({
+      const result = await signIn.attemptFirstFactor({
         strategy: "phone_code",
         code: values.otp,
-        phoneNumberId: verificationId,
+        phoneCodeId: verificationId,
       });
-      
-      toast.success("Login successful!", {
-        description: "You have been logged in successfully",
-      });
-      
-      if (onSuccess) {
-        onSuccess();
+
+      if (result.status === "complete") {
+        // Set this session as active
+        await setActive({ session: result.createdSessionId });
+        
+        toast.success("Login successful!", {
+          description: "You have been logged in successfully",
+        });
+        
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        throw new Error("Verification failed");
       }
     } catch (error) {
       console.error("OTP verification error:", error);
