@@ -1,1 +1,1 @@
-/// <reference types="vite/client" />
+pk_test_Zmx5aW5nLWVtdS0zOC5jbGVyay5hY2NvdW50cy5kZXYk
