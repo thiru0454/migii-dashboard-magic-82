@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Worker } from "@/components/admin/WorkersTable";
@@ -7,7 +6,7 @@ import { Worker } from "@/components/admin/WorkersTable";
 export type WorkerWithAadhaar = Worker & { aadhaar: string };
 
 // In-memory storage until we have a backend
-let mockWorkers: WorkerWithAadhaar[] = [...(window.mockWorkers || [])];
+let mockWorkers: WorkerWithAadhaar[] = [];
 
 // Initialize with any existing mock data from the app
 if (typeof window !== "undefined" && window.mockWorkers) {
@@ -15,7 +14,8 @@ if (typeof window !== "undefined" && window.mockWorkers) {
 } else if (typeof window !== "undefined") {
   // Import data only on client-side
   import("@/data/mockData").then((module) => {
-    mockWorkers = [...module.mockWorkers.map(worker => ({
+    // Make sure we handle the case where mockWorkers might not have aadhaar
+    mockWorkers = [...module.mockWorkers.map((worker: any) => ({
       ...worker,
       aadhaar: worker.aadhaar || "000000000000" // Ensure aadhaar exists for all workers
     }))];
@@ -122,7 +122,7 @@ export function useWorkers() {
   };
 }
 
-// Update the Worker type to include the aadhaar property
+// Update the Window interface to include the WorkerWithAadhaar type
 declare global {
   interface Window {
     mockWorkers?: WorkerWithAadhaar[];
