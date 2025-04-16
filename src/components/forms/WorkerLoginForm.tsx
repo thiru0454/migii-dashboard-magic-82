@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useClerk } from "@clerk/clerk-react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const loginSchema = z.object({
   phone: z.string().min(10, {
@@ -22,8 +24,8 @@ const loginSchema = z.object({
 });
 
 const otpSchema = z.object({
-  otp: z.string().min(4, {
-    message: "OTP must be at least 4 digits.",
+  otp: z.string().min(6, {
+    message: "OTP must be 6 digits.",
   }),
 });
 
@@ -34,6 +36,8 @@ interface WorkerLoginFormProps {
 export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [verificationId, setVerificationId] = useState("");
+  const { clerk } = useClerk();
   
   // Phone form
   const phoneForm = useForm<z.infer<typeof loginSchema>>({
@@ -53,27 +57,45 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
 
   const onPhoneSubmit = async (values: z.infer<typeof loginSchema>) => {
     try {
-      // In a real application, this would send an SMS with OTP
-      // For demo purposes, we'll just move to the next step
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Format the phone number with country code if not already present
+      let formattedPhone = values.phone;
+      if (!formattedPhone.startsWith("+")) {
+        formattedPhone = "+91" + formattedPhone; // Assuming Indian phone numbers
+      }
       
+      // Send SMS using Clerk
+      const { id } = await clerk.signIn.prepareFirstFactor({
+        strategy: "phone_code",
+        phoneNumber: formattedPhone,
+      });
+      
+      setVerificationId(id);
       setPhoneNumber(values.phone);
       setStep("otp");
+      
       toast.success("OTP sent successfully!", {
         description: `A verification code has been sent to ${values.phone}`,
       });
     } catch (error) {
+      console.error("OTP send error:", error);
       toast.error("Failed to send OTP", {
-        description: "Please try again later",
+        description: "Please check your phone number and try again",
       });
     }
   };
 
   const onOtpSubmit = async (values: z.infer<typeof otpSchema>) => {
     try {
-      // In a real application, this would verify the OTP
-      // For demo purposes, we'll just simulate success
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!verificationId) {
+        throw new Error("Verification session expired");
+      }
+      
+      // Verify OTP with Clerk
+      await clerk.signIn.attemptFirstFactor({
+        strategy: "phone_code",
+        code: values.otp,
+        phoneNumberId: verificationId,
+      });
       
       toast.success("Login successful!", {
         description: "You have been logged in successfully",
@@ -83,14 +105,15 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         onSuccess();
       }
     } catch (error) {
+      console.error("OTP verification error:", error);
       toast.error("Failed to verify OTP", {
-        description: "Please try again with correct OTP",
+        description: "Please try again with the correct OTP",
       });
     }
   };
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="w-full max-w-md mx-auto">
       {step === "phone" ? (
         <Form {...phoneForm}>
           <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-6">
@@ -126,10 +149,19 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
               control={otpForm.control}
               name="otp"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="space-y-4">
                   <FormLabel>One-Time Password (OTP)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter the OTP" {...field} />
+                    <InputOTP maxLength={6} {...field}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -137,7 +169,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             />
             
             <div className="flex flex-col space-y-2">
-              <Button type="submit" disabled={otpForm.formState.isSubmitting}>
+              <Button type="submit" disabled={otpForm.formState.isSubmitting} className="w-full">
                 {otpForm.formState.isSubmitting ? "Verifying..." : "Verify & Login"}
               </Button>
               
@@ -145,7 +177,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => setStep("phone")}
-                className="text-sm"
+                className="text-sm w-full"
               >
                 Back to phone number
               </Button>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WorkerLoginForm } from "@/components/forms/WorkerLoginForm";
@@ -12,7 +11,6 @@ import { MessageSquare, History, FileText, Phone } from "lucide-react";
 const WorkerLogin = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   
-  // Mock worker data for demo purposes
   const workerData = {
     workerId: "TN-MIG-20240101-12345",
     name: "Rahul Kumar",
@@ -42,24 +40,24 @@ const WorkerLogin = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
+      <div className="space-y-6 my-6">
+        <div className="text-center sm:text-left">
           <h1 className="text-3xl font-bold tracking-tight">Worker Login</h1>
-          <p className="text-muted-foreground">
-            Access your migii worker dashboard
+          <p className="text-muted-foreground mt-2">
+            Access your Migii worker dashboard
           </p>
         </div>
 
         {isLoggedIn ? (
           <div className="space-y-6">
-            <Tabs defaultValue="dashboard">
-              <TabsList>
+            <Tabs defaultValue="dashboard" className="w-full">
+              <TabsList className="grid grid-cols-3 mb-8">
                 <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                 <TabsTrigger value="id-card">ID Card</TabsTrigger>
                 <TabsTrigger value="support">Support History</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="dashboard" className="space-y-6 pt-6">
+              <TabsContent value="dashboard" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -169,7 +167,7 @@ const WorkerLogin = () => {
                 </div>
               </TabsContent>
               
-              <TabsContent value="id-card" className="pt-6">
+              <TabsContent value="id-card" className="pt-6 flex justify-center">
                 <WorkerIDCard
                   workerId={workerData.workerId}
                   name={workerData.name}
@@ -244,12 +242,12 @@ const WorkerLogin = () => {
             </div>
           </div>
         ) : (
-          <div className="max-w-md mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle>Worker Login</CardTitle>
-                <CardDescription>
-                  Enter your phone number to receive an OTP
+          <div className="flex items-center justify-center w-full py-8">
+            <Card className="w-full max-w-md mx-auto shadow-lg">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl">Worker Login</CardTitle>
+                <CardDescription className="mt-2">
+                  Enter your phone number to receive an OTP via SMS
                 </CardDescription>
               </CardHeader>
               <CardContent>
