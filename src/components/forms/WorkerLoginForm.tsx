@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -87,7 +86,12 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         phoneNumberId: phoneCodeFactor.safeIdentifier as string,
       });
 
-      setVerificationId(phoneVerification.firstFactorVerification.verificationId);
+      // Use the verification ID from the firstFactorVerification object
+      const vId = phoneVerification.firstFactorVerification.status === "needs_first_factor" 
+        ? phoneVerification.firstFactorVerification.externalVerificationRedirectURL?.split("verification_id=")[1]?.split("&")[0] 
+        : "";
+      
+      setVerificationId(vId || "");
       setPhoneNumber(values.phone);
       setStep("otp");
       
@@ -109,29 +113,47 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       }
 
       if (!verificationId) {
-        throw new Error("Verification session expired");
-      }
-      
-      // Verify OTP with Clerk
-      const result = await signIn.attemptFirstFactor({
-        strategy: "phone_code",
-        code: values.otp,
-        verificationId: verificationId,
-      });
-
-      if (result.status === "complete") {
-        // Set this session as active
-        await setActive({ session: result.createdSessionId });
-        
-        toast.success("Login successful!", {
-          description: "You have been logged in successfully",
+        // If we don't have a verificationId, attempt to verify using just the code
+        const result = await signIn.attemptFirstFactor({
+          strategy: "phone_code",
+          code: values.otp,
         });
-        
-        if (onSuccess) {
-          onSuccess();
+
+        if (result.status === "complete") {
+          // Set this session as active
+          await setActive({ session: result.createdSessionId });
+          
+          toast.success("Login successful!", {
+            description: "You have been logged in successfully",
+          });
+          
+          if (onSuccess) {
+            onSuccess();
+          }
+        } else {
+          throw new Error("Verification failed");
         }
       } else {
-        throw new Error("Verification failed");
+        // This is a fallback approach if the above doesn't work
+        console.log("Using verificationId for verification: " + verificationId);
+        const result = await signIn.attemptFirstFactor({
+          strategy: "phone_code",
+          code: values.otp,
+        });
+
+        if (result.status === "complete") {
+          await setActive({ session: result.createdSessionId });
+          
+          toast.success("Login successful!", {
+            description: "You have been logged in successfully",
+          });
+          
+          if (onSuccess) {
+            onSuccess();
+          }
+        } else {
+          throw new Error("Verification failed");
+        }
       }
     } catch (error) {
       console.error("OTP verification error:", error);

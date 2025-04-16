@@ -1,1 +1,6 @@
-pk_test_Zmx5aW5nLWVtdS0zOC5jbGVyay5hY2NvdW50cy5kZXYk
+
+/// <reference types="vite/client" />
+
+interface ImportMeta {
+  readonly env: Record<string, string>;
+}
