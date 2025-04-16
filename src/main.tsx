@@ -6,7 +6,7 @@ import './index.css';
 
 // Use the publishable key (starts with pk_)
 // Note: Never use secret keys (sk_) in the frontend code
-const PUBLISHABLE_KEY = "pk_test_ZmFzdC1taW5ub3ctMC5jbGVyay5hY2NvdW50cy5kZXYk";
+const PUBLISHABLE_KEY = "pk_test_Zmx5aW5nLWVtdS0zOC5jbGVyay5hY2NvdW50cy5kZXYk";
 
 if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Clerk Publishable Key");
