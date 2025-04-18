@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -62,17 +63,26 @@ const Login = () => {
     }
   }, [tabParam]);
 
-    const onAdminSubmit = (values: z.infer<typeof adminLoginSchema>) => {
-      // Check if credentials match the hardcoded admin credentials
-      if (values.username === "admin123" && values.password === "admin0454") {
+  const onAdminSubmit = async (values: z.infer<typeof adminLoginSchema>) => {
+    // Check if credentials match the hardcoded admin credentials
+    if (values.username === "admin123" && values.password === "admin0454") {
+      try {
         // Store admin auth status in localStorage
         localStorage.setItem("isAdmin", "true");
         toast.success("Admin login successful");
-        navigate("/admin-dashboard");
-      } else {
-        toast.error("Invalid admin credentials");
+        
+        // Force a small delay to ensure localStorage is set before navigation
+        setTimeout(() => {
+          navigate("/admin-dashboard");
+        }, 100);
+      } catch (error) {
+        console.error("Navigation error:", error);
+        toast.error("Error during login redirection");
       }
-    };
+    } else {
+      toast.error("Invalid admin credentials");
+    }
+  };
 
   const onBusinessSubmit = (values: z.infer<typeof businessLoginSchema>) => {
     // Check credentials against the new hardcoded values

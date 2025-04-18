@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useWorkers } from "@/hooks/useWorkers";
 import { Search, Filter, UserPlus, Download } from "lucide-react";
+import { toast } from "sonner";
 
 export function WorkersTab() {
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
@@ -173,8 +174,8 @@ export function WorkersTab() {
           {filteredWorkers.length > 0 ? (
             <WorkersTable 
               workers={filteredWorkers} 
-              onViewDetails={handleViewWorkerDetails}
               isLoading={isLoadingWorkers}
+              onViewDetails={handleViewWorkerDetails}
             />
           ) : (
             <div className="text-center py-10 border rounded-md">
@@ -202,6 +203,5 @@ export function WorkersTab() {
         open={workerDetailsOpen}
         onOpenChange={setWorkerDetailsOpen}
       />
-    </>
   );
 }
