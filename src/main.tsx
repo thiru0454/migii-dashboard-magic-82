@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { ClerkProvider } from "@clerk/clerk-react";
 import App from './App.tsx';
 import './index.css';
+import { initBusinessDatabase } from './utils/businessDatabase.ts';
+
+// Initialize our mock business database
+initBusinessDatabase();
 
 // Read environment variable or use fallback key
 // Note: The key should be defined in your .env file as VITE_CLERK_PUBLISHABLE_KEY

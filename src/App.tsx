@@ -4,11 +4,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider, RequireAdmin } from "./contexts/AuthContext";
+import { AuthProvider, RequireAdmin, RequireAuth, RequireBusiness } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import WorkerRegistration from "./pages/WorkerRegistration";
 import WorkerLogin from "./pages/WorkerLogin";
 import AdminDashboard from "./pages/AdminDashboard";
+import BusinessDashboard from "./pages/BusinessDashboard";
 import Login from "./pages/Login";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
@@ -36,6 +37,14 @@ const App = () => (
                   <RequireAdmin>
                     <AdminDashboard />
                   </RequireAdmin>
+                } 
+              />
+              <Route 
+                path="/business-dashboard" 
+                element={
+                  <RequireBusiness>
+                    <BusinessDashboard />
+                  </RequireBusiness>
                 } 
               />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
