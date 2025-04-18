@@ -89,31 +89,44 @@ const AdminDashboard = () => {
   
   // Handle business form submit
   const onBusinessFormSubmit = (values: z.infer<typeof businessSchema>) => {
-    // In a real app, this would update the database
-    // For now, we'll update the localStorage
     try {
       if (businessDialogMode === "add") {
-        // Add new business
-        const newBusinessUser = {
+        // Create a properly typed BusinessUser object
+        const newBusinessUser: BusinessUser = {
+          id: "", // Temporary, will be set properly below
+          businessId: values.businessId,
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          password: values.password,
+          status: values.status,
           registrationDate: new Date().toISOString(),
-          status: values.status || "active", // Ensure status is always set
-          ...values
         };
         
         // This would be handled by the database in a real app
         const users = getAllBusinessUsers();
         const newId = `b${users.length + 1}`;
-        const businessWithId = { ...newBusinessUser, id: newId };
+        newBusinessUser.id = newId; // Set the ID properly
         
-        setBusinessUsers([...users, businessWithId]);
-        localStorage.setItem("businessUsers", JSON.stringify([...users, businessWithId]));
+        setBusinessUsers([...users, newBusinessUser]);
+        localStorage.setItem("businessUsers", JSON.stringify([...users, newBusinessUser]));
         
         toast.success("Business user added successfully");
       } else if (businessDialogMode === "edit" && selectedBusiness) {
         // Update existing business
         const users = getAllBusinessUsers();
         const updatedUsers = users.map(user => 
-          user.id === selectedBusiness.id ? { ...user, ...values } : user
+          user.id === selectedBusiness.id 
+            ? { 
+                ...user, 
+                businessId: values.businessId, 
+                name: values.name,
+                email: values.email,
+                phone: values.phone,
+                password: values.password,
+                status: values.status,
+              } 
+            : user
         );
         
         setBusinessUsers(updatedUsers);
@@ -172,7 +185,6 @@ const AdminDashboard = () => {
 
   // Handle request status change
   const handleRequestStatusChange = (requestId: string, newStatus: HelpRequest["status"]) => {
-    // In a real app, this would update the status in the database
     console.log(`Request ${requestId} status changed to ${newStatus}`);
   };
 
