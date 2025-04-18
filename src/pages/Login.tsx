@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -34,24 +33,25 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState<"worker" | "admin" | "business">(
     tabParam === "admin" ? "admin" : 
     tabParam === "business" ? "business" : 
+    tabParam === "worker" ? "worker" : 
     "admin" // Default to admin if no valid tab param
   );
 
-  // Admin login form
-  const adminForm = useForm<z.infer<typeof adminLoginSchema>>({
-    resolver: zodResolver(adminLoginSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-    },
-  });
+    // Admin login form
+    const adminForm = useForm<z.infer<typeof adminLoginSchema>>({
+      resolver: zodResolver(adminLoginSchema),
+      defaultValues: {
+        username: "",
+        password: "",
+      },
+    });
 
   // Business login form
   const businessForm = useForm<z.infer<typeof businessLoginSchema>>({
     resolver: zodResolver(businessLoginSchema),
     defaultValues: {
-      businessId: "",
-      password: "",
+      businessId: "buiss123", // Set default business ID
+      password: "", // Password remains empty for security
     },
   });
 
@@ -62,28 +62,43 @@ const Login = () => {
     }
   }, [tabParam]);
 
-  const onAdminSubmit = (values: z.infer<typeof adminLoginSchema>) => {
-    // Check if credentials match the hardcoded admin credentials
-    if (values.username === "admin123" && values.password === "admin0454") {
-      // Store admin auth status in localStorage
-      localStorage.setItem("isAdmin", "true");
-      toast.success("Admin login successful");
-      navigate("/admin-dashboard");
-    } else {
-      toast.error("Invalid admin credentials");
-    }
-  };
+    const onAdminSubmit = (values: z.infer<typeof adminLoginSchema>) => {
+      // Check if credentials match the hardcoded admin credentials
+      if (values.username === "admin123" && values.password === "admin0454") {
+        // Store admin auth status in localStorage
+        localStorage.setItem("isAdmin", "true");
+        toast.success("Admin login successful");
+        navigate("/admin-dashboard");
+      } else {
+        toast.error("Invalid admin credentials");
+      }
+    };
 
   const onBusinessSubmit = (values: z.infer<typeof businessLoginSchema>) => {
-    // This would typically check against a database
-    // For now, we'll simulate with localStorage
-    const businessUsers = JSON.parse(localStorage.getItem("businessUsers") || "[]");
-    const user = businessUsers.find(
-      (user: any) => user.businessId === values.businessId && user.password === values.password
-    );
+    // Check credentials against the new hardcoded values
+    if (values.businessId === "buiss123" && values.password === "buis0454") {
+      // Find or create a default business user
+      const businessUsers = JSON.parse(localStorage.getItem("businessUsers") || "[]");
+      let businessUser = businessUsers.find((user: any) => user.businessId === "buiss123");
+      
+      if (!businessUser) {
+        // Create a default business user if not exists
+        businessUser = {
+          id: 'b_default',
+          businessId: "buiss123",
+          password: "buis0454",
+          name: "Default Business",
+          email: "default@business.com",
+          phone: "+1 555-123-4567",
+          registrationDate: new Date().toISOString(),
+          status: 'active'
+        };
+        businessUsers.push(businessUser);
+        localStorage.setItem("businessUsers", JSON.stringify(businessUsers));
+      }
 
-    if (user) {
-      localStorage.setItem("businessUser", JSON.stringify(user));
+      // Store business user and set login status
+      localStorage.setItem("businessUser", JSON.stringify(businessUser));
       toast.success("Business login successful");
       navigate("/business-dashboard");
     } else {
