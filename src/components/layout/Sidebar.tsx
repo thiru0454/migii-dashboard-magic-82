@@ -15,7 +15,9 @@ import {
   ShieldAlert,
   Search,
   X,
-  LogOut
+  LogOut,
+  Building,
+  Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -34,6 +36,16 @@ const sidebarLinks = [
     title: "Worker Login",
     href: "/worker-login",
     icon: LogIn,
+  },
+  {
+    title: "Admin Login",
+    href: "/login?tab=admin",
+    icon: ShieldAlert,
+  },
+  {
+    title: "Business Login",
+    href: "/login?tab=business",
+    icon: Building,
   },
 ];
 

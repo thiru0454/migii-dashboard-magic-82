@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { SignIn } from "@clerk/clerk-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -26,8 +26,16 @@ const businessLoginSchema = z.object({
 });
 
 const Login = () => {
-  const [activeTab, setActiveTab] = useState<"worker" | "admin" | "business">("admin");
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const tabParam = searchParams.get('tab');
+  
+  const [activeTab, setActiveTab] = useState<"worker" | "admin" | "business">(
+    tabParam === "admin" ? "admin" : 
+    tabParam === "business" ? "business" : 
+    "admin" // Default to admin if no valid tab param
+  );
 
   // Admin login form
   const adminForm = useForm<z.infer<typeof adminLoginSchema>>({
@@ -46,6 +54,13 @@ const Login = () => {
       password: "",
     },
   });
+
+  useEffect(() => {
+    // Update the active tab when the URL parameter changes
+    if (tabParam === "admin" || tabParam === "business" || tabParam === "worker") {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   const onAdminSubmit = (values: z.infer<typeof adminLoginSchema>) => {
     // Check if credentials match the hardcoded admin credentials
@@ -84,7 +99,7 @@ const Login = () => {
             <CardHeader>
               <CardTitle>Sign In</CardTitle>
               <CardDescription>
-                Access the Migii admin dashboard
+                Access the Migii dashboard
               </CardDescription>
             </CardHeader>
             <CardContent>
