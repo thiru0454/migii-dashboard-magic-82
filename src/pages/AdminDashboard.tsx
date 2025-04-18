@@ -1,173 +1,22 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { WorkersTable, Worker } from "@/components/admin/WorkersTable";
-import { BusinessUsersTable } from "@/components/admin/BusinessUsersTable";
-import { HelpRequestsList, HelpRequest } from "@/components/admin/HelpRequestsList";
-import { WorkerIDCard } from "@/components/worker/WorkerIDCard";
-import { mockHelpRequests } from "@/data/mockData";
-import { useWorkers } from "@/hooks/useWorkers";
-import { Download, Users, MessageSquare, Filter, Building } from "lucide-react";
-import { BusinessUser, getAllBusinessUsers, deleteBusinessUser } from "@/utils/businessDatabase";
+import { Users, MessageSquare, Building } from "lucide-react";
 import { useAppAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
-import { BusinessUserForm } from "@/components/business/BusinessUserForm";
-import { BusinessUserDetails } from "@/components/business/BusinessUserDetails";
+import { AdminDashboardHeader } from "@/components/admin/AdminDashboardHeader";
+import { WorkersTab } from "@/components/admin/WorkersTab";
+import { BusinessesTab } from "@/components/admin/BusinessesTab";
+import { HelpRequestsTab } from "@/components/admin/HelpRequestsTab";
 
 const AdminDashboard = () => {
-  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [activeTab, setActiveTab] = useState("workers");
-  const [workerDetailsOpen, setWorkerDetailsOpen] = useState(false);
-  const [requestFilter, setRequestFilter] = useState("all");
-  const { workers, isLoadingWorkers } = useWorkers();
   const { logout } = useAppAuth();
-  
-  // Business users state
-  const [businessUsers, setBusinessUsers] = useState<BusinessUser[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<BusinessUser | null>(null);
-  const [businessDialogOpen, setBusinessDialogOpen] = useState(false);
-  const [businessDialogMode, setBusinessDialogMode] = useState<"view" | "edit" | "add">("view");
-  
-  // Load business users
-  useEffect(() => {
-    setBusinessUsers(getAllBusinessUsers());
-  }, []);
-  
-  // Business form submit handler
-  const onBusinessFormSubmit = async (values: any) => {
-    try {
-      if (businessDialogMode === "add") {
-        // Create a properly typed BusinessUser object
-        const newBusinessUser: BusinessUser = {
-          id: "", // Temporary, will be set properly below
-          businessId: values.businessId,
-          name: values.name,
-          email: values.email,
-          phone: values.phone,
-          password: values.password,
-          status: values.status,
-          registrationDate: new Date().toISOString(),
-        };
-        
-        // This would be handled by the database in a real app
-        const users = getAllBusinessUsers();
-        const newId = `b${users.length + 1}`;
-        newBusinessUser.id = newId; // Set the ID properly
-        
-        setBusinessUsers([...users, newBusinessUser]);
-        localStorage.setItem("businessUsers", JSON.stringify([...users, newBusinessUser]));
-        
-        toast.success("Business user added successfully");
-      } else if (businessDialogMode === "edit" && selectedBusiness) {
-        // Update existing business
-        const users = getAllBusinessUsers();
-        const updatedUsers = users.map(user => 
-          user.id === selectedBusiness.id 
-            ? { 
-                ...user, 
-                businessId: values.businessId, 
-                name: values.name,
-                email: values.email,
-                phone: values.phone,
-                password: values.password,
-                status: values.status,
-              } 
-            : user
-        );
-        
-        setBusinessUsers(updatedUsers);
-        localStorage.setItem("businessUsers", JSON.stringify(updatedUsers));
-        
-        toast.success("Business user updated successfully");
-      }
-      
-      setBusinessDialogOpen(false);
-    } catch (error) {
-      toast.error("An error occurred", {
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-  
-  // Handle business delete
-  const handleDeleteBusiness = (business: BusinessUser) => {
-    if (confirm(`Are you sure you want to delete ${business.name}?`)) {
-      try {
-        deleteBusinessUser(business.id);
-        setBusinessUsers(getAllBusinessUsers());
-        toast.success("Business user deleted successfully");
-      } catch (error) {
-        toast.error("Failed to delete business user");
-      }
-    }
-  };
-  
-  // Handle worker details view
-  const handleViewWorkerDetails = (worker: Worker) => {
-    setSelectedWorker(worker);
-    setWorkerDetailsOpen(true);
-  };
-
-  // Handle business details view
-  const handleViewBusinessDetails = (business: BusinessUser) => {
-    setSelectedBusiness(business);
-    setBusinessDialogMode("view");
-    setBusinessDialogOpen(true);
-  };
-  
-  // Handle business edit
-  const handleEditBusiness = (business: BusinessUser) => {
-    setSelectedBusiness(business);
-    setBusinessDialogMode("edit");
-    setBusinessDialogOpen(true);
-  };
-  
-  // Handle add new business
-  const handleAddBusiness = () => {
-    setSelectedBusiness(null);
-    setBusinessDialogMode("add");
-    setBusinessDialogOpen(true);
-  };
-
-  // Handle request status change
-  const handleRequestStatusChange = (requestId: string, newStatus: HelpRequest["status"]) => {
-    console.log(`Request ${requestId} status changed to ${newStatus}`);
-  };
-
-  // Handle admin logout
-  const handleLogout = () => {
-    logout();
-  };
-
-  // Filter help requests based on status
-  const filteredRequests = requestFilter === "all" 
-    ? mockHelpRequests 
-    : mockHelpRequests.filter(req => req.status === requestFilter);
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-            <p className="text-muted-foreground">
-              Manage workers, businesses and handle support requests
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export Data
-            </Button>
-            <Button variant="destructive" onClick={handleLogout}>
-              Logout
-            </Button>
-          </div>
-        </div>
+        <AdminDashboardHeader onLogout={logout} />
 
         <Tabs defaultValue="workers" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
@@ -188,200 +37,19 @@ const AdminDashboard = () => {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="workers" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle className="text-xl">Worker Database</CardTitle>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    {workers.length} workers
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <WorkersTable 
-                  workers={workers} 
-                  onViewDetails={handleViewWorkerDetails}
-                  isLoading={isLoadingWorkers}
-                />
-              </CardContent>
-            </Card>
+          <TabsContent value="workers">
+            <WorkersTab />
           </TabsContent>
           
-          <TabsContent value="businesses" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle className="text-xl">Business Users</CardTitle>
-                <Button onClick={handleAddBusiness}>Add Business</Button>
-              </CardHeader>
-              <CardContent>
-                <BusinessUsersTable 
-                  businesses={businessUsers}
-                  onViewDetails={handleViewBusinessDetails}
-                  onEdit={handleEditBusiness}
-                  onDelete={handleDeleteBusiness}
-                />
-              </CardContent>
-            </Card>
+          <TabsContent value="businesses">
+            <BusinessesTab />
           </TabsContent>
           
-          <TabsContent value="help-requests" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle className="text-xl">Help Requests</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Select value={requestFilter} onValueChange={setRequestFilter}>
-                    <SelectTrigger className="w-[150px]">
-                      <Filter className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All requests</SelectItem>
-                      <SelectItem value="pending">Pending only</SelectItem>
-                      <SelectItem value="processing">In progress only</SelectItem>
-                      <SelectItem value="resolved">Resolved only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <HelpRequestsList 
-                  requests={filteredRequests} 
-                  onStatusChange={handleRequestStatusChange}
-                />
-              </CardContent>
-            </Card>
+          <TabsContent value="help-requests">
+            <HelpRequestsTab />
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Worker Details Dialog */}
-      <Dialog open={workerDetailsOpen} onOpenChange={setWorkerDetailsOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Worker Details</DialogTitle>
-            <DialogDescription>
-              Detailed information about the selected worker
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedWorker && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Basic Information</h3>
-                  <div className="grid grid-cols-2 gap-4 mt-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Name</p>
-                      <p className="font-medium">{selectedWorker.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Age</p>
-                      <p className="font-medium">{selectedWorker.age}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Phone</p>
-                      <p className="font-medium">{selectedWorker.phone}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Skill</p>
-                      <p className="font-medium">{selectedWorker.skill}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Origin State</p>
-                      <p className="font-medium">{selectedWorker.originState}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Registration Date</p>
-                      <p className="font-medium">{selectedWorker.registrationDate}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Support History</h3>
-                  <div className="border rounded-md mt-2">
-                    {mockHelpRequests.filter(req => req.workerId === selectedWorker.id).length > 0 ? (
-                      <div className="divide-y">
-                        {mockHelpRequests
-                          .filter(req => req.workerId === selectedWorker.id)
-                          .map((req) => (
-                            <div key={req.id} className="p-3">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="text-sm font-medium">{req.requestDate}</p>
-                                  <p className="text-sm text-muted-foreground">{req.message}</p>
-                                </div>
-                                <div className="text-xs font-medium">
-                                  {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="p-4 text-center text-sm text-muted-foreground">
-                        No support history found
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex space-x-2">
-                  <Button>Update Details</Button>
-                  <Button variant="outline">Send Message</Button>
-                </div>
-              </div>
-              
-              <div>
-                <WorkerIDCard
-                  workerId={selectedWorker.id}
-                  name={selectedWorker.name}
-                  phone={selectedWorker.phone}
-                  skill={selectedWorker.skill}
-                  originState={selectedWorker.originState}
-                  photoUrl={selectedWorker.photoUrl}
-                />
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Business Details/Edit Dialog */}
-      <Dialog open={businessDialogOpen} onOpenChange={setBusinessDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {businessDialogMode === "view" 
-                ? "Business Details" 
-                : businessDialogMode === "edit" 
-                  ? "Edit Business" 
-                  : "Add Business"}
-            </DialogTitle>
-            <DialogDescription>
-              {businessDialogMode === "view" 
-                ? "View business information" 
-                : businessDialogMode === "edit" 
-                  ? "Make changes to business information" 
-                  : "Add a new business user"}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {businessDialogMode === "view" && selectedBusiness ? (
-            <BusinessUserDetails 
-              business={selectedBusiness}
-              onEdit={() => setBusinessDialogMode("edit")}
-            />
-          ) : (
-            <BusinessUserForm
-              mode={businessDialogMode === "edit" ? "edit" : "add"}
-              initialData={selectedBusiness || undefined}
-              onSubmit={onBusinessFormSubmit}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 };
