@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,7 +36,6 @@ interface WorkerLoginFormProps {
 export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [verificationId, setVerificationId] = useState("");
   const { signIn, setActive, isLoaded } = useSignIn();
   
   const phoneForm = useForm<z.infer<typeof loginSchema>>({
@@ -80,20 +80,16 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         phoneNumberId: phoneCodeFactor.safeIdentifier as string,
       });
 
-      let extractedId = "";
-      if (phoneVerification.firstFactorVerification.status === "needs_first_factor" && 
-          phoneVerification.firstFactorVerification.externalVerificationRedirectURL) {
-        const url = new URL(phoneVerification.firstFactorVerification.externalVerificationRedirectURL);
-        extractedId = url.searchParams.get("verification_id") || "";
+      if (phoneVerification.status === "needs_first_factor") {
+        setPhoneNumber(values.phone);
+        setStep("otp");
+        
+        toast.success("OTP sent successfully!", {
+          description: `A verification code has been sent to ${values.phone}`,
+        });
+      } else {
+        throw new Error("Unexpected verification status");
       }
-      
-      setVerificationId(extractedId);
-      setPhoneNumber(values.phone);
-      setStep("otp");
-      
-      toast.success("OTP sent successfully!", {
-        description: `A verification code has been sent to ${values.phone}`,
-      });
     } catch (error) {
       console.error("OTP send error:", error);
       toast.error("Failed to send OTP", {
@@ -135,7 +131,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-md mx-auto space-y-6">
       {step === "phone" ? (
         <Form {...phoneForm}>
           <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-6">
@@ -144,16 +140,24 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
+                  <FormLabel className="text-muted-foreground">Phone Number</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your registered phone number" {...field} />
+                    <Input 
+                      placeholder="Enter your registered phone number" 
+                      {...field} 
+                      className="focus:ring-2 focus:ring-primary"
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-destructive text-sm mt-1" />
                 </FormItem>
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={phoneForm.formState.isSubmitting}>
+            <Button 
+              type="submit" 
+              className="w-full bg-primary hover:bg-primary/90" 
+              disabled={phoneForm.formState.isSubmitting}
+            >
               {phoneForm.formState.isSubmitting ? "Sending OTP..." : "Send OTP"}
             </Button>
           </form>
@@ -163,7 +167,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
           <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-6">
             <div className="text-center mb-4">
               <p className="text-sm text-muted-foreground">
-                Enter the OTP sent to <span className="font-medium">{phoneNumber}</span>
+                Enter the OTP sent to <span className="font-medium text-primary">{phoneNumber}</span>
               </p>
             </div>
             
@@ -172,10 +176,14 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
               name="otp"
               render={({ field }) => (
                 <FormItem className="space-y-4">
-                  <FormLabel>One-Time Password (OTP)</FormLabel>
+                  <FormLabel className="text-muted-foreground">One-Time Password (OTP)</FormLabel>
                   <FormControl>
-                    <InputOTP maxLength={6} {...field}>
-                      <InputOTPGroup>
+                    <InputOTP 
+                      maxLength={6} 
+                      {...field} 
+                      className="flex justify-center"
+                    >
+                      <InputOTPGroup className="gap-2">
                         <InputOTPSlot index={0} />
                         <InputOTPSlot index={1} />
                         <InputOTPSlot index={2} />
@@ -185,13 +193,17 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
                       </InputOTPGroup>
                     </InputOTP>
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-destructive text-sm mt-1 text-center" />
                 </FormItem>
               )}
             />
             
-            <div className="flex flex-col space-y-2">
-              <Button type="submit" disabled={otpForm.formState.isSubmitting} className="w-full">
+            <div className="flex flex-col space-y-3">
+              <Button 
+                type="submit" 
+                disabled={otpForm.formState.isSubmitting} 
+                className="w-full bg-primary hover:bg-primary/90"
+              >
                 {otpForm.formState.isSubmitting ? "Verifying..." : "Verify & Login"}
               </Button>
               
@@ -199,7 +211,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => setStep("phone")}
-                className="text-sm w-full"
+                className="text-sm w-full text-muted-foreground hover:text-primary"
               >
                 Back to phone number
               </Button>
