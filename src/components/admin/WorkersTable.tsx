@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Table,
@@ -37,11 +36,11 @@ export type Worker = {
 
 interface WorkersTableProps {
   workers: Worker[];
-  onViewDetails?: (worker: Worker) => void;
-  isLoading?: boolean;
+  isLoading: boolean;
+  businessView?: boolean;
 }
 
-export function WorkersTable({ workers, onViewDetails, isLoading = false }: WorkersTableProps) {
+export function WorkersTable({ workers, isLoading, businessView = false }: WorkersTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSkill, setFilterSkill] = useState<string>("all-skills");
   const [filterState, setFilterState] = useState<string>("all-states");

@@ -1,10 +1,13 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WorkerRegistrationForm } from "@/components/forms/WorkerRegistrationForm";
 import { WorkerIDCard } from "@/components/worker/WorkerIDCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Worker } from "@/components/admin/WorkersTable";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { generateWorkerIDCardPDF } from "@/utils/pdfUtils";
+import { toast } from "sonner";
 
 const WorkerRegistration = () => {
   const [registeredWorker, setRegisteredWorker] = useState<Worker | null>(null);
@@ -49,14 +52,29 @@ const WorkerRegistration = () => {
                 <TabsTrigger value="new-registration">New Registration</TabsTrigger>
               </TabsList>
               <TabsContent value="id-card" className="pt-6">
-                <WorkerIDCard
-                  workerId={registeredWorker.id}
-                  name={registeredWorker.name}
-                  phone={registeredWorker.phone}
-                  skill={registeredWorker.skill}
-                  originState={registeredWorker.originState}
-                  photoUrl={registeredWorker.photoUrl}
-                />
+                <div id={`worker-card-${registeredWorker.id}`}>
+                  <WorkerIDCard
+                    workerId={registeredWorker.id}
+                    name={registeredWorker.name}
+                    phone={registeredWorker.phone}
+                    skill={registeredWorker.skill}
+                    originState={registeredWorker.originState}
+                    photoUrl={registeredWorker.photoUrl}
+                  />
+                </div>
+                <div className="mt-6 flex justify-center gap-4">
+                  <Button 
+                    onClick={() => {
+                      generateWorkerIDCardPDF(registeredWorker.id)
+                        .then(() => toast.success("ID Card downloaded successfully"))
+                        .catch(() => toast.error("Failed to download ID Card"));
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download ID Card
+                  </Button>
+                </div>
                 <div className="mt-6 text-center">
                   <p className="text-sm text-muted-foreground mb-4">
                     An SMS confirmation has been sent to {registeredWorker.phone} with registration details.
