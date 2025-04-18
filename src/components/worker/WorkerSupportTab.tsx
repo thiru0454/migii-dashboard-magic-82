@@ -1,73 +1,146 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Phone } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
-interface SupportHistoryItem {
+interface SupportRequest {
   id: string;
   date: string;
   issue: string;
   status: string;
 }
 
-export function WorkerSupportTab({ supportHistory }: { supportHistory: SupportHistoryItem[] }) {
+interface WorkerSupportTabProps {
+  supportHistory: SupportRequest[];
+}
+
+export function WorkerSupportTab({ supportHistory }: WorkerSupportTabProps) {
+  const [message, setMessage] = useState("");
+  const [issueType, setIssueType] = useState("accommodation");
+  const [requests, setRequests] = useState(supportHistory);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!message.trim()) {
+      toast.error("Please enter a message");
+      return;
+    }
+    
+    // Create new support request
+    const newRequest = {
+      id: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+      date: new Date().toLocaleDateString(),
+      issue: `${issueType.charAt(0).toUpperCase() + issueType.slice(1)} request: ${message.slice(0, 30)}${message.length > 30 ? "..." : ""}`,
+      status: "Pending"
+    };
+    
+    // Add to history
+    setRequests([newRequest, ...requests]);
+    
+    // Clear form
+    setMessage("");
+    setIssueType("accommodation");
+    
+    toast.success("Support request submitted successfully!", {
+      description: "Our team will review your request as soon as possible.",
+    });
+  };
+
+  const getBadgeColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "pending":
+        return "bg-yellow-500";
+      case "resolved":
+        return "bg-green-500";
+      case "in progress":
+      case "processing":
+        return "bg-blue-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
   return (
-    <div className="pt-6">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Submit a Support Request</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="issueType">Request Type</Label>
+              <Select value={issueType} onValueChange={setIssueType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select request type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="accommodation">Accommodation</SelectItem>
+                  <SelectItem value="payment">Payment Issue</SelectItem>
+                  <SelectItem value="health">Health & Safety</SelectItem>
+                  <SelectItem value="document">Document Request</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="message">Your Message</Label>
+              <Textarea
+                id="message"
+                placeholder="Please describe your issue or request in detail..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="min-h-[120px]"
+              />
+            </div>
+            <Button type="submit" className="w-full">Submit Request</Button>
+          </form>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Support History</CardTitle>
-          <CardDescription>
-            Track your support requests and their status
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          {supportHistory.length > 0 ? (
-            <div className="space-y-6">
-              {supportHistory.map((item) => (
-                <div key={item.id} className="border-b pb-6 last:border-0 last:pb-0">
-                  <div className="flex justify-between items-start mb-2">
+          {requests.length > 0 ? (
+            <div className="space-y-4">
+              {requests.map((request) => (
+                <div key={request.id} className="border rounded-md p-4">
+                  <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium">{item.issue}</h3>
-                      <p className="text-sm text-muted-foreground">Request ID: {item.id}</p>
+                      <p className="text-sm font-medium">{request.date}</p>
+                      <p className="mt-1">{request.issue}</p>
                     </div>
-                    <Badge
-                      variant={item.status === "Resolved" ? "outline" : "secondary"}
-                      className={item.status === "Pending" ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100" : ""}
-                    >
-                      {item.status}
+                    <Badge className={getBadgeColor(request.status)}>
+                      {request.status}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">Submitted on {item.date}</p>
-                  {item.status === "Pending" && (
-                    <div className="flex gap-2 mt-4">
-                      <Button size="sm" variant="outline" className="gap-1">
-                        <Phone className="h-3 w-3" />
-                        Call Support
-                      </Button>
-                      <Button size="sm" variant="outline" className="gap-1">
-                        <MessageSquare className="h-3 w-3" />
-                        Message
-                      </Button>
+                  
+                  {request.status.toLowerCase() === "resolved" && (
+                    <div className="mt-2 bg-gray-50 p-3 rounded-md">
+                      <p className="text-sm font-medium">Response from support:</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Your request has been addressed. Please contact us again if you need further assistance.
+                      </p>
                     </div>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No support history found.</p>
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No support history yet.</p>
             </div>
           )}
         </CardContent>
       </Card>
-      
-      <div className="flex justify-center mt-6">
-        <Button className="gap-2">
-          <MessageSquare className="h-4 w-4" />
-          Create New Support Request
-        </Button>
-      </div>
     </div>
   );
 }

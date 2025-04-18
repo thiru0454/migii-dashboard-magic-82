@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
@@ -18,11 +17,16 @@ import {
   BarChart3,
   Map,
   ChevronRight,
+  Building,
+  LogIn,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const { workers, isLoadingWorkers } = useWorkers();
+  const navigate = useNavigate();
   
   // Calculate dashboard statistics based on real data
   const activeWorkers = workers.filter(w => w.status === "active").length;
@@ -61,23 +65,61 @@ const Index = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground">
-              Welcome to migii Worker Management System
+              Welcome to Migii Worker Management System
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="outline">
               <a href="/worker-registration">
                 <UserPlus className="mr-2 h-4 w-4" />
-                New Registration
+                Register Worker
+              </a>
+            </Button>
+            <Button asChild variant="outline">
+              <a href="/admin-dashboard">
+                <Users className="mr-2 h-4 w-4" />
+                Admin Portal
               </a>
             </Button>
             <Button asChild>
-              <a href="/admin-dashboard">
-                <Users className="mr-2 h-4 w-4" />
-                Worker Database
+              <a href="/login">
+                <LogIn className="mr-2 h-4 w-4" />
+                Login
               </a>
             </Button>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="hover:shadow-md transition-all cursor-pointer" onClick={() => navigate('/login?tab=admin')}>
+            <CardContent className="p-6 flex flex-col items-center text-center">
+              <div className="bg-primary/10 p-4 rounded-full mb-4">
+                <Users className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Admin Portal</h3>
+              <p className="text-sm text-muted-foreground">Manage workers, businesses and support requests</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="hover:shadow-md transition-all cursor-pointer" onClick={() => navigate('/login?tab=business')}>
+            <CardContent className="p-6 flex flex-col items-center text-center">
+              <div className="bg-primary/10 p-4 rounded-full mb-4">
+                <Building className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Business Portal</h3>
+              <p className="text-sm text-muted-foreground">Manage your workforce and projects</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="hover:shadow-md transition-all cursor-pointer" onClick={() => navigate('/worker-login')}>
+            <CardContent className="p-6 flex flex-col items-center text-center">
+              <div className="bg-primary/10 p-4 rounded-full mb-4">
+                <UserPlus className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Worker Portal</h3>
+              <p className="text-sm text-muted-foreground">Access your details and submit support requests</p>
+            </CardContent>
+          </Card>
         </div>
 
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
@@ -204,7 +246,7 @@ const Index = () => {
                         </div>
                         <div className="flex items-center">
                           <Button variant="ghost" size="icon" asChild>
-                            <a href={`/worker/${worker.id}`}>
+                            <a href={`/admin-dashboard`}>
                               <ChevronRight className="h-4 w-4" />
                             </a>
                           </Button>

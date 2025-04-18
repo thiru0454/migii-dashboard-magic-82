@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, RequireAdmin, RequireAuth, RequireBusiness } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import WorkerRegistration from "./pages/WorkerRegistration";
@@ -27,12 +27,15 @@ const App = () => (
             <Sonner />
             <Routes>
               <Route path="/" element={<Index />} />
+              
+              {/* Authentication Routes */}
               <Route path="/worker-registration" element={<WorkerRegistration />} />
               <Route path="/worker-login" element={<WorkerLogin />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/unauthorized" element={<Unauthorized />} />
+              
+              {/* Protected Routes */}
               <Route 
-                path="/admin-dashboard" 
+                path="/admin-dashboard/*" 
                 element={
                   <RequireAdmin>
                     <AdminDashboard />
@@ -40,14 +43,24 @@ const App = () => (
                 } 
               />
               <Route 
-                path="/business-dashboard" 
+                path="/business-dashboard/*" 
                 element={
                   <RequireBusiness>
                     <BusinessDashboard />
                   </RequireBusiness>
                 } 
               />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              
+              {/* Utility Routes */}
+              <Route path="/unauthorized" element={<Unauthorized />} />
+              
+              {/* Redirects for common path confusions */}
+              <Route path="/admin" element={<Navigate to="/admin-dashboard" replace />} />
+              <Route path="/business" element={<Navigate to="/business-dashboard" replace />} />
+              <Route path="/worker" element={<Navigate to="/worker-login" replace />} />
+              <Route path="/register" element={<Navigate to="/worker-registration" replace />} />
+              
+              {/* Catch-all route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
