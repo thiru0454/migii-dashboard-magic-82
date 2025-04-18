@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -82,7 +81,6 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       });
 
       let extractedId = "";
-      // Fix the comparison - use string "needs_first_factor" instead of number value
       if (phoneVerification.firstFactorVerification.status === "needs_first_factor" && 
           phoneVerification.firstFactorVerification.externalVerificationRedirectURL) {
         const url = new URL(phoneVerification.firstFactorVerification.externalVerificationRedirectURL);

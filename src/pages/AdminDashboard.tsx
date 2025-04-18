@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WorkersTable, Worker } from "@/components/admin/WorkersTable";
 import { BusinessUsersTable } from "@/components/admin/BusinessUsersTable";
 import { HelpRequestsList, HelpRequest } from "@/components/admin/HelpRequestsList";
@@ -15,12 +15,8 @@ import { Download, Users, MessageSquare, Filter, Building } from "lucide-react";
 import { BusinessUser, getAllBusinessUsers, deleteBusinessUser } from "@/utils/businessDatabase";
 import { useAppAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { BusinessUserForm } from "@/components/business/BusinessUserForm";
+import { BusinessUserDetails } from "@/components/business/BusinessUserDetails";
 
 const AdminDashboard = () => {
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
@@ -41,54 +37,8 @@ const AdminDashboard = () => {
     setBusinessUsers(getAllBusinessUsers());
   }, []);
   
-  // Business form schema
-  const businessSchema = z.object({
-    businessId: z.string().min(3, "Business ID must be at least 3 characters"),
-    name: z.string().min(2, "Name is required"),
-    email: z.string().email("Invalid email address"),
-    phone: z.string().min(10, "Phone number is required"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    status: z.enum(["active", "inactive", "suspended"]),
-  });
-  
-  // Business form
-  const businessForm = useForm<z.infer<typeof businessSchema>>({
-    resolver: zodResolver(businessSchema),
-    defaultValues: {
-      businessId: "",
-      name: "",
-      email: "",
-      phone: "",
-      password: "",
-      status: "active",
-    },
-  });
-  
-  // Set form values when editing a business
-  useEffect(() => {
-    if (selectedBusiness && businessDialogMode === "edit") {
-      businessForm.reset({
-        businessId: selectedBusiness.businessId,
-        name: selectedBusiness.name,
-        email: selectedBusiness.email,
-        phone: selectedBusiness.phone,
-        password: selectedBusiness.password,
-        status: selectedBusiness.status,
-      });
-    } else if (businessDialogMode === "add") {
-      businessForm.reset({
-        businessId: "",
-        name: "",
-        email: "",
-        phone: "",
-        password: "",
-        status: "active",
-      });
-    }
-  }, [selectedBusiness, businessDialogMode]);
-  
-  // Handle business form submit
-  const onBusinessFormSubmit = (values: z.infer<typeof businessSchema>) => {
+  // Business form submit handler
+  const onBusinessFormSubmit = async (values: any) => {
     try {
       if (businessDialogMode === "add") {
         // Create a properly typed BusinessUser object
@@ -419,138 +369,16 @@ const AdminDashboard = () => {
           </DialogHeader>
           
           {businessDialogMode === "view" && selectedBusiness ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label>Business ID</Label>
-                <div className="font-medium">{selectedBusiness.businessId}</div>
-              </div>
-              <div className="space-y-1">
-                <Label>Registration Date</Label>
-                <div className="font-medium">{new Date(selectedBusiness.registrationDate).toLocaleDateString()}</div>
-              </div>
-              <div className="space-y-1">
-                <Label>Name</Label>
-                <div className="font-medium">{selectedBusiness.name}</div>
-              </div>
-              <div className="space-y-1">
-                <Label>Email</Label>
-                <div className="font-medium">{selectedBusiness.email}</div>
-              </div>
-              <div className="space-y-1">
-                <Label>Phone</Label>
-                <div className="font-medium">{selectedBusiness.phone}</div>
-              </div>
-              <div className="space-y-1">
-                <Label>Status</Label>
-                <div className="font-medium">{selectedBusiness.status}</div>
-              </div>
-              <div className="md:col-span-2 pt-4">
-                <Button onClick={() => {
-                  setBusinessDialogMode("edit");
-                }}>Edit Business</Button>
-              </div>
-            </div>
+            <BusinessUserDetails 
+              business={selectedBusiness}
+              onEdit={() => setBusinessDialogMode("edit")}
+            />
           ) : (
-            <Form {...businessForm}>
-              <form onSubmit={businessForm.handleSubmit(onBusinessFormSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={businessForm.control}
-                    name="businessId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Business ID</FormLabel>
-                        <FormControl>
-                          <Input {...field} readOnly={businessDialogMode === "edit"} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={businessForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Business Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={businessForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={businessForm.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={businessForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={businessForm.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select 
-                          value={field.value} 
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                            <SelectItem value="suspended">Suspended</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <DialogFooter>
-                  <Button type="submit">
-                    {businessDialogMode === "add" ? "Add Business" : "Save Changes"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
+            <BusinessUserForm
+              mode={businessDialogMode === "edit" ? "edit" : "add"}
+              initialData={selectedBusiness || undefined}
+              onSubmit={onBusinessFormSubmit}
+            />
           )}
         </DialogContent>
       </Dialog>
