@@ -64,7 +64,7 @@ const Login = () => {
 
   const onAdminSubmit = (values: z.infer<typeof adminLoginSchema>) => {
     // Check if credentials match the hardcoded admin credentials
-    if (values.username === "admin" && values.password === "amin0454") {
+    if (values.username === "admin123" && values.password === "admin0454") {
       // Store admin auth status in localStorage
       localStorage.setItem("isAdmin", "true");
       toast.success("Admin login successful");
