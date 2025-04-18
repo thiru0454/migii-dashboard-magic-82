@@ -50,7 +50,7 @@ const Login = () => {
   const businessForm = useForm<z.infer<typeof businessLoginSchema>>({
     resolver: zodResolver(businessLoginSchema),
     defaultValues: {
-      businessId: "buiss123", // Set default business ID
+      businessId: "", // Set default business ID
       password: "", // Password remains empty for security
     },
   });
