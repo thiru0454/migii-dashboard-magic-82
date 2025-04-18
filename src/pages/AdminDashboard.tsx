@@ -1,57 +1,54 @@
 
 import { useState } from "react";
+import { Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, MessageSquare, Building } from "lucide-react";
-import { useAppAuth } from "@/contexts/AuthContext";
 import { AdminDashboardHeader } from "@/components/admin/AdminDashboardHeader";
 import { WorkersTab } from "@/components/admin/WorkersTab";
 import { BusinessesTab } from "@/components/admin/BusinessesTab";
 import { HelpRequestsTab } from "@/components/admin/HelpRequestsTab";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
-const AdminDashboard = () => {
+export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("workers");
-  const { logout } = useAppAuth();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <AdminDashboardHeader onLogout={logout} />
-
-        <Tabs defaultValue="workers" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="workers" className="gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Worker Database</span>
-              <span className="sm:hidden">Workers</span>
-            </TabsTrigger>
-            <TabsTrigger value="businesses" className="gap-2">
-              <Building className="h-4 w-4" />
-              <span className="hidden sm:inline">Business Users</span>
-              <span className="sm:hidden">Businesses</span>
-            </TabsTrigger>
-            <TabsTrigger value="help-requests" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Help Requests</span>
-              <span className="sm:hidden">Help</span>
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="workers">
-            <WorkersTab />
-          </TabsContent>
-          
-          <TabsContent value="businesses">
-            <BusinessesTab />
-          </TabsContent>
-          
-          <TabsContent value="help-requests">
-            <HelpRequestsTab />
-          </TabsContent>
-        </Tabs>
+        <AdminDashboardHeader onLogout={handleLogout} />
+        
+        <Routes>
+          <Route
+            path="/*"
+            element={
+              <Tabs defaultValue="workers" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="workers">Workers</TabsTrigger>
+                  <TabsTrigger value="businesses">Businesses</TabsTrigger>
+                  <TabsTrigger value="help-requests">Help Requests</TabsTrigger>
+                </TabsList>
+                <TabsContent value="workers" className="space-y-4">
+                  <WorkersTab />
+                </TabsContent>
+                <TabsContent value="businesses" className="space-y-4">
+                  <BusinessesTab />
+                </TabsContent>
+                <TabsContent value="help-requests" className="space-y-4">
+                  <HelpRequestsTab />
+                </TabsContent>
+              </Tabs>
+            }
+          />
+        </Routes>
       </div>
     </DashboardLayout>
   );
-};
-
-export default AdminDashboard;
+}
