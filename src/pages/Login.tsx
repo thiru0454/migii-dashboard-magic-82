@@ -76,7 +76,7 @@ const Login = () => {
 
   const onBusinessSubmit = (values: z.infer<typeof businessLoginSchema>) => {
     // Check credentials against the new hardcoded values
-    if (values.businessId === "buiss123" && values.password === "buis0454") {
+    if (values.businessId === "buiss123" && values.password === "buiss0454") {
       // Find or create a default business user
       const businessUsers = JSON.parse(localStorage.getItem("businessUsers") || "[]");
       let businessUser = businessUsers.find((user: any) => user.businessId === "buiss123");
