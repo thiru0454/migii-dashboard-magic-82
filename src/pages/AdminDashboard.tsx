@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -95,15 +94,16 @@ const AdminDashboard = () => {
     try {
       if (businessDialogMode === "add") {
         // Add new business
-        const newBusiness: Omit<BusinessUser, "id"> = {
-          ...values,
-          registrationDate: new Date().toISOString().split("T")[0],
+        const newBusinessUser = {
+          registrationDate: new Date().toISOString(),
+          status: values.status || "active", // Ensure status is always set
+          ...values
         };
         
         // This would be handled by the database in a real app
         const users = getAllBusinessUsers();
         const newId = `b${users.length + 1}`;
-        const businessWithId = { ...newBusiness, id: newId };
+        const businessWithId = { ...newBusinessUser, id: newId };
         
         setBusinessUsers([...users, businessWithId]);
         localStorage.setItem("businessUsers", JSON.stringify([...users, businessWithId]));

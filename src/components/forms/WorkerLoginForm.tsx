@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,7 +38,6 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [verificationId, setVerificationId] = useState("");
   const { signIn, setActive, isLoaded } = useSignIn();
   
-  // Phone form
   const phoneForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -47,7 +45,6 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     },
   });
 
-  // OTP form
   const otpForm = useForm<z.infer<typeof otpSchema>>({
     resolver: zodResolver(otpSchema),
     defaultValues: {
@@ -61,18 +58,15 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         throw new Error("Clerk is not loaded yet");
       }
 
-      // Format the phone number with country code if not already present
       let formattedPhone = values.phone;
       if (!formattedPhone.startsWith("+")) {
-        formattedPhone = "+91" + formattedPhone; // Assuming Indian phone numbers
+        formattedPhone = "+91" + formattedPhone;
       }
       
-      // Send SMS using Clerk
       const { supportedFirstFactors } = await signIn.create({
         identifier: formattedPhone,
       });
 
-      // Find the phone code factor
       const phoneCodeFactor = supportedFirstFactors.find(
         factor => factor.strategy === "phone_code"
       );
@@ -81,17 +75,14 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         throw new Error("Phone code authentication not supported");
       }
 
-      // Start the phone code verification
       const phoneVerification = await signIn.prepareFirstFactor({
         strategy: "phone_code",
         phoneNumberId: phoneCodeFactor.safeIdentifier as string,
       });
 
-      // Use the verification ID from the firstFactorVerification object
       let extractedId = "";
-      if (phoneVerification.firstFactorVerification.status === "needs_first_factor" && 
+      if (phoneVerification.firstFactorVerification.status === 1 && 
           phoneVerification.firstFactorVerification.externalVerificationRedirectURL) {
-        // Try to extract from URL if available
         const url = new URL(phoneVerification.firstFactorVerification.externalVerificationRedirectURL);
         extractedId = url.searchParams.get("verification_id") || "";
       }
@@ -117,14 +108,12 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         throw new Error("Clerk is not loaded yet");
       }
 
-      // Attempt to verify using just the code
       const result = await signIn.attemptFirstFactor({
         strategy: "phone_code",
         code: values.otp,
       });
 
       if (result.status === "complete") {
-        // Set this session as active
         await setActive({ session: result.createdSessionId });
         
         toast.success("Login successful!", {
