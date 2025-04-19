@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth, UserType } from "@/contexts/AuthContext";
 import { WorkerLoginForm } from "@/components/forms/WorkerLoginForm";
+import { ShieldAlert, Building, User } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -26,15 +27,8 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Get the tab from URL parameter or default to admin
-  const defaultTab = searchParams.get("tab") || "admin";
-  const [activeTab, setActiveTab] = useState<string>(defaultTab);
-
-  // Get the from location state for redirection after login
-  const from = location.state?.from?.pathname || getDefaultRedirectPath(activeTab as UserType);
+  const [activeTab, setActiveTab] = useState<string>("admin");
 
   function getDefaultRedirectPath(userType: UserType | "worker") {
     switch (userType) {
@@ -60,18 +54,12 @@ export default function Login() {
       if (userType !== "worker") {
         const success = await login(values.email, values.password, userType);
         if (success) {
-          // Get the appropriate redirect path based on user type
-          const redirectPath = getDefaultRedirectPath(userType);
-          navigate(redirectPath);
+          navigate(getDefaultRedirectPath(userType));
         }
       }
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
   };
 
   const handleWorkerLoginSuccess = () => {
@@ -82,99 +70,82 @@ export default function Login() {
     <div className="container flex h-screen w-screen items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Login</CardTitle>
-          <CardDescription>
-            Login to access your dashboard
-          </CardDescription>
+          <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
+          <CardDescription>Choose your account type to login</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <Tabs defaultValue="admin" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="admin">Admin</TabsTrigger>
-              <TabsTrigger value="business">Business</TabsTrigger>
-              <TabsTrigger value="worker">Worker</TabsTrigger>
+              <TabsTrigger value="admin" className="flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4" />
+                Admin
+              </TabsTrigger>
+              <TabsTrigger value="business" className="flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                Business
+              </TabsTrigger>
+              <TabsTrigger value="worker" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Worker
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="admin">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="admin@migii.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+
+            {(activeTab === "admin" || activeTab === "business") && (
+              <TabsContent value={activeTab}>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder={activeTab === "admin" ? "admin@migii.com" : "business@example.com"} 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="******" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? "Signing in..." : `Sign in as ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
+                    </Button>
+                  </form>
+                  <div className="mt-4 text-center text-xs text-muted-foreground border-t pt-4">
+                    <p>For demo purposes, use:</p>
+                    {activeTab === "admin" ? (
+                      <>
+                        <p>Email: admin@migii.com</p>
+                        <p>Password: admin123</p>
+                      </>
+                    ) : (
+                      <>
+                        <p>Email: business@example.com</p>
+                        <p>Password: business123</p>
+                      </>
                     )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="******" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Logging in..." : "Login as Admin"}
-                  </Button>
-                </form>
-              </Form>
-              <div className="mt-4 text-center text-xs text-muted-foreground border-t pt-4">
-                <p>For demo purposes, use:</p>
-                <p>Email: admin@migii.com</p>
-                <p>Password: admin123</p>
-              </div>
-            </TabsContent>
-            <TabsContent value="business">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="business@example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="******" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Logging in..." : "Login as Business"}
-                  </Button>
-                </form>
-              </Form>
-              <div className="mt-4 text-center text-xs text-muted-foreground border-t pt-4">
-                <p>For demo purposes, use:</p>
-                <p>Email: business@example.com</p>
-                <p>Password: business123</p>
-              </div>
-            </TabsContent>
-            <TabsContent value="worker" className="pt-2">
+                  </div>
+                </Form>
+              </TabsContent>
+            )}
+
+            <TabsContent value="worker">
               <WorkerLoginForm onSuccess={handleWorkerLoginSuccess} />
             </TabsContent>
           </Tabs>

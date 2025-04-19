@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -32,19 +31,9 @@ const sidebarLinks = [
     icon: UserPlus,
   },
   {
-    title: "Worker Login",
-    href: "/worker-login",
+    title: "Sign In",
+    href: "/login",
     icon: LogIn,
-  },
-  {
-    title: "Admin Login",
-    href: "/login?tab=admin",
-    icon: ShieldAlert,
-  },
-  {
-    title: "Business Login",
-    href: "/login?tab=business",
-    icon: Building,
   },
 ];
 

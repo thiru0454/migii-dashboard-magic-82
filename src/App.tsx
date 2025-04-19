@@ -28,9 +28,11 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               
-              {/* Authentication Routes */}
+              {/* Worker Routes */}
               <Route path="/worker-registration" element={<WorkerRegistration />} />
               <Route path="/worker-login" element={<WorkerLogin />} />
+              
+              {/* Authentication Route */}
               <Route path="/login" element={<Login />} />
               
               {/* Protected Routes */}
@@ -54,13 +56,14 @@ const App = () => (
               {/* Utility Routes */}
               <Route path="/unauthorized" element={<Unauthorized />} />
               
-              {/* Redirects for common path confusions */}
-              <Route path="/admin" element={<Navigate to="/admin-dashboard" replace />} />
-              <Route path="/business" element={<Navigate to="/business-dashboard" replace />} />
-              <Route path="/worker" element={<Navigate to="/worker-login" replace />} />
+              {/* Redirects */}
+              <Route path="/admin" element={<Navigate to="/login?tab=admin" replace />} />
+              <Route path="/business" element={<Navigate to="/login?tab=business" replace />} />
+              <Route path="/worker" element={<Navigate to="/login?tab=worker" replace />} />
               <Route path="/register" element={<Navigate to="/worker-registration" replace />} />
+              <Route path="/signin" element={<Navigate to="/login" replace />} />
               
-              {/* Catch-all route */}
+              {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
