@@ -1,16 +1,29 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WorkerTabs } from "@/components/worker/WorkerTabs";
 import { WorkerLoginCard } from "@/components/worker/WorkerLoginCard";
+import { useAuth } from "@/contexts/AuthContext";
 
 const WorkerLogin = () => {
+  const { currentUser, logout } = useAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
+  
+  // Check if already logged in
+  useEffect(() => {
+    if (currentUser && currentUser.userType === "worker") {
+      setIsLoggedIn(true);
+    } else {
+      setIsLoggedIn(false);
+    }
+  }, [currentUser]);
   
   const workerData = {
-    workerId: "TN-MIG-20240101-12345",
-    name: "Rahul Kumar",
-    phone: "9876543210",
+    workerId: currentUser?.id || "TN-MIG-20240101-12345",
+    name: currentUser?.name || "Worker User",
+    phone: currentUser?.phone || "9876543210",
     skill: "Construction Worker",
     originState: "Bihar",
     status: "Active",
@@ -35,6 +48,7 @@ const WorkerLogin = () => {
   };
 
   const handleSignOut = () => {
+    logout();
     setIsLoggedIn(false);
   };
 

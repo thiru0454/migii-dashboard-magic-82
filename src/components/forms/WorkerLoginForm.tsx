@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface WorkerLoginFormProps {
   onSuccess: () => void;
@@ -28,12 +29,14 @@ const formSchema = z.object({
     }),
 });
 
-const OTP_LENGTH = 4;
+const OTP_LENGTH = 6;
 
 export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [otp, setOtp] = useState("");
   const [phone, setPhone] = useState("");
+  const [verificationId, setVerificationId] = useState("");
+  const { loginWithPhone, verifyOtp } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,17 +45,20 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     },
   });
 
-  const onSubmitPhone = (values: z.infer<typeof formSchema>) => {
-    setPhone(values.phone);
+  const onSubmitPhone = async (values: z.infer<typeof formSchema>) => {
+    const formattedPhone = values.phone.startsWith("+") ? values.phone : "91" + values.phone;
+    setPhone(formattedPhone);
     
-    // In a real app, this would send an SMS with the OTP
-    toast.success("OTP sent successfully!", {
-      description: `A 4-digit OTP has been sent to ${values.phone}`,
-    });
-    
-    // For demo purposes, we'll use a hardcoded OTP
-    setOtp("1234");
-    setStep("otp");
+    try {
+      const verId = await loginWithPhone(formattedPhone);
+      if (verId) {
+        setVerificationId(verId);
+        setStep("otp");
+      }
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      toast.error("Failed to send OTP. Please try again.");
+    }
   };
 
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,14 +68,15 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     }
   };
 
-  const handleVerifyOtp = () => {
-    // In a real app, this would verify the OTP with the server
-    // For demo purposes, we'll just check if it matches our hardcoded OTP
-    if (otp === "1234") {
-      toast.success("OTP verified successfully!");
-      onSuccess();
-    } else {
-      toast.error("Invalid OTP. Please try again.");
+  const handleVerifyOtp = async () => {
+    try {
+      const success = await verifyOtp(verificationId, otp);
+      if (success) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      toast.error("Failed to verify OTP. Please try again.");
     }
   };
 
@@ -113,7 +120,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
                 id="otp"
                 value={otp}
                 onChange={handleOtpChange}
-                placeholder="Enter 4-digit OTP"
+                placeholder={`Enter ${OTP_LENGTH}-digit OTP`}
                 maxLength={OTP_LENGTH}
                 className="text-center text-2xl tracking-widest py-2"
               />
@@ -137,8 +144,16 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
               variant="link"
               type="button"
               className="text-xs"
-              onClick={() => {
-                toast.success("OTP resent successfully!");
+              onClick={async () => {
+                try {
+                  const verId = await loginWithPhone(phone);
+                  if (verId) {
+                    setVerificationId(verId);
+                    toast.success("OTP resent successfully!");
+                  }
+                } catch (error) {
+                  toast.error("Failed to resend OTP");
+                }
               }}
             >
               Didn't receive code? Resend OTP
@@ -147,7 +162,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         </div>
       )}
       <div className="mt-4 text-center text-xs text-muted-foreground border-t pt-4">
-        <p>For demo purposes, use OTP: 1234</p>
+        <p>For demo purposes, you can use any valid phone number format</p>
       </div>
     </>
   );

@@ -30,11 +30,18 @@ export default function Login() {
   
   // Get the tab from URL parameter or default to admin
   const defaultTab = searchParams.get("tab") === "business" ? "business" : "admin";
-  const [activeTab, setActiveTab] = useState<UserType>("admin");
+  const [activeTab, setActiveTab] = useState<UserType>(defaultTab as UserType);
 
   // Get the from location state for redirection after login
-  const from = location.state?.from?.pathname || 
-    (activeTab === "admin" ? "/admin-dashboard" : "/business-dashboard");
+  const from = location.state?.from?.pathname || getDefaultRedirectPath(activeTab);
+
+  function getDefaultRedirectPath(userType: UserType) {
+    switch (userType) {
+      case "admin": return "/admin-dashboard";
+      case "business": return "/business-dashboard";
+      default: return "/";
+    }
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,9 +56,9 @@ export default function Login() {
     try {
       const success = await login(values.email, values.password, activeTab);
       if (success) {
-        // Redirect to the appropriate dashboard based on the user type
-        const redirectPath = activeTab === "admin" ? "/admin-dashboard" : "/business-dashboard";
-        navigate(redirectPath, { replace: true });
+        // Get the appropriate redirect path based on user type
+        const redirectPath = getDefaultRedirectPath(activeTab);
+        navigate(redirectPath);
       }
     } finally {
       setIsLoading(false);
@@ -152,7 +159,9 @@ export default function Login() {
                 </form>
               </Form>
               <div className="mt-4 text-center text-xs text-muted-foreground border-t pt-4">
-                <p>For demo purposes, register a business account first or use the admin to create one.</p>
+                <p>For demo purposes, use:</p>
+                <p>Email: business@example.com</p>
+                <p>Password: business123</p>
               </div>
             </TabsContent>
           </Tabs>
