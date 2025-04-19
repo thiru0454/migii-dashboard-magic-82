@@ -157,14 +157,61 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
     }
   };
 
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File, maxSizeInMB: number = 0.5): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Calculate the new dimensions while maintaining aspect ratio
+          const maxDimension = 800; // Max dimension in pixels
+          if (width > height && width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Convert to JPEG at reduced quality to keep size small
+          const quality = 0.6; // Adjust quality as needed (0.0-1.0)
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          
+          resolve(dataUrl);
+        };
+        img.onerror = (error) => {
+          reject(error);
+        };
+      };
+      reader.onerror = (error) => {
+        reject(error);
+      };
+    });
+  };
+
+  const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        // Compress image to reduce size before storing
+        const compressedImage = await compressImage(file);
+        setPhotoPreview(compressedImage);
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        toast.error("Error processing image. Please try a smaller image.");
+      }
     }
   };
 
