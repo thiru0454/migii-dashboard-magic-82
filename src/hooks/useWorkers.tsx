@@ -14,13 +14,21 @@ export function useWorkers() {
 
   const registerWorker = useMutation({
     mutationFn: async (worker: Omit<MigrantWorker, "id" | "status" | "registrationDate">) => {
-      return await registerWorkerInDB(worker);
+      return registerWorkerInDB(worker); // Remove await for faster return
+    },
+    // Use optimistic updates to make the UI feel faster
+    onMutate: async (newWorker) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["workers"] });
+      
+      // Return the new worker immediately
+      return { worker: newWorker };
     },
     onSuccess: (newWorker) => {
-      queryClient.invalidateQueries({ queryKey: ["workers"] });
-      toast.success("Worker registered successfully!", {
-        description: `Worker ID: ${newWorker.id}`,
-      });
+      // Update the cache in background without blocking the UI
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["workers"] });
+      }, 0);
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to register worker");

@@ -53,7 +53,7 @@ const WorkerRegistration = () => {
                 <TabsTrigger value="new-registration">New Registration</TabsTrigger>
               </TabsList>
               <TabsContent value="id-card" className="pt-6">
-                <div id={`worker-card-${registeredWorker.id}`}>
+                <div id={`worker-card-${registeredWorker.id}`} className="worker-card-container">
                   <WorkerIDCard
                     workerId={registeredWorker.id}
                     name={registeredWorker.name}
@@ -66,9 +66,11 @@ const WorkerRegistration = () => {
                 <div className="mt-6 flex justify-center gap-4">
                   <Button 
                     onClick={() => {
-                      generateWorkerIDCardPDF(registeredWorker.id)
-                        .then(() => toast.success("ID Card downloaded successfully"))
-                        .catch(() => toast.error("Failed to download ID Card"));
+                      toast.promise(generateWorkerIDCardPDF(registeredWorker.id), {
+                        loading: 'Generating ID Card...',
+                        success: 'ID Card downloaded successfully',
+                        error: 'Failed to download ID Card',
+                      });
                     }}
                     className="flex items-center gap-2"
                   >

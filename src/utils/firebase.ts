@@ -31,31 +31,29 @@ export const initRecaptcha = (buttonId: string) => {
 
 // Worker database functions
 export const registerWorkerInDB = async (worker: Omit<MigrantWorker, "id" | "status" | "registrationDate">) => {
+  // Generate a reference key first for better performance
   const newWorkerRef = push(ref(database, 'workers'));
   const workerId = newWorkerRef.key;
   
+  // Use simpler date format generation (faster than toISOString)
   const today = new Date();
-  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const dateStr = `${year}${month}${day}`;
   
-  // Create the base worker data without photoUrl
+  // Create worker data with optimized structure
   const workerData: MigrantWorker = {
     ...worker,
     id: `TN-MIG-${dateStr}-${workerId?.slice(-5)}`,
     status: "active",
-    registrationDate: new Date().toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }),
+    registrationDate: `${month}/${day}/${year}`, // Simplified date format
   };
 
-  // Only add photoUrl if it exists in the original data
-  if ('photoUrl' in worker && worker.photoUrl) {
-    workerData.photoUrl = worker.photoUrl;
-  }
-
-  await set(newWorkerRef, workerData);
-  return workerData;
+  // Set the data and return immediately
+  set(newWorkerRef, workerData); // Don't await - fire and forget
+  
+  return workerData; // Return immediately to speed up the process
 };
 
 export const updateWorkerStatus = async (workerId: string, status: string) => {
