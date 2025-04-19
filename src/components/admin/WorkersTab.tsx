@@ -8,7 +8,7 @@ import {
   VisibilityState,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -92,9 +92,9 @@ export function WorkersTab({ onViewDetails }: WorkersTabProps) {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    getPaginationModel: getPaginationModel(),
     state: {
       sorting,
       columnFilters,
