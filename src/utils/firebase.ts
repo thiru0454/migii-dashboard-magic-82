@@ -36,7 +36,9 @@ export const registerWorkerInDB = async (worker: Omit<MigrantWorker, "id" | "sta
   
   const today = new Date();
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-  const workerData = {
+  
+  // Create the base worker data without photoUrl
+  const workerData: MigrantWorker = {
     ...worker,
     id: `TN-MIG-${dateStr}-${workerId?.slice(-5)}`,
     status: "active",
@@ -46,6 +48,11 @@ export const registerWorkerInDB = async (worker: Omit<MigrantWorker, "id" | "sta
       day: "numeric",
     }),
   };
+
+  // Only add photoUrl if it exists in the original data
+  if ('photoUrl' in worker && worker.photoUrl) {
+    workerData.photoUrl = worker.photoUrl;
+  }
 
   await set(newWorkerRef, workerData);
   return workerData;

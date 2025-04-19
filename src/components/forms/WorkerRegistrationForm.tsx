@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -106,15 +107,22 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const result = await registerWorker.mutateAsync({
+      // Only include photoUrl if it exists to avoid firebase errors
+      const workerData = {
         name: values.name,
         age: values.age,
         phone: values.phone,
         originState: values.originState,
         skill: values.skill,
         aadhaar: values.aadhaar,
-        photoUrl: photoPreview || undefined,
-      });
+      };
+      
+      // Only add the photoUrl if it exists
+      if (photoPreview) {
+        Object.assign(workerData, { photoUrl: photoPreview });
+      }
+      
+      const result = await registerWorker.mutateAsync(workerData);
       
       try {
         if (!window.recaptchaVerifier) {
@@ -136,7 +144,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         toast.error("Could not send registration SMS");
       }
 
-      if (onSuccess) {
+      if (onSuccess && result) {
         onSuccess(result as MigrantWorker);
       }
       
@@ -145,6 +153,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
       
     } catch (error) {
       console.error("Registration error:", error);
+      toast.error("Registration failed. Please try again.");
     }
   };
 
