@@ -2,11 +2,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { WorkerIDCard } from "@/components/worker/WorkerIDCard";
-import { Worker } from "@/components/admin/WorkersTable";
+import { MigrantWorker } from "@/types/worker";
 import { mockHelpRequests } from "@/data/mockData";
 
 export interface WorkerDetailsDialogProps {
-  worker: Worker | null;
+  worker: MigrantWorker | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

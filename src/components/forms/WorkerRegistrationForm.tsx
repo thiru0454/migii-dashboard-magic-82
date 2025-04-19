@@ -7,10 +7,16 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWorkers } from "@/hooks/useWorkers";
-import { Worker } from "@/types/worker";
+import { MigrantWorker } from "@/types/worker";
 import { auth } from "@/utils/firebase";
-import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
+import { PhoneAuthProvider, signInWithCredential, RecaptchaVerifier } from "firebase/auth";
 import { toast } from "sonner";
+
+declare global {
+  interface Window {
+    recaptchaVerifier: RecaptchaVerifier;
+  }
+}
 
 const SKILLS = [
   "Construction Worker",
@@ -79,7 +85,7 @@ const formSchema = z.object({
 });
 
 interface WorkerRegistrationFormProps {
-  onSuccess?: (data: Worker) => void;
+  onSuccess?: (data: MigrantWorker) => void;
 }
 
 export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProps) {
@@ -111,6 +117,12 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
       });
       
       try {
+        if (!window.recaptchaVerifier) {
+          window.recaptchaVerifier = new RecaptchaVerifier(auth, 'sign-in-button', {
+            size: 'invisible',
+          });
+        }
+        
         const phoneNumber = "+91" + values.phone;
         const provider = new PhoneAuthProvider(auth);
         const verificationId = await provider.verifyPhoneNumber(phoneNumber, window.recaptchaVerifier);
@@ -125,7 +137,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
       }
 
       if (onSuccess) {
-        onSuccess(result);
+        onSuccess(result as MigrantWorker);
       }
       
       form.reset();
@@ -150,6 +162,8 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div id="sign-in-button" style={{ display: 'none' }}></div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}

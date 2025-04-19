@@ -11,7 +11,7 @@ import {
   TableHeader, 
   TableRow
 } from "@/components/ui/table";
-import { Worker } from "@/components/admin/WorkersTable";
+import { MigrantWorker } from "@/types/worker";
 import { useWorkers } from "@/hooks/useWorkers";
 import { Badge } from "@/components/ui/badge";
 import { UserPlus, UserMinus, Search } from "lucide-react";
@@ -19,19 +19,19 @@ import { toast } from "sonner";
 
 interface AssignWorkersTabProps {
   businessId?: string;
-  currentWorkers: Worker[];
+  currentWorkers: MigrantWorker[];
 }
 
 export function AssignWorkersTab({ businessId, currentWorkers }: AssignWorkersTabProps) {
   const { workers } = useWorkers();
-  const [availableWorkers, setAvailableWorkers] = useState<Worker[]>([]);
+  const [availableWorkers, setAvailableWorkers] = useState<MigrantWorker[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([]);
+  const [filteredWorkers, setFilteredWorkers] = useState<MigrantWorker[]>([]);
 
   useEffect(() => {
     // Get workers not already assigned to this business
     const currentWorkerIds = new Set(currentWorkers.map(worker => worker.id));
-    const available = workers.filter(worker => !currentWorkerIds.has(worker.id));
+    const available = (workers as MigrantWorker[]).filter(worker => !currentWorkerIds.has(worker.id));
     setAvailableWorkers(available);
     setFilteredWorkers(available);
   }, [workers, currentWorkers]);
@@ -55,7 +55,7 @@ export function AssignWorkersTab({ businessId, currentWorkers }: AssignWorkersTa
     setFilteredWorkers(filtered);
   };
 
-  const handleAssignWorker = (worker: Worker) => {
+  const handleAssignWorker = (worker: MigrantWorker) => {
     // In a real app, this would make an API call to update the database
     toast.success(`Worker ${worker.name} assigned to your business!`);
     
@@ -64,7 +64,7 @@ export function AssignWorkersTab({ businessId, currentWorkers }: AssignWorkersTa
     setFilteredWorkers(prev => prev.filter(w => w.id !== worker.id));
   };
 
-  const handleRemoveWorker = (worker: Worker) => {
+  const handleRemoveWorker = (worker: MigrantWorker) => {
     // In a real app, this would make an API call to update the database
     toast.success(`Worker ${worker.name} removed from your business!`);
   };

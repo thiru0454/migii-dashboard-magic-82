@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, RecaptchaVerifier, PhoneAuthProvider } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getDatabase, ref, set, get, child, push, update } from "firebase/database";
+import { MigrantWorker } from "@/types/worker";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -29,7 +30,7 @@ export const initRecaptcha = (buttonId: string) => {
 };
 
 // Worker database functions
-export const registerWorkerInDB = async (worker: Omit<Worker, "id" | "status" | "registrationDate">) => {
+export const registerWorkerInDB = async (worker: Omit<MigrantWorker, "id" | "status" | "registrationDate">) => {
   const newWorkerRef = push(ref(database, 'workers'));
   const workerId = newWorkerRef.key;
   

@@ -1,18 +1,19 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WorkerRegistrationForm } from "@/components/forms/WorkerRegistrationForm";
 import { WorkerIDCard } from "@/components/worker/WorkerIDCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Worker } from "@/components/admin/WorkersTable";
+import { MigrantWorker } from "@/types/worker";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { generateWorkerIDCardPDF } from "@/utils/pdfUtils";
 import { toast } from "sonner";
 
 const WorkerRegistration = () => {
-  const [registeredWorker, setRegisteredWorker] = useState<Worker | null>(null);
+  const [registeredWorker, setRegisteredWorker] = useState<MigrantWorker | null>(null);
   
-  const handleRegistrationSuccess = (worker: Worker) => {
+  const handleRegistrationSuccess = (worker: MigrantWorker) => {
     setRegisteredWorker(worker);
   };
 

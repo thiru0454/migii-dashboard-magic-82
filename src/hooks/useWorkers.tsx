@@ -1,7 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Worker } from "@/types/worker";
+import { MigrantWorker } from "@/types/worker";
 import { registerWorkerInDB, getAllWorkers, updateWorkerStatus } from "@/utils/firebase";
 
 export function useWorkers() {
@@ -13,7 +13,7 @@ export function useWorkers() {
   });
 
   const registerWorker = useMutation({
-    mutationFn: async (worker: Omit<Worker, "id" | "status" | "registrationDate">) => {
+    mutationFn: async (worker: Omit<MigrantWorker, "id" | "status" | "registrationDate">) => {
       return await registerWorkerInDB(worker);
     },
     onSuccess: (newWorker) => {
@@ -28,7 +28,7 @@ export function useWorkers() {
   });
 
   const updateWorker = useMutation({
-    mutationFn: async (worker: Worker) => {
+    mutationFn: async (worker: MigrantWorker) => {
       await updateWorkerStatus(worker.id, worker.status);
       return worker;
     },

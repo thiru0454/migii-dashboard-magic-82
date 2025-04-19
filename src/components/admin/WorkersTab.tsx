@@ -1,6 +1,6 @@
 
-import { Worker } from "./WorkersTable";
-import { useWorkers, WorkerWithAadhaar } from "@/hooks/useWorkers";
+import { MigrantWorker } from "@/types/worker";
+import { useWorkers } from "@/hooks/useWorkers";
 import { DataTable } from "@/components/ui/data-table";
 import {
   ColumnDef,
@@ -18,7 +18,7 @@ import { useState } from "react";
 import { WorkerDetailsDialog } from "./WorkerDetailsDialog";
 
 interface WorkersTabProps {
-  onViewDetails?: (worker: Worker) => void;
+  onViewDetails?: (worker: MigrantWorker) => void;
 }
 
 export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
@@ -27,11 +27,11 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedWorker, setSelectedWorker] = useState<WorkerWithAadhaar | null>(null);
+  const [selectedWorker, setSelectedWorker] = useState<MigrantWorker | null>(null);
 
   const { workers, isLoadingWorkers, updateWorker } = useWorkers();
 
-  const columns: ColumnDef<WorkerWithAadhaar>[] = [
+  const columns: ColumnDef<MigrantWorker>[] = [
     {
       accessorKey: "name",
       header: "Name",
@@ -86,7 +86,7 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
   ];
 
   const table = useReactTable({
-    data: workers,
+    data: workers as MigrantWorker[],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -104,7 +104,7 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
     },
   });
 
-  const handleViewDetails = (worker: WorkerWithAadhaar) => {
+  const handleViewDetails = (worker: MigrantWorker) => {
     setSelectedWorker(worker);
     setIsDialogOpen(true);
     if (onViewDetails) {
@@ -117,7 +117,7 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
     setSelectedWorker(null);
   };
 
-  const updateWorkerStatus = (worker: WorkerWithAadhaar, status: "active" | "inactive" | "pending") => {
+  const updateWorkerStatus = (worker: MigrantWorker, status: "active" | "inactive" | "pending") => {
     const updatedWorker = { ...worker, status };
     updateWorker.mutate(updatedWorker);
   };

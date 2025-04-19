@@ -1,5 +1,5 @@
 
-export interface Worker {
+export interface MigrantWorker {
   id: string;
   name: string;
   age: number;

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,17 +6,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Building, Users, ClipboardList, BarChart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { WorkersTable, Worker } from "@/components/admin/WorkersTable";
-import { useWorkers, WorkerWithAadhaar } from "@/hooks/useWorkers";
+import { WorkersTable } from "@/components/admin/WorkersTable";
+import { useWorkers } from "@/hooks/useWorkers";
 import { AssignWorkersTab } from "@/components/business/AssignWorkersTab";
 import { ProjectsTab } from "@/components/business/ProjectsTab";
+import { MigrantWorker } from "@/types/worker";
 
 const BusinessDashboard = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const { workers } = useWorkers();
-  const [assignedWorkers, setAssignedWorkers] = useState<WorkerWithAadhaar[]>([]);
+  const [assignedWorkers, setAssignedWorkers] = useState<MigrantWorker[]>([]);
 
   useEffect(() => {
     // Simulate assigned workers based on business ID
@@ -25,7 +25,7 @@ const BusinessDashboard = () => {
     if (currentUser) {
       const businessId = currentUser.businessId;
       // Filter workers randomly to simulate assignments
-      const assigned = workers.filter((worker, index) => {
+      const assigned = (workers as MigrantWorker[]).filter((worker, index) => {
         // Use a deterministic approach based on worker id and business id
         return (index % 3 === 0); // Just for demo, assign roughly 1/3 of workers
       });
@@ -143,8 +143,7 @@ const BusinessDashboard = () => {
           <TabsContent value="workers">
             <WorkersTable 
               workers={assignedWorkers} 
-              isLoading={false}
-              businessView={true}
+              onViewDetails={() => {}}
             />
           </TabsContent>
 

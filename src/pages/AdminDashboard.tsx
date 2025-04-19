@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -9,20 +8,20 @@ import { BusinessesTab } from "@/components/admin/BusinessesTab";
 import { HelpRequestsTab } from "@/components/admin/HelpRequestsTab";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Worker } from "@/components/admin/WorkersTable";
+import { MigrantWorker } from "@/types/worker";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("workers");
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+  const [selectedWorker, setSelectedWorker] = useState<MigrantWorker | null>(null);
 
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
-  const handleViewWorkerDetails = (worker: Worker) => {
+  const handleViewWorkerDetails = (worker: MigrantWorker) => {
     setSelectedWorker(worker);
   };
 
