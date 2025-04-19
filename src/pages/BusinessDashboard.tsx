@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +26,7 @@ const BusinessDashboard = () => {
     if (currentUser) {
       const businessId = currentUser.businessId;
       // Filter workers randomly to simulate assignments
-      const assigned = (workers as MigrantWorker[]).filter((worker, index) => {
+      const assigned = workers.filter((worker, index) => {
         // Use a deterministic approach based on worker id and business id
         return (index % 3 === 0); // Just for demo, assign roughly 1/3 of workers
       });
@@ -154,7 +155,7 @@ const BusinessDashboard = () => {
           <TabsContent value="assign">
             <AssignWorkersTab 
               businessId={currentUser?.businessId} 
-              currentWorkers={assignedWorkers as Worker[]} 
+              currentWorkers={assignedWorkers} 
             />
           </TabsContent>
         </Tabs>

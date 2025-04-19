@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
@@ -8,6 +9,7 @@ import { WorkersTable } from "@/components/admin/WorkersTable";
 import { HelpRequestsList } from "@/components/admin/HelpRequestsList";
 import { mockHelpRequests, dashboardStats } from "@/data/mockData";
 import { useWorkers } from "@/hooks/useWorkers";
+import { MigrantWorker } from "@/types/worker";
 import {
   UserPlus,
   Users,
@@ -269,7 +271,7 @@ const Index = () => {
           </TabsContent>
           
           <TabsContent value="workers" className="space-y-4">
-            <WorkersTable workers={workers} isLoading={isLoadingWorkers} />
+            <WorkersTable workers={workers as MigrantWorker[]} isLoading={isLoadingWorkers} />
           </TabsContent>
           
           <TabsContent value="help-requests" className="space-y-4">
