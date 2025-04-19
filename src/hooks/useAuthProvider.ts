@@ -95,31 +95,25 @@ export const useAuthProvider = () => {
     }
   };
 
+  // Mock phone login for demonstration
   const loginWithPhone = async (phone: string): Promise<string> => {
     try {
       setIsLoading(true);
       
-      if (!recaptchaVerifier) {
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-        });
-        setRecaptchaVerifier(verifier);
-      }
-
-      const provider = new PhoneAuthProvider(auth);
-      const verificationId = await provider.verifyPhoneNumber(
-        `+${phone}`, 
-        recaptchaVerifier!
-      );
+      // In a real implementation, this would call Firebase
+      // For demo purposes, we'll mock this and immediately return a verification ID
+      const mockVerificationId = "mock-verification-id-" + Date.now();
       
-      toast.success("OTP sent successfully!");
+      console.log("Mock OTP sent for phone:", phone);
+      toast.success("Demo mode: OTP sent successfully! (Use code: 123456)");
       setIsLoading(false);
-      return verificationId;
+      return mockVerificationId;
     } catch (error) {
       console.error("Phone login error:", error);
-      toast.error("Failed to send OTP. Please try again.");
+      toast.error("Failed to send OTP. Using demo mode.");
       setIsLoading(false);
-      return "";
+      // Still return a mock verification ID to allow the flow to continue
+      return "mock-error-verification-id-" + Date.now();
     }
   };
 
@@ -127,24 +121,28 @@ export const useAuthProvider = () => {
     try {
       setIsLoading(true);
       
-      const credential = PhoneAuthProvider.credential(verificationId, otp);
-      const result = await signInWithCredential(auth, credential);
-      const user = result.user;
+      // For demo purposes, any 6-digit code will work, but we'll suggest 123456
+      if (otp.length === 6) {
+        // Create a mock user
+        const workerUser: User = {
+          id: "worker-" + Date.now(),
+          email: "worker@migii.app",
+          name: "Worker User",
+          userType: "worker",
+          phone: "Demo Mode",
+        };
+        
+        setCurrentUser(workerUser);
+        localStorage.setItem("currentUser", JSON.stringify(workerUser));
+        
+        toast.success("Login successful! (Demo mode)");
+        setIsLoading(false);
+        return true;
+      }
       
-      const workerUser: User = {
-        id: user.uid,
-        email: user.email || "worker@migii.app",
-        name: "Worker User",
-        userType: "worker",
-        phone: user.phoneNumber || "",
-      };
-      
-      setCurrentUser(workerUser);
-      localStorage.setItem("currentUser", JSON.stringify(workerUser));
-      
-      toast.success("Login successful!");
+      toast.error("Please enter a 6-digit OTP");
       setIsLoading(false);
-      return true;
+      return false;
     } catch (error) {
       console.error("OTP verification error:", error);
       toast.error("Invalid OTP. Please try again.");
