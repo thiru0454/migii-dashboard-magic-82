@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
@@ -30,13 +29,13 @@ const Index = () => {
   const { workers, isLoadingWorkers } = useWorkers();
   const navigate = useNavigate();
   
-  // Calculate dashboard statistics based on real data
-  const activeWorkers = workers.filter(w => w.status === "active").length;
-  const pendingRegistrations = workers.filter(w => w.status === "pending").length;
+  const typedWorkers = workers as MigrantWorker[];
   
-  // Calculate skill distribution
+  const activeWorkers = typedWorkers.filter(w => w.status === "active").length;
+  const pendingRegistrations = typedWorkers.filter(w => w.status === "pending").length;
+  
   const skillCounts: Record<string, number> = {};
-  workers.forEach(worker => {
+  typedWorkers.forEach(worker => {
     if (worker.skill) {
       skillCounts[worker.skill] = (skillCounts[worker.skill] || 0) + 1;
     }
@@ -47,9 +46,8 @@ const Index = () => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
   
-  // Calculate state distribution
   const stateCounts: Record<string, number> = {};
-  workers.forEach(worker => {
+  typedWorkers.forEach(worker => {
     if (worker.originState) {
       stateCounts[worker.originState] = (stateCounts[worker.originState] || 0) + 1;
     }
@@ -59,6 +57,10 @@ const Index = () => {
     .map(([state, count]) => ({ state, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
+
+  const handleViewDetails = (worker: MigrantWorker) => {
+    console.log("View details for worker:", worker.id);
+  };
   
   return (
     <DashboardLayout>
@@ -137,7 +139,7 @@ const Index = () => {
                 title="Total Workers"
                 icon={<Users size={16} />}
               >
-                <div className="text-2xl font-bold">{workers.length}</div>
+                <div className="text-2xl font-bold">{typedWorkers.length}</div>
                 <p className="text-xs text-muted-foreground">
                   +{dashboardStats.recentRegistrations} new this month
                 </p>
@@ -149,7 +151,7 @@ const Index = () => {
               >
                 <div className="text-2xl font-bold">{activeWorkers}</div>
                 <Progress 
-                  value={(activeWorkers / (workers.length || 1)) * 100} 
+                  value={(activeWorkers / (typedWorkers.length || 1)) * 100} 
                   className="h-2 mt-2"
                 />
               </DashboardCard>
@@ -189,7 +191,7 @@ const Index = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <Progress 
-                            value={(item.count / (workers.length || 1)) * 100} 
+                            value={(item.count / (typedWorkers.length || 1)) * 100} 
                             className="h-2 w-24"
                           />
                           <span className="text-sm text-muted-foreground">{item.count}</span>
@@ -217,7 +219,7 @@ const Index = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <Progress 
-                            value={(item.count / (workers.length || 1)) * 100} 
+                            value={(item.count / (typedWorkers.length || 1)) * 100} 
                             className="h-2 w-24"
                           />
                           <span className="text-sm text-muted-foreground">{item.count}</span>
@@ -239,8 +241,8 @@ const Index = () => {
                 icon={<UserPlus size={16} />}
               >
                 <div className="space-y-2">
-                  {workers.length > 0 ? (
-                    workers.slice(0, 5).map((worker) => (
+                  {typedWorkers.length > 0 ? (
+                    typedWorkers.slice(0, 5).map((worker) => (
                       <div key={worker.id} className="flex items-center justify-between border-b pb-2">
                         <div className="space-y-1">
                           <p className="font-medium">{worker.name}</p>
@@ -271,7 +273,11 @@ const Index = () => {
           </TabsContent>
           
           <TabsContent value="workers" className="space-y-4">
-            <WorkersTable workers={workers as MigrantWorker[]} isLoading={isLoadingWorkers} />
+            <WorkersTable 
+              workers={typedWorkers} 
+              isLoading={isLoadingWorkers} 
+              onViewDetails={handleViewDetails}
+            />
           </TabsContent>
           
           <TabsContent value="help-requests" className="space-y-4">

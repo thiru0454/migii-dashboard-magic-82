@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +25,9 @@ const BusinessDashboard = () => {
     if (currentUser) {
       const businessId = currentUser.businessId;
       // Filter workers randomly to simulate assignments
-      const assigned = workers.filter((worker, index) => {
+      // Cast workers to MigrantWorker[] to fix TypeScript error
+      const typedWorkers = workers as MigrantWorker[];
+      const assigned = typedWorkers.filter((worker, index) => {
         // Use a deterministic approach based on worker id and business id
         return (index % 3 === 0); // Just for demo, assign roughly 1/3 of workers
       });

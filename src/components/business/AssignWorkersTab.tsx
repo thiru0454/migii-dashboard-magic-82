@@ -17,8 +17,11 @@ export function AssignWorkersTab({ businessId, currentWorkers }: AssignWorkersTa
   const { workers } = useWorkers();
   const [searchTerm, setSearchTerm] = useState("");
   
+  // Ensure workers is properly typed as MigrantWorker[]
+  const typedWorkers = workers as MigrantWorker[];
+  
   // Filter workers that are not already assigned to this business
-  const availableWorkers = workers.filter(
+  const availableWorkers = typedWorkers.filter(
     worker => !currentWorkers.some(cw => cw.id === worker.id)
   );
   
