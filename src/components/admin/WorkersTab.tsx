@@ -1,3 +1,4 @@
+
 import { Worker } from "./WorkersTable";
 import { useWorkers, WorkerWithAadhaar } from "@/hooks/useWorkers";
 import { DataTable } from "@/components/ui/data-table";
@@ -17,10 +18,10 @@ import { useState } from "react";
 import { WorkerDetailsDialog } from "./WorkerDetailsDialog";
 
 interface WorkersTabProps {
-  onViewDetails: (worker: Worker) => void;
+  onViewDetails?: (worker: Worker) => void;
 }
 
-export function WorkersTab({ onViewDetails }: WorkersTabProps) {
+export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -76,7 +77,7 @@ export function WorkersTab({ onViewDetails }: WorkersTabProps) {
       id: "actions",
       cell: ({ row }) => (
         <Button onClick={() => {
-          onViewDetails(row.original);
+          handleViewDetails(row.original);
         }}>
           View Details
         </Button>
@@ -106,6 +107,9 @@ export function WorkersTab({ onViewDetails }: WorkersTabProps) {
   const handleViewDetails = (worker: WorkerWithAadhaar) => {
     setSelectedWorker(worker);
     setIsDialogOpen(true);
+    if (onViewDetails) {
+      onViewDetails(worker);
+    }
   };
 
   const handleCloseDialog = () => {
@@ -123,8 +127,8 @@ export function WorkersTab({ onViewDetails }: WorkersTabProps) {
       <DataTable table={table} />
       {selectedWorker && (
         <WorkerDetailsDialog
-          isOpen={isDialogOpen}
-          onClose={handleCloseDialog}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
           worker={selectedWorker}
         />
       )}

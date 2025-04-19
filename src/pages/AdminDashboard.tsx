@@ -9,15 +9,21 @@ import { BusinessesTab } from "@/components/admin/BusinessesTab";
 import { HelpRequestsTab } from "@/components/admin/HelpRequestsTab";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Worker } from "@/components/admin/WorkersTable";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("workers");
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
 
   const handleLogout = () => {
     logout();
     navigate("/");
+  };
+
+  const handleViewWorkerDetails = (worker: Worker) => {
+    setSelectedWorker(worker);
   };
 
   return (
@@ -36,7 +42,7 @@ export default function AdminDashboard() {
                   <TabsTrigger value="help-requests">Help Requests</TabsTrigger>
                 </TabsList>
                 <TabsContent value="workers" className="space-y-4">
-                  <WorkersTab />
+                  <WorkersTab onViewDetails={handleViewWorkerDetails} />
                 </TabsContent>
                 <TabsContent value="businesses" className="space-y-4">
                   <BusinessesTab />

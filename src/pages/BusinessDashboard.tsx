@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Building, Users, ClipboardList, BarChart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkersTable, Worker } from "@/components/admin/WorkersTable";
-import { useWorkers } from "@/hooks/useWorkers";
+import { useWorkers, WorkerWithAadhaar } from "@/hooks/useWorkers";
 import { AssignWorkersTab } from "@/components/business/AssignWorkersTab";
 import { ProjectsTab } from "@/components/business/ProjectsTab";
 
@@ -16,7 +17,7 @@ const BusinessDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const { workers } = useWorkers();
-  const [assignedWorkers, setAssignedWorkers] = useState<Worker[]>([]);
+  const [assignedWorkers, setAssignedWorkers] = useState<WorkerWithAadhaar[]>([]);
 
   useEffect(() => {
     // Simulate assigned workers based on business ID
@@ -154,13 +155,13 @@ const BusinessDashboard = () => {
           <TabsContent value="assign">
             <AssignWorkersTab 
               businessId={currentUser?.businessId} 
-              currentWorkers={assignedWorkers} 
+              currentWorkers={assignedWorkers as Worker[]} 
             />
           </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
   );
-};
+}
 
 export default BusinessDashboard;

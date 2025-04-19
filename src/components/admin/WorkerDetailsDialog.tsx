@@ -5,7 +5,7 @@ import { WorkerIDCard } from "@/components/worker/WorkerIDCard";
 import { Worker } from "@/components/admin/WorkersTable";
 import { mockHelpRequests } from "@/data/mockData";
 
-interface WorkerDetailsDialogProps {
+export interface WorkerDetailsDialogProps {
   worker: Worker | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
