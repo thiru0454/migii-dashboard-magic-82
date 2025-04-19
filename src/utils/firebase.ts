@@ -1,6 +1,6 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, RecaptchaVerifier } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
 // Firebase configuration
@@ -17,5 +17,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
+
+// Initialize reCAPTCHA verifier
+export const initRecaptcha = (buttonId: string, callback: () => void) => {
+  return new RecaptchaVerifier(auth, buttonId, {
+    size: 'invisible',
+    callback: () => {
+      callback();
+    },
+  });
+};
 
 export default app;

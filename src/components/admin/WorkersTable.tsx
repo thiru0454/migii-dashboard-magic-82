@@ -35,22 +35,21 @@ export type Worker = {
 };
 
 interface WorkersTableProps {
-  workers: Worker[];
-  isLoading: boolean;
-  businessView?: boolean;
+  data: Worker[];
+  onViewDetails: (worker: Worker) => void;
 }
 
-export function WorkersTable({ workers, isLoading, businessView = false }: WorkersTableProps) {
+export const WorkersTable = ({ data, onViewDetails }: WorkersTableProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSkill, setFilterSkill] = useState<string>("all-skills");
   const [filterState, setFilterState] = useState<string>("all-states");
 
   // Get unique skills and states for filters
-  const uniqueSkills = Array.from(new Set(workers.map((worker) => worker.skill)));
-  const uniqueStates = Array.from(new Set(workers.map((worker) => worker.originState)));
+  const uniqueSkills = Array.from(new Set(data.map((worker) => worker.skill)));
+  const uniqueStates = Array.from(new Set(data.map((worker) => worker.originState)));
 
   // Filter workers based on search and filters
-  const filteredWorkers = workers.filter((worker) => {
+  const filteredWorkers = data.filter((worker) => {
     const matchesSearch =
       worker.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       worker.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -230,4 +229,4 @@ export function WorkersTable({ workers, isLoading, businessView = false }: Worke
       </div>
     </div>
   );
-}
+};

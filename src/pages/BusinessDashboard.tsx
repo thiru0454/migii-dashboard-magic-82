@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAppAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Building, Users, ClipboardList, BarChart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,7 +12,7 @@ import { AssignWorkersTab } from "@/components/business/AssignWorkersTab";
 import { ProjectsTab } from "@/components/business/ProjectsTab";
 
 const BusinessDashboard = () => {
-  const { businessData, logout } = useAppAuth();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const { workers } = useWorkers();
@@ -22,8 +21,8 @@ const BusinessDashboard = () => {
   useEffect(() => {
     // Simulate assigned workers based on business ID
     // In a real app, this would come from a database
-    if (businessData) {
-      const businessId = businessData.businessId;
+    if (currentUser) {
+      const businessId = currentUser.businessId;
       // Filter workers randomly to simulate assignments
       const assigned = workers.filter((worker, index) => {
         // Use a deterministic approach based on worker id and business id
@@ -31,10 +30,11 @@ const BusinessDashboard = () => {
       });
       setAssignedWorkers(assigned);
     }
-  }, [workers, businessData]);
+  }, [workers, currentUser]);
 
   const handleLogout = () => {
-    logout();
+    // Assuming logout function is available in useAuth
+    // logout();
     navigate("/login");
   };
 
@@ -45,7 +45,7 @@ const BusinessDashboard = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Business Dashboard</h1>
             <p className="text-muted-foreground">
-              Welcome back, {businessData?.name || businessData?.businessId || "Unknown"}
+              Welcome back, {currentUser?.name || currentUser?.businessId || "Unknown"}
             </p>
           </div>
           <Button onClick={handleLogout} variant="outline">
@@ -127,13 +127,13 @@ const BusinessDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p><strong>Business ID:</strong> {businessData?.businessId}</p>
-                  <p><strong>Name:</strong> {businessData?.name}</p>
-                  <p><strong>Email:</strong> {businessData?.email}</p>
-                  <p><strong>Phone:</strong> {businessData?.phone}</p>
-                  <p><strong>Registration Date:</strong> {businessData?.registrationDate ? new Date(businessData?.registrationDate).toLocaleDateString() : "Not available"}</p>
+                  <p><strong>Business ID:</strong> {currentUser?.businessId}</p>
+                  <p><strong>Name:</strong> {currentUser?.name}</p>
+                  <p><strong>Email:</strong> {currentUser?.email}</p>
+                  <p><strong>Phone:</strong> {currentUser?.phone}</p>
+                  <p><strong>Registration Date:</strong> {currentUser?.registrationDate ? new Date(currentUser?.registrationDate).toLocaleDateString() : "Not available"}</p>
                   <p><strong>Workers Assigned:</strong> {assignedWorkers.length}</p>
-                  <p><strong>Current Status:</strong> {businessData?.status || "Active"}</p>
+                  <p><strong>Current Status:</strong> {currentUser?.status || "Active"}</p>
                 </div>
               </CardContent>
             </Card>
@@ -148,12 +148,12 @@ const BusinessDashboard = () => {
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectsTab businessId={businessData?.businessId} />
+            <ProjectsTab businessId={currentUser?.businessId} />
           </TabsContent>
 
           <TabsContent value="assign">
             <AssignWorkersTab 
-              businessId={businessData?.businessId} 
+              businessId={currentUser?.businessId} 
               currentWorkers={assignedWorkers} 
             />
           </TabsContent>
