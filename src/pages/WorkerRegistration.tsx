@@ -17,8 +17,8 @@ const WorkerRegistration = () => {
   
   const handleRegistrationSuccess = (worker: MigrantWorker) => {
     setRegisteredWorker(worker);
-    // Show only ONE notification
-    toast.success(`Worker registered successfully!`);
+    // Only show one notification, removing the duplicate
+    toast.success("Worker registered successfully!");
   };
 
   return (

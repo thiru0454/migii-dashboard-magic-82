@@ -101,7 +101,7 @@ export const useAuthProvider = () => {
     }
   };
 
-  // Implement actual phone login with Firebase
+  // Implement phone login with Firebase
   const loginWithPhone = async (phone: string): Promise<string> => {
     try {
       setIsLoading(true);

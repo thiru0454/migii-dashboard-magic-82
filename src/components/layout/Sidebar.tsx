@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -30,11 +31,7 @@ const sidebarLinks = [
     href: "/worker-registration",
     icon: UserPlus,
   },
-  {
-    title: "Sign In",
-    href: "/login",
-    icon: LogIn,
-  },
+  // Removed the duplicate "Sign In" link from here
 ];
 
 // Admin-only links

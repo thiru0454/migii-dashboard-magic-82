@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +27,12 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("admin");
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    // Get the tab from URL query params if available
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    return tab && ["admin", "business", "worker"].includes(tab) ? tab : "admin";
+  });
 
   function getDefaultRedirectPath(userType: UserType | "worker") {
     switch (userType) {
@@ -74,7 +78,7 @@ export default function Login() {
           <CardDescription>Choose your account type to login</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="admin" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="admin" className="flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4" />
