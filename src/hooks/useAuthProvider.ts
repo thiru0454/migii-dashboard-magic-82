@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
@@ -9,15 +9,16 @@ import {
   signInWithCredential,
   RecaptchaVerifier
 } from "firebase/auth";
-import { auth } from "@/utils/firebase";
+import { auth, database } from "@/utils/firebase";
 import { User, UserType } from "@/types/auth";
 import { getAllBusinessUsers } from "@/utils/businessDatabase";
 import { toast } from "sonner";
+import { ref, get, child } from "firebase/database";
 
 export const useAuthProvider = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("currentUser");
@@ -33,7 +34,12 @@ export const useAuthProvider = () => {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+      }
+    };
   }, []);
 
   const login = async (email: string, password: string, userType: UserType): Promise<boolean> => {
@@ -95,25 +101,44 @@ export const useAuthProvider = () => {
     }
   };
 
-  // Mock phone login for demonstration
+  // Implement actual phone login with Firebase
   const loginWithPhone = async (phone: string): Promise<string> => {
     try {
       setIsLoading(true);
       
-      // In a real implementation, this would call Firebase
-      // For demo purposes, we'll mock this and immediately return a verification ID
-      const mockVerificationId = "mock-verification-id-" + Date.now();
+      // Initialize RecaptchaVerifier if not already initialized
+      if (!recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {
+            // reCAPTCHA solved, allow signInWithPhoneNumber.
+            console.log("Recaptcha verified");
+          },
+          'expired-callback': () => {
+            // Response expired. Ask user to solve reCAPTCHA again.
+            toast.error("reCAPTCHA expired. Please try again.");
+          }
+        });
+      }
       
-      console.log("Mock OTP sent for phone:", phone);
-      toast.success("Demo mode: OTP sent successfully! (Use code: 123456)");
+      // Format phone number if needed
+      const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
+      
+      // Send verification code
+      const provider = new PhoneAuthProvider(auth);
+      const verificationId = await provider.verifyPhoneNumber(
+        formattedPhone, 
+        recaptchaVerifierRef.current
+      );
+      
+      toast.success("OTP sent successfully!");
       setIsLoading(false);
-      return mockVerificationId;
-    } catch (error) {
+      return verificationId;
+    } catch (error: any) {
       console.error("Phone login error:", error);
-      toast.error("Failed to send OTP. Using demo mode.");
+      toast.error(`Failed to send OTP: ${error.message || error}`);
       setIsLoading(false);
-      // Still return a mock verification ID to allow the flow to continue
-      return "mock-error-verification-id-" + Date.now();
+      throw error;
     }
   };
 
@@ -121,31 +146,57 @@ export const useAuthProvider = () => {
     try {
       setIsLoading(true);
       
-      // For demo purposes, any 6-digit code will work, but we'll suggest 123456
-      if (otp.length === 6) {
-        // Create a mock user
+      // Create credential
+      const credential = PhoneAuthProvider.credential(verificationId, otp);
+      
+      // Sign in with credential
+      const userCredential = await signInWithCredential(auth, credential);
+      const firebaseUser = userCredential.user;
+      
+      // Check if user exists in worker database
+      const dbRef = ref(database);
+      const workersSnapshot = await get(child(dbRef, 'workers'));
+      let workerData;
+      
+      if (workersSnapshot.exists()) {
+        const workersData = workersSnapshot.val();
+        const workersArray = Object.values(workersData);
+        
+        // Find worker by phone number
+        workerData = workersArray.find((worker: any) => {
+          const workerPhone = worker.phone;
+          const formattedPhone = `+91${workerPhone}`;
+          return workerPhone === firebaseUser.phoneNumber || formattedPhone === firebaseUser.phoneNumber;
+        });
+      }
+      
+      if (workerData) {
+        // Create worker user object
+        const worker = workerData as any;
         const workerUser: User = {
-          id: "worker-" + Date.now(),
-          email: "worker@migii.app",
-          name: "Worker User",
+          id: worker.id,
+          email: `worker-${worker.phone}@migii.app`,
+          name: worker.name,
           userType: "worker",
-          phone: "Demo Mode",
+          phone: worker.phone,
         };
         
         setCurrentUser(workerUser);
         localStorage.setItem("currentUser", JSON.stringify(workerUser));
         
-        toast.success("Login successful! (Demo mode)");
+        toast.success("Login successful!");
         setIsLoading(false);
         return true;
+      } else {
+        // User authenticated but not found in worker database
+        toast.error("Phone number not found in registered workers. Please register first.");
+        await signOut(auth);
+        setIsLoading(false);
+        return false;
       }
-      
-      toast.error("Please enter a 6-digit OTP");
-      setIsLoading(false);
-      return false;
-    } catch (error) {
+    } catch (error: any) {
       console.error("OTP verification error:", error);
-      toast.error("Invalid OTP. Please try again.");
+      toast.error(`Invalid OTP: ${error.message || "Please try again"}`);
       setIsLoading(false);
       return false;
     }

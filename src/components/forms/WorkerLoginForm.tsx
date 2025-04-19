@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,8 +9,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { RecaptchaVerifier } from "firebase/auth";
+import { auth } from "@/utils/firebase";
 
 interface WorkerLoginFormProps {
   onSuccess: () => void;
@@ -40,6 +40,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [verificationId, setVerificationId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { loginWithPhone, verifyOtp } = useAuth();
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,21 +51,18 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
 
   const onSubmitPhone = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
-    const formattedPhone = values.phone.startsWith("+") ? values.phone : "91" + values.phone;
-    setPhone(formattedPhone);
+    const phoneNumber = values.phone;
+    setPhone(phoneNumber);
     
     try {
-      const verId = await loginWithPhone(formattedPhone);
+      const verId = await loginWithPhone(phoneNumber);
       if (verId) {
         setVerificationId(verId);
         setStep("otp");
       }
     } catch (error) {
       console.error("Error sending OTP:", error);
-      toast.error("Failed to send OTP. Using demo mode instead.");
-      // Still proceed to OTP step in demo mode
-      setVerificationId("demo-id");
-      setStep("otp");
+      // Error is already handled by loginWithPhone
     } finally {
       setIsSubmitting(false);
     }
@@ -96,12 +94,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     <>
       {step === "phone" ? (
         <>
-          <Alert className="mb-6 bg-blue-50 border-blue-200">
-            <Info className="h-4 w-4 text-blue-500 mr-2" />
-            <AlertDescription className="text-sm text-blue-700">
-              Demo mode: Enter any valid phone number to continue
-            </AlertDescription>
-          </Alert>
+          <div id="recaptcha-container" ref={recaptchaContainerRef}></div>
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmitPhone)} className="space-y-6">
@@ -133,13 +126,6 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         </>
       ) : (
         <div className="space-y-6">
-          <Alert className="mb-6 bg-blue-50 border-blue-200">
-            <Info className="h-4 w-4 text-blue-500 mr-2" />
-            <AlertDescription className="text-sm text-blue-700">
-              Demo mode: Enter any 6-digit code (123456 recommended)
-            </AlertDescription>
-          </Alert>
-          
           <div>
             <Label htmlFor="otp" className="block mb-2">
               Enter OTP sent to {phone}
@@ -200,9 +186,6 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
           </div>
         </div>
       )}
-      <div className="mt-4 text-center text-xs text-muted-foreground border-t pt-4">
-        <p>For demo purposes, any valid phone format and 6-digit OTP will work</p>
-      </div>
     </>
   );
 }

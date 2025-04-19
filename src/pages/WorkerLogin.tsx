@@ -3,8 +3,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WorkerTabs } from "@/components/worker/WorkerTabs";
-import { WorkerLoginCard } from "@/components/worker/WorkerLoginCard";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { LogIn } from "lucide-react";
 
 const WorkerLogin = () => {
   const { currentUser, logout } = useAuth();
@@ -43,13 +45,13 @@ const WorkerLogin = () => {
     ],
   };
 
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
-  };
-
   const handleSignOut = () => {
     logout();
     setIsLoggedIn(false);
+  };
+
+  const redirectToLogin = () => {
+    navigate("/login?tab=worker");
   };
 
   return (
@@ -68,7 +70,34 @@ const WorkerLogin = () => {
             onSignOut={handleSignOut} 
           />
         ) : (
-          <WorkerLoginCard onSuccess={handleLoginSuccess} />
+          <div className="flex items-center justify-center w-full min-h-[calc(100vh-200px)] py-8">
+            <Card className="w-full max-w-md mx-auto shadow-lg border-border">
+              <CardHeader className="text-center space-y-2 pb-6">
+                <CardTitle className="text-2xl font-bold text-primary">Worker Login</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Enter your phone number to access your worker dashboard
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-6 pb-8">
+                <Button 
+                  className="w-full flex items-center justify-center gap-2"
+                  onClick={redirectToLogin}
+                >
+                  <LogIn className="h-4 w-4" />
+                  Login with Phone Number
+                </Button>
+                <div className="mt-4 text-center text-sm text-muted-foreground">
+                  <p>Not registered yet?</p>
+                  <Button 
+                    variant="link" 
+                    onClick={() => navigate("/worker-registration")}
+                  >
+                    Register as Worker
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </DashboardLayout>

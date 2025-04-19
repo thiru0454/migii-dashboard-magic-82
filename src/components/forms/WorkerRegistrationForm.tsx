@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useWorkers } from "@/hooks/useWorkers";
 import { MigrantWorker } from "@/types/worker";
 import { auth } from "@/utils/firebase";
-import { PhoneAuthProvider, signInWithCredential, RecaptchaVerifier } from "firebase/auth";
+import { PhoneAuthProvider, RecaptchaVerifier } from "firebase/auth";
 import { toast } from "sonner";
 
 declare global {
@@ -91,6 +91,7 @@ interface WorkerRegistrationFormProps {
 
 export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProps) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { registerWorker } = useWorkers();
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -106,14 +107,11 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (isSubmitting) return;
+    
     try {
-      // Initialize reCAPTCHA early to save time
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'sign-in-button', {
-          size: 'invisible',
-        });
-      }
-
+      setIsSubmitting(true);
+      
       // Prepare worker data
       const workerData = {
         name: values.name,
@@ -125,42 +123,24 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         ...(photoPreview && { photoUrl: photoPreview })
       };
       
-      // Process registration and SMS verification in parallel
-      const [result] = await Promise.all([
-        registerWorker.mutateAsync(workerData),
-        // Skip SMS verification in development to speed up registration
-        process.env.NODE_ENV === 'production' ? sendSMSVerification(values.phone) : Promise.resolve()
-      ]);
+      // Register worker
+      const result = await registerWorker.mutateAsync(workerData);
       
-      // Show success immediately without waiting for SMS
+      // Show success only once
       if (onSuccess && result) {
         onSuccess(result as MigrantWorker);
       }
       
       form.reset();
       setPhotoPreview(null);
-      toast.success("Registration successful!");
+      
+      // Don't show toast here, as the onSuccess will show the notification on the parent component
       
     } catch (error) {
       console.error("Registration error:", error);
       toast.error("Registration failed. Please try again.");
-    }
-  };
-
-  // Separate SMS verification function 
-  const sendSMSVerification = async (phone: string) => {
-    try {
-      const phoneNumber = "+91" + phone;
-      const provider = new PhoneAuthProvider(auth);
-      const verificationId = await provider.verifyPhoneNumber(phoneNumber, window.recaptchaVerifier);
-      
-      const credential = PhoneAuthProvider.credential(verificationId, "123456");
-      await signInWithCredential(auth, credential);
-      
-      toast.success("Registration SMS sent successfully!");
-    } catch (error) {
-      console.error("SMS sending failed:", error);
-      // Don't block the registration flow with SMS errors
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -378,9 +358,9 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         <Button 
           type="submit" 
           className="w-full" 
-          disabled={form.formState.isSubmitting}
+          disabled={isSubmitting}
         >
-          {form.formState.isSubmitting ? "Registering..." : "Register Worker"}
+          {isSubmitting ? "Registering..." : "Register Worker"}
         </Button>
         <div className="text-center text-sm text-muted-foreground mt-2">
           Registration typically completes in 2-3 seconds

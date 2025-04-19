@@ -10,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBj08OqMntL5m24BhPsnP1KYWc52TPjTP4",
   authDomain: "migii-login.firebaseapp.com",
   projectId: "migii-login",
-  storageBucket: "migii-login.firebasestorage.app",
+  storageBucket: "migii-login.appspot.com",
   messagingSenderId: "153772267209",
   appId: "1:153772267209:web:4bcb9fc65f97308f5a5f18",
   databaseURL: "https://migii-login-default-rtdb.firebaseio.com"
@@ -50,17 +50,35 @@ export const registerWorkerInDB = async (worker: Omit<MigrantWorker, "id" | "sta
     registrationDate: `${month}/${day}/${year}`, // Simplified date format
   };
 
-  // Set the data and return immediately
-  set(newWorkerRef, workerData); // Don't await - fire and forget
+  // Set the data directly to ensure synchronization with admin dashboard
+  await set(newWorkerRef, workerData);
   
-  return workerData; // Return immediately to speed up the process
+  // Also create a separate worker details reference for better querying
+  await set(ref(database, `worker_details/${workerData.id}`), {
+    id: workerData.id,
+    name: worker.name,
+    phone: worker.phone,
+    aadhaar: worker.aadhaar,
+    status: "active",
+    registrationDate: `${month}/${day}/${year}`,
+  });
+  
+  return workerData;
 };
 
 export const updateWorkerStatus = async (workerId: string, status: string) => {
+  // Update in main workers collection
   const updates = {
     [`/workers/${workerId}/status`]: status,
   };
+  
+  // Also update in worker_details collection for consistency
+  const detailUpdates = {
+    [`/worker_details/${workerId}/status`]: status,
+  };
+  
   await update(ref(database), updates);
+  await update(ref(database), detailUpdates);
 };
 
 export const getAllWorkers = async () => {

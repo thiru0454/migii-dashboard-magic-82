@@ -11,6 +11,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth, UserType } from "@/contexts/AuthContext";
+import { WorkerLoginForm } from "@/components/forms/WorkerLoginForm";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -29,16 +30,17 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   
   // Get the tab from URL parameter or default to admin
-  const defaultTab = searchParams.get("tab") === "business" ? "business" : "admin";
-  const [activeTab, setActiveTab] = useState<UserType>(defaultTab as UserType);
+  const defaultTab = searchParams.get("tab") || "admin";
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
   // Get the from location state for redirection after login
-  const from = location.state?.from?.pathname || getDefaultRedirectPath(activeTab);
+  const from = location.state?.from?.pathname || getDefaultRedirectPath(activeTab as UserType);
 
-  function getDefaultRedirectPath(userType: UserType) {
+  function getDefaultRedirectPath(userType: UserType | "worker") {
     switch (userType) {
       case "admin": return "/admin-dashboard";
       case "business": return "/business-dashboard";
+      case "worker": return "/worker-login";
       default: return "/";
     }
   }
@@ -54,11 +56,14 @@ export default function Login() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      const success = await login(values.email, values.password, activeTab);
-      if (success) {
-        // Get the appropriate redirect path based on user type
-        const redirectPath = getDefaultRedirectPath(activeTab);
-        navigate(redirectPath);
+      const userType = activeTab as UserType;
+      if (userType !== "worker") {
+        const success = await login(values.email, values.password, userType);
+        if (success) {
+          // Get the appropriate redirect path based on user type
+          const redirectPath = getDefaultRedirectPath(userType);
+          navigate(redirectPath);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -66,7 +71,11 @@ export default function Login() {
   };
 
   const handleTabChange = (value: string) => {
-    setActiveTab(value as UserType);
+    setActiveTab(value);
+  };
+
+  const handleWorkerLoginSuccess = () => {
+    navigate("/worker-login");
   };
 
   return (
@@ -79,10 +88,11 @@ export default function Login() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={defaultTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="admin">Admin</TabsTrigger>
               <TabsTrigger value="business">Business</TabsTrigger>
+              <TabsTrigger value="worker">Worker</TabsTrigger>
             </TabsList>
             <TabsContent value="admin">
               <Form {...form}>
@@ -163,6 +173,9 @@ export default function Login() {
                 <p>Email: business@example.com</p>
                 <p>Password: business123</p>
               </div>
+            </TabsContent>
+            <TabsContent value="worker" className="pt-2">
+              <WorkerLoginForm onSuccess={handleWorkerLoginSuccess} />
             </TabsContent>
           </Tabs>
         </CardContent>
