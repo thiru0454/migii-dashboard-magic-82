@@ -1,11 +1,11 @@
 
-import { Worker } from "./WorkersTab";
+import { Worker } from "@/types/worker";
 import { flexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-type WorkersTableProps = {
+export type WorkersTableProps = {
   workers: Worker[];
   onViewDetails: (worker: Worker) => void;
 };

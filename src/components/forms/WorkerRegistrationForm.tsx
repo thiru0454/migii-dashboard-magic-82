@@ -1,24 +1,17 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWorkers } from "@/hooks/useWorkers";
-import { Worker } from "@/components/admin/WorkersTable";
+import { Worker } from "@/types/worker";
+import { auth } from "@/utils/firebase";
+import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
+import { toast } from "sonner";
 
-// Define the skills and states options
 const SKILLS = [
   "Construction Worker",
   "Plumber",
@@ -63,7 +56,6 @@ const STATES = [
   "West Bengal",
 ];
 
-// Update the formSchema to make aadhaar required with validation
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "Name must be at least 2 characters.",
@@ -118,16 +110,29 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         photoUrl: photoPreview || undefined,
       });
       
+      try {
+        const phoneNumber = "+91" + values.phone;
+        const provider = new PhoneAuthProvider(auth);
+        const verificationId = await provider.verifyPhoneNumber(phoneNumber, window.recaptchaVerifier);
+        
+        const credential = PhoneAuthProvider.credential(verificationId, "123456");
+        await signInWithCredential(auth, credential);
+        
+        toast.success("Registration SMS sent successfully!");
+      } catch (error) {
+        console.error("SMS sending failed:", error);
+        toast.error("Could not send registration SMS");
+      }
+
       if (onSuccess) {
         onSuccess(result);
       }
       
-      // Reset the form
       form.reset();
       setPhotoPreview(null);
       
     } catch (error) {
-      // Error is handled by the mutation
+      console.error("Registration error:", error);
     }
   };
 
