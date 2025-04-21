@@ -2,8 +2,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, RecaptchaVerifier, PhoneAuthProvider } from "firebase/auth";
 import { getStorage } from "firebase/storage";
-import { getFirestore, collection, addDoc, setDoc, doc, getDocs, onSnapshot, updateDoc, serverTimestamp, query } from "firebase/firestore";
-import { MigrantWorker } from "@/types/worker";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -20,7 +18,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
-export const firestore = getFirestore(app);
 
 // Initialize reCAPTCHA verifier
 export const initRecaptcha = (buttonId: string) => {
@@ -29,10 +26,19 @@ export const initRecaptcha = (buttonId: string) => {
   });
 };
 
-// Register a worker in Firestore
-export const registerWorkerInDB = async (
-  worker: Omit<MigrantWorker, "id" | "status" | "registrationDate">
-): Promise<MigrantWorker> => {
+// Local storage solution for worker data
+const WORKERS_STORAGE_KEY = 'migii_workers';
+
+// Get all workers from local storage
+export const getAllWorkersFromStorage = (): any[] => {
+  const workersData = localStorage.getItem(WORKERS_STORAGE_KEY);
+  return workersData ? JSON.parse(workersData) : [];
+};
+
+// Register a worker using local storage
+export const registerWorkerInStorage = async (
+  worker: Omit<any, "id" | "status" | "registrationDate">
+): Promise<any> => {
   try {
     const today = new Date();
     const year = today.getFullYear();
@@ -40,65 +46,71 @@ export const registerWorkerInDB = async (
     const day = String(today.getDate()).padStart(2, '0');
     const dateStr = `${year}${month}${day}`;
     
-    // Generate a worker ID without depending on Firestore doc ID first
+    // Generate a worker ID
     const randomSuffix = Math.floor(10000 + Math.random() * 90000).toString();
     const workerId = `TN-MIG-${dateStr}-${randomSuffix}`;
     
-    // Insert directly with the generated ID
-    await setDoc(doc(firestore, "workers", workerId), {
-      ...worker,
-      id: workerId,
-      status: "active",
-      registrationDate: `${month}/${day}/${year}`,
-      createdAt: serverTimestamp(),
-    });
-
-    // Also create worker_details mirror
-    await setDoc(doc(firestore, "worker_details", workerId), {
-      id: workerId,
-      name: worker.name,
-      phone: worker.phone,
-      aadhaar: worker.aadhaar,
-      status: "active",
-      registrationDate: `${month}/${day}/${year}`,
-      createdAt: serverTimestamp(),
-    });
-
-    return {
+    // Create the complete worker object
+    const completeWorker = {
       ...worker,
       id: workerId,
       status: "active",
       registrationDate: `${month}/${day}/${year}`,
     };
+
+    // Get current workers array
+    const workers = getAllWorkersFromStorage();
+    
+    // Add new worker
+    workers.push(completeWorker);
+    
+    // Save back to storage
+    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(workers));
+
+    console.log("Worker registered:", completeWorker);
+    
+    return completeWorker;
   } catch (error) {
     console.error("Error registering worker:", error);
     throw new Error("Failed to register worker. Please try again.");
   }
 };
 
+// Update worker status in local storage
 export const updateWorkerStatus = async (workerId: string, status: string) => {
   try {
-    // Update directly using workerId as document ID
-    await updateDoc(doc(firestore, "workers", workerId), { status });
-    // Also update worker_details
-    await updateDoc(doc(firestore, "worker_details", workerId), { status });
+    const workers = getAllWorkersFromStorage();
+    const updatedWorkers = workers.map(worker => {
+      if (worker.id === workerId) {
+        return { ...worker, status };
+      }
+      return worker;
+    });
+    
+    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(updatedWorkers));
+    return true;
   } catch (error) {
     console.error("Error updating worker status:", error);
     throw new Error("Failed to update worker status. Please try again.");
   }
 };
 
-export const getAllWorkersRealtime = (callback: (workers: MigrantWorker[]) => void) => {
-  const workersColl = collection(firestore, "workers");
-  return onSnapshot(workersColl, (snapshot) => {
-    const workers: MigrantWorker[] = [];
-    snapshot.forEach((doc) => {
-      workers.push(doc.data() as MigrantWorker);
-    });
-    callback(workers);
-  }, (error) => {
-    console.error("Error getting workers:", error);
-  });
+// Get all workers with a callback for real-time updates (simulated)
+export const getAllWorkersRealtime = (callback: (workers: any[]) => void) => {
+  // Initial call with current data
+  callback(getAllWorkersFromStorage());
+  
+  // Set up storage event listener to detect changes
+  const handleStorageChange = (e: StorageEvent) => {
+    if (e.key === WORKERS_STORAGE_KEY) {
+      callback(getAllWorkersFromStorage());
+    }
+  };
+  
+  window.addEventListener('storage', handleStorageChange);
+  
+  // Return cleanup function
+  return () => window.removeEventListener('storage', handleStorageChange);
 };
 
 export default app;

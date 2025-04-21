@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { 
   createUserWithEmailAndPassword, 
@@ -8,11 +9,11 @@ import {
   signInWithCredential,
   RecaptchaVerifier
 } from "firebase/auth";
-import { auth, firestore } from "@/utils/firebase";
+import { auth } from "@/utils/firebase";
 import { User, UserType } from "@/types/auth";
 import { getAllBusinessUsers } from "@/utils/businessDatabase";
 import { toast } from "sonner";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { getAllWorkersFromStorage } from "@/utils/firebase";
 
 export const useAuthProvider = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -144,18 +145,17 @@ export const useAuthProvider = () => {
       const userCredential = await signInWithCredential(auth, credential);
       const firebaseUser = userCredential.user;
       
-      const workersRef = collection(firestore, "workers");
+      // Get all workers from local storage
+      const workers = getAllWorkersFromStorage();
+      
       const formattedPhone = firebaseUser.phoneNumber?.startsWith("+91") 
         ? firebaseUser.phoneNumber.substring(3) 
         : firebaseUser.phoneNumber;
       
-      const q = query(workersRef, where("phone", "==", formattedPhone));
-      const querySnapshot = await getDocs(q);
+      // Find worker by phone
+      const worker = workers.find(w => w.phone === formattedPhone);
       
-      if (!querySnapshot.empty) {
-        const workerDoc = querySnapshot.docs[0];
-        const worker = workerDoc.data();
-        
+      if (worker) {
         const workerUser: User = {
           id: worker.id,
           email: `worker-${worker.phone}@migii.app`,
