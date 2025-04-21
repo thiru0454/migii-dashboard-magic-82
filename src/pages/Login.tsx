@@ -106,7 +106,7 @@ export default function Login() {
                           <FormLabel>Email</FormLabel>
                           <FormControl>
                             <Input 
-                              placeholder={activeTab === "admin" ? "admin@migii.com" : "business@example.com"} 
+                              placeholder={activeTab === "admin" ? "admin@migii.com" : "buis@migii.com"} 
                               {...field} 
                             />
                           </FormControl>
@@ -121,7 +121,7 @@ export default function Login() {
                         <FormItem>
                           <FormLabel>Password</FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="******" {...field} />
+                            <Input type="password" placeholder={activeTab === "admin" ? "admin0454" : "buis0454"} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -140,8 +140,8 @@ export default function Login() {
                       </>
                     ) : (
                       <>
-                        <p>Email: buisness@migii.com</p>
-                        <p>Password: buisness0454</p>
+                        <p>Email: buis@migii.com</p>
+                        <p>Password: buis0454</p>
                       </>
                     )}
                   </div>
