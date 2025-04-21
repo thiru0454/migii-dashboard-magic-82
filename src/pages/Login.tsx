@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +27,6 @@ export default function Login() {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(() => {
-    // Get the tab from URL query params if available
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab");
     return tab && ["admin", "business", "worker"].includes(tab) ? tab : "admin";
@@ -131,20 +129,6 @@ export default function Login() {
                       {isLoading ? "Signing in..." : `Sign in as ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
                     </Button>
                   </form>
-                  <div className="mt-4 text-center text-xs text-muted-foreground border-t pt-4">
-                    <p>For demo purposes, use:</p>
-                    {activeTab === "admin" ? (
-                      <>
-                        <p>Email: admin@migii.com</p>
-                        <p>Password: admin0454</p>
-                      </>
-                    ) : (
-                      <>
-                        <p>Email: buis@migii.com</p>
-                        <p>Password: buis0454</p>
-                      </>
-                    )}
-                  </div>
                 </Form>
               </TabsContent>
             )}
