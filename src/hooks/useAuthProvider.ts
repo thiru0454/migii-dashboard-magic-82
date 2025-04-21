@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { 
   createUserWithEmailAndPassword, 
@@ -9,11 +8,11 @@ import {
   signInWithCredential,
   RecaptchaVerifier
 } from "firebase/auth";
-import { auth, database } from "@/utils/firebase";
+import { auth, firestore } from "@/utils/firebase";
 import { User, UserType } from "@/types/auth";
 import { getAllBusinessUsers } from "@/utils/businessDatabase";
 import { toast } from "sonner";
-import { ref, get, child } from "firebase/database";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 export const useAuthProvider = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -101,30 +100,24 @@ export const useAuthProvider = () => {
     }
   };
 
-  // Implement phone login with Firebase
   const loginWithPhone = async (phone: string): Promise<string> => {
     try {
       setIsLoading(true);
       
-      // Initialize RecaptchaVerifier if not already initialized
       if (!recaptchaVerifierRef.current) {
         recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'invisible',
           callback: () => {
-            // reCAPTCHA solved, allow signInWithPhoneNumber.
             console.log("Recaptcha verified");
           },
           'expired-callback': () => {
-            // Response expired. Ask user to solve reCAPTCHA again.
             toast.error("reCAPTCHA expired. Please try again.");
           }
         });
       }
       
-      // Format phone number if needed
       const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
       
-      // Send verification code
       const provider = new PhoneAuthProvider(auth);
       const verificationId = await provider.verifyPhoneNumber(
         formattedPhone, 
@@ -146,33 +139,23 @@ export const useAuthProvider = () => {
     try {
       setIsLoading(true);
       
-      // Create credential
       const credential = PhoneAuthProvider.credential(verificationId, otp);
       
-      // Sign in with credential
       const userCredential = await signInWithCredential(auth, credential);
       const firebaseUser = userCredential.user;
       
-      // Check if user exists in worker database
-      const dbRef = ref(database);
-      const workersSnapshot = await get(child(dbRef, 'workers'));
-      let workerData;
+      const workersRef = collection(firestore, "workers");
+      const formattedPhone = firebaseUser.phoneNumber?.startsWith("+91") 
+        ? firebaseUser.phoneNumber.substring(3) 
+        : firebaseUser.phoneNumber;
       
-      if (workersSnapshot.exists()) {
-        const workersData = workersSnapshot.val();
-        const workersArray = Object.values(workersData);
+      const q = query(workersRef, where("phone", "==", formattedPhone));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const workerDoc = querySnapshot.docs[0];
+        const worker = workerDoc.data();
         
-        // Find worker by phone number
-        workerData = workersArray.find((worker: any) => {
-          const workerPhone = worker.phone;
-          const formattedPhone = `+91${workerPhone}`;
-          return workerPhone === firebaseUser.phoneNumber || formattedPhone === firebaseUser.phoneNumber;
-        });
-      }
-      
-      if (workerData) {
-        // Create worker user object
-        const worker = workerData as any;
         const workerUser: User = {
           id: worker.id,
           email: `worker-${worker.phone}@migii.app`,
@@ -188,7 +171,6 @@ export const useAuthProvider = () => {
         setIsLoading(false);
         return true;
       } else {
-        // User authenticated but not found in worker database
         toast.error("Phone number not found in registered workers. Please register first.");
         await signOut(auth);
         setIsLoading(false);
