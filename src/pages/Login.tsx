@@ -104,7 +104,7 @@ export default function Login() {
                           <FormLabel>Email</FormLabel>
                           <FormControl>
                             <Input 
-                              placeholder={activeTab === "admin" ? "admin@migii.com" : "buis@migii.com"} 
+                              placeholder={activeTab === "admin" ? "admin123" : "buis123"} 
                               {...field} 
                             />
                           </FormControl>
