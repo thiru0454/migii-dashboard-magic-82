@@ -136,12 +136,12 @@ export default function Login() {
                     {activeTab === "admin" ? (
                       <>
                         <p>Email: admin@migii.com</p>
-                        <p>Password: admin123</p>
+                        <p>Password: admin0454</p>
                       </>
                     ) : (
                       <>
-                        <p>Email: business@example.com</p>
-                        <p>Password: business123</p>
+                        <p>Email: buisness@migii.com</p>
+                        <p>Password: buisness0454</p>
                       </>
                     )}
                   </div>
