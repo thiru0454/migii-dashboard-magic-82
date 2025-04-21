@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -12,8 +13,7 @@ export function useWorkers() {
   const queryClient = useQueryClient();
   
   // Use a query that triggers a local store update whenever Firestore changes (real-time)
-  // We'll keep workers in React Query's cache using a manual subscription
-  const { data: workers = [], isLoading: isLoadingWorkers, refetch } = useQuery({
+  const { data: workers = [], isLoading: isLoadingWorkers } = useQuery({
     queryKey: ["workers"],
     queryFn: async () => [],
     staleTime: Infinity, // We'll update it ourselves
@@ -29,21 +29,28 @@ export function useWorkers() {
 
   const registerWorker = useMutation({
     mutationFn: async (worker: Omit<MigrantWorker, "id" | "status" | "registrationDate">) => {
-      return registerWorkerInDB(worker);
-    },
-    onSuccess: (newWorker) => {
-      toast.success("Worker registered successfully!");
-      queryClient.invalidateQueries({ queryKey: ["workers"] });
+      try {
+        return await registerWorkerInDB(worker);
+      } catch (error: any) {
+        console.error("Registration error in mutation:", error);
+        throw new Error(error.message || "Failed to register worker");
+      }
     },
     onError: (error: Error) => {
+      console.error("Worker registration error:", error);
       toast.error(error.message || "Failed to register worker");
     },
   });
 
   const updateWorker = useMutation({
     mutationFn: async (worker: MigrantWorker) => {
-      await updateWorkerStatus(worker.id, worker.status);
-      return worker;
+      try {
+        await updateWorkerStatus(worker.id, worker.status);
+        return worker;
+      } catch (error: any) {
+        console.error("Update worker error:", error);
+        throw new Error(error.message || "Failed to update worker");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workers"] });

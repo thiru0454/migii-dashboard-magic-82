@@ -33,64 +33,59 @@ export const initRecaptcha = (buttonId: string) => {
 export const registerWorkerInDB = async (
   worker: Omit<MigrantWorker, "id" | "status" | "registrationDate">
 ): Promise<MigrantWorker> => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  const dateStr = `${year}${month}${day}`;
-  
-  // Temporary id for building the string; will use Firestore doc id for uniqueness
-  const docRef = await addDoc(collection(firestore, "workers"), {
-    ...worker,
-    status: "active",
-    registrationDate: `${month}/${day}/${year}`,
-    createdAt: serverTimestamp(),
-  });
+  try {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+    
+    // Generate a worker ID without depending on Firestore doc ID first
+    const randomSuffix = Math.floor(10000 + Math.random() * 90000).toString();
+    const workerId = `TN-MIG-${dateStr}-${randomSuffix}`;
+    
+    // Insert directly with the generated ID
+    await setDoc(doc(firestore, "workers", workerId), {
+      ...worker,
+      id: workerId,
+      status: "active",
+      registrationDate: `${month}/${day}/${year}`,
+      createdAt: serverTimestamp(),
+    });
 
-  const workerId = `TN-MIG-${dateStr}-${docRef.id.slice(-5)}`;
-  // Update the worker now to include the generated workerId
-  await setDoc(doc(firestore, "workers", docRef.id), {
-    ...worker,
-    id: workerId,
-    status: "active",
-    registrationDate: `${month}/${day}/${year}`,
-    createdAt: serverTimestamp(),
-  });
+    // Also create worker_details mirror
+    await setDoc(doc(firestore, "worker_details", workerId), {
+      id: workerId,
+      name: worker.name,
+      phone: worker.phone,
+      aadhaar: worker.aadhaar,
+      status: "active",
+      registrationDate: `${month}/${day}/${year}`,
+      createdAt: serverTimestamp(),
+    });
 
-  // Also create worker_details mirror
-  await setDoc(doc(firestore, "worker_details", workerId), {
-    id: workerId,
-    name: worker.name,
-    phone: worker.phone,
-    aadhaar: worker.aadhaar,
-    status: "active",
-    registrationDate: `${month}/${day}/${year}`,
-    createdAt: serverTimestamp(),
-  });
-
-  return {
-    ...worker,
-    id: workerId,
-    status: "active",
-    registrationDate: `${month}/${day}/${year}`,
-  };
+    return {
+      ...worker,
+      id: workerId,
+      status: "active",
+      registrationDate: `${month}/${day}/${year}`,
+    };
+  } catch (error) {
+    console.error("Error registering worker:", error);
+    throw new Error("Failed to register worker. Please try again.");
+  }
 };
 
 export const updateWorkerStatus = async (workerId: string, status: string) => {
-  // Firestore docs are keyed by their full document id (in workers, it’s <doc.id>, not TN-MIG-…)
-  // Find the doc with this workerId
-  const workerSnap = await getDocs(query(collection(firestore, "workers")));
-  let docId: string | null = null;
-  workerSnap.forEach((docSnap) => {
-    if ((docSnap.data() as MigrantWorker).id === workerId) {
-      docId = docSnap.id;
-    }
-  });
-  if (docId) {
-    await updateDoc(doc(firestore, "workers", docId), { status });
+  try {
+    // Update directly using workerId as document ID
+    await updateDoc(doc(firestore, "workers", workerId), { status });
+    // Also update worker_details
+    await updateDoc(doc(firestore, "worker_details", workerId), { status });
+  } catch (error) {
+    console.error("Error updating worker status:", error);
+    throw new Error("Failed to update worker status. Please try again.");
   }
-  // Also update worker_details
-  await updateDoc(doc(firestore, "worker_details", workerId), { status });
 };
 
 export const getAllWorkersRealtime = (callback: (workers: MigrantWorker[]) => void) => {
@@ -101,6 +96,8 @@ export const getAllWorkersRealtime = (callback: (workers: MigrantWorker[]) => vo
       workers.push(doc.data() as MigrantWorker);
     });
     callback(workers);
+  }, (error) => {
+    console.error("Error getting workers:", error);
   });
 };
 

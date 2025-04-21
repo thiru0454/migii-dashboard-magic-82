@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +11,8 @@ import { MigrantWorker } from "@/types/worker";
 import { auth } from "@/utils/firebase";
 import { PhoneAuthProvider, RecaptchaVerifier } from "firebase/auth";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 declare global {
   interface Window {
@@ -92,6 +93,7 @@ interface WorkerRegistrationFormProps {
 export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProps) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { registerWorker } = useWorkers();
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -111,6 +113,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
     
     try {
       setIsSubmitting(true);
+      setError(null);
       
       // Prepare worker data
       const workerData = {
@@ -134,10 +137,9 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
       form.reset();
       setPhotoPreview(null);
       
-      // Don't show toast here, as the onSuccess will show the notification on the parent component
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
+      setError(error.message || "Registration failed. Please try again.");
       toast.error("Registration failed. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -207,6 +209,16 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div id="sign-in-button" style={{ display: 'none' }}></div>
+        <div id="recaptcha-container" style={{ display: 'none' }}></div>
+        
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
