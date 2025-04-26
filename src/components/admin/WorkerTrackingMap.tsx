@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -7,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabaseClient";
 
-// Demo token from your existing WorkersMap component
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZGVtb3VzZXIiLCJhIjoiY2xhd2lioTJzMGkwbzN5bXBwZjE2bnF1cCJ9.8rCpA8p9no3k4YrPQjd5dg";
 
 interface WorkerLocation {
@@ -18,15 +16,21 @@ interface WorkerLocation {
   timestamp: number;
 }
 
-// Fix: Extend from MessageEvent to ensure compatibility
 interface MockMessageEvent extends Omit<MessageEvent<any>, 'data'> {
   data: string;
-  // Add required MessageEvent properties with default values
   lastEventId: string;
   origin: string;
   ports: MessagePort[];
   source: MessageEventSource | null;
-  // Add any other required properties
+  initMessageEvent: (
+    type: string, 
+    bubbles: boolean, 
+    cancelable: boolean, 
+    data?: any, 
+    origin?: string, 
+    lastEventId?: string, 
+    source?: MessageEventSource | null
+  ) => void;
 }
 
 export function WorkerTrackingMap() {
@@ -40,7 +44,6 @@ export function WorkerTrackingMap() {
   const [locationHistory, setLocationHistory] = useState<Record<string, WorkerLocation[]>>({});
   const [showHistory, setShowHistory] = useState(false);
 
-  // Initialize the map
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
 
@@ -48,16 +51,14 @@ export function WorkerTrackingMap() {
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v11",
-      center: [80.2707, 13.0827], // Chennai default
+      center: [80.2707, 13.0827],
       zoom: 10,
     });
 
-    // Add navigation controls
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
     
     mapRef.current = map;
 
-    // Fetch initial workers data
     fetchWorkers();
 
     return () => {
@@ -68,16 +69,12 @@ export function WorkerTrackingMap() {
     };
   }, []);
 
-  // Initialize WebSocket connection
   useEffect(() => {
-    // Use secure WebSocket if on HTTPS
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname === 'localhost' ? 'localhost:3000' : window.location.host;
     const wsUrl = `${protocol}//${host}/ws/worker-locations`;
 
     try {
-      // Use a mock WebSocket for demo purposes
-      // In production, replace with actual WebSocket connection
       const mockSocket = new MockWebSocket(wsUrl);
       socketRef.current = mockSocket as unknown as WebSocket;
       
@@ -85,11 +82,9 @@ export function WorkerTrackingMap() {
         setConnected(true);
         toast.success("Connected to location service");
         
-        // Set up mock data updates for demonstration
         startMockLocationUpdates();
       };
       
-      // Fix: Cast the mock event to MessageEvent<any> to satisfy TypeScript
       mockSocket.onmessage = (event: MockMessageEvent) => {
         try {
           const data = JSON.parse(event.data);
@@ -122,19 +117,15 @@ export function WorkerTrackingMap() {
     };
   }, []);
 
-  // Update markers when worker locations change
   useEffect(() => {
     if (!mapRef.current) return;
     
-    // Update or create markers for each worker
     Object.values(workerLocations).forEach((location) => {
       const { workerId, name, latitude, longitude } = location;
       
       if (markersRef.current[workerId]) {
-        // Update existing marker position
         markersRef.current[workerId].setLngLat([longitude, latitude]);
       } else {
-        // Create a new marker with popup
         const popup = new mapboxgl.Popup({ offset: 12 }).setHTML(
           `<div class="p-2">
             <strong>${name}</strong>
@@ -153,7 +144,6 @@ export function WorkerTrackingMap() {
       }
     });
 
-    // Center map if we have only one worker
     if (Object.keys(workerLocations).length === 1) {
       const location = Object.values(workerLocations)[0];
       mapRef.current.flyTo({
@@ -163,7 +153,6 @@ export function WorkerTrackingMap() {
       });
     }
     
-    // Display history paths if enabled
     if (showHistory) {
       displayHistoryPaths();
     }
@@ -171,11 +160,9 @@ export function WorkerTrackingMap() {
 
   const fetchWorkers = async () => {
     try {
-      // First try to get workers from Supabase
       const { data: workerData, error } = await supabase.from("workers").select("*");
       
       if (error || !workerData) {
-        // Fallback to local storage if Supabase fails
         const localWorkers = getAllWorkersFromStorage();
         setWorkers(localWorkers);
       } else {
@@ -188,30 +175,27 @@ export function WorkerTrackingMap() {
   };
 
   const updateWorkerLocation = (locationUpdate: WorkerLocation) => {
-    // Add to current locations
     setWorkerLocations(prev => ({
       ...prev,
       [locationUpdate.workerId]: locationUpdate
     }));
     
-    // Add to location history
     setLocationHistory(prev => {
       const workerHistory = prev[locationUpdate.workerId] || [];
       return {
         ...prev,
-        [locationUpdate.workerId]: [...workerHistory, locationUpdate].slice(-100) // Keep last 100 points
+        [locationUpdate.workerId]: [...workerHistory, locationUpdate].slice(-100)
       };
     });
     
-    // Store in local storage
     storeLocationHistory(locationUpdate);
   };
-  
+
   const storeLocationHistory = (location: WorkerLocation) => {
     try {
       const historyKey = `worker_location_history_${location.workerId}`;
       const existingHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
-      const updatedHistory = [...existingHistory, location].slice(-1000); // Keep last 1000 points
+      const updatedHistory = [...existingHistory, location].slice(-1000);
       localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
     } catch (error) {
       console.error("Failed to store location history:", error);
@@ -221,26 +205,24 @@ export function WorkerTrackingMap() {
   const displayHistoryPaths = () => {
     if (!mapRef.current) return;
     
-    // Remove existing history layers
     const map = mapRef.current;
     if (map.getLayer('route')) map.removeLayer('route');
     if (map.getSource('route')) map.removeSource('route');
 
-    // Create a route for each worker's history
     Object.entries(locationHistory).forEach(([workerId, locations], index) => {
       if (locations.length < 2) return;
       
       const sourceId = `route-${workerId}`;
       const layerId = `route-layer-${workerId}`;
       
-      // Remove existing layers for this worker
       if (map.getLayer(layerId)) map.removeLayer(layerId);
       if (map.getSource(sourceId)) map.removeSource(sourceId);
       
-      // Create a GeoJSON line from the worker's history points
       const coordinates = locations.map(loc => [loc.longitude, loc.latitude]);
       
-      // Add the line to the map
+      const colors = ['#FF5733', '#33FF57', '#3357FF', '#F033FF', '#FF33A8'];
+      const color = colors[index % colors.length];
+      
       map.addSource(sourceId, {
         'type': 'geojson',
         'data': {
@@ -252,10 +234,6 @@ export function WorkerTrackingMap() {
           }
         }
       });
-      
-      // Choose different colors for different workers
-      const colors = ['#FF5733', '#33FF57', '#3357FF', '#F033FF', '#FF33A8'];
-      const color = colors[index % colors.length];
       
       map.addLayer({
         'id': layerId,
@@ -274,7 +252,6 @@ export function WorkerTrackingMap() {
     });
   };
 
-  // Mock WebSocket implementation for demonstration
   class MockWebSocket {
     url: string;
     onopen: (() => void) | null = null;
@@ -286,7 +263,6 @@ export function WorkerTrackingMap() {
     constructor(url: string) {
       this.url = url;
       
-      // Simulate connection
       setTimeout(() => {
         this.readyState = 1;
         if (this.onopen) this.onopen();
@@ -303,18 +279,14 @@ export function WorkerTrackingMap() {
     }
   }
 
-  // Generate mock location updates for demonstration
   const startMockLocationUpdates = () => {
     fetchWorkers().then(() => {
-      // Get initial coordinates for each worker (centered around Chennai)
       const baseCoordinates = {
         latitude: 13.0827,
         longitude: 80.2707
       };
       
-      // Set initial positions for workers
       workers.forEach((worker, index) => {
-        // Distribute workers around the base location
         const latitude = baseCoordinates.latitude + (Math.random() - 0.5) * 0.1;
         const longitude = baseCoordinates.longitude + (Math.random() - 0.5) * 0.1;
         
@@ -329,16 +301,13 @@ export function WorkerTrackingMap() {
         updateWorkerLocation(initialLocation);
       });
       
-      // Start sending mock updates
       const interval = setInterval(() => {
         if (!socketRef.current || socketRef.current.readyState !== 1) {
           clearInterval(interval);
           return;
         }
         
-        // Update each worker's location slightly
         Object.values(workerLocations).forEach(location => {
-          // Random movement in a small area
           const newLocation = {
             ...location,
             latitude: location.latitude + (Math.random() - 0.5) * 0.005,
@@ -346,7 +315,6 @@ export function WorkerTrackingMap() {
             timestamp: Date.now()
           };
           
-          // Simulate receiving a WebSocket message with all required properties
           if (socketRef.current && socketRef.current.onmessage) {
             const mockEvent: MockMessageEvent = {
               data: JSON.stringify({
@@ -375,16 +343,27 @@ export function WorkerTrackingMap() {
               preventDefault: () => {},
               stopImmediatePropagation: () => {},
               stopPropagation: () => {},
-              AT_TARGET: 2, // Changed from 0 to 2
-              BUBBLING_PHASE: 3, // Changed from 0 to 3
-              CAPTURING_PHASE: 1, // Changed from 0 to 1
-              NONE: 0
+              AT_TARGET: 2,
+              BUBBLING_PHASE: 3,
+              CAPTURING_PHASE: 1,
+              NONE: 0,
+              initMessageEvent: (
+                type: string, 
+                bubbles: boolean = false, 
+                cancelable: boolean = false, 
+                data?: any, 
+                origin?: string, 
+                lastEventId?: string, 
+                source?: MessageEventSource | null
+              ) => {
+                console.log('Mock initMessageEvent called', { type, bubbles, cancelable, data, origin, lastEventId, source });
+              }
             };
             
             socketRef.current.onmessage(mockEvent);
           }
         });
-      }, 3000); // Update every 3 seconds
+      }, 3000);
       
       return () => clearInterval(interval);
     });
@@ -397,7 +376,6 @@ export function WorkerTrackingMap() {
   const centerMap = () => {
     if (!mapRef.current || Object.keys(workerLocations).length === 0) return;
     
-    // Calculate the average position of all workers
     const locations = Object.values(workerLocations);
     const totalLat = locations.reduce((sum, loc) => sum + loc.latitude, 0);
     const totalLng = locations.reduce((sum, loc) => sum + loc.longitude, 0);
@@ -412,7 +390,6 @@ export function WorkerTrackingMap() {
     });
   };
 
-  // Function to get workers from localStorage (utility function from firebase.ts)
   const getAllWorkersFromStorage = (): MigrantWorker[] => {
     const workersStr = localStorage.getItem('workers');
     return workersStr ? JSON.parse(workersStr) : [];
