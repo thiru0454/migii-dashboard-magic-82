@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,7 @@ export function WorkerRequestsList() {
       case "pending":
         return <Badge variant="secondary">Pending</Badge>;
       case "approved":
-        return <Badge variant="success">Approved</Badge>;
+        return <Badge className="bg-green-500 text-white">Approved</Badge>;
       case "rejected":
         return <Badge variant="destructive">Rejected</Badge>;
       default:
@@ -105,7 +106,7 @@ export function WorkerRequestsList() {
                   <div className="flex gap-2 mt-4">
                     <Button
                       size="sm"
-                      variant="success"
+                      className="bg-green-500 text-white hover:bg-green-600"
                       onClick={() => handleStatusChange(request.id, "approved")}
                     >
                       Approve
@@ -126,4 +127,4 @@ export function WorkerRequestsList() {
       </CardContent>
     </Card>
   );
-} 
+}

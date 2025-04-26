@@ -29,8 +29,8 @@ const WorkerRegistration: React.FC<WorkerRegistrationProps> = () => {
       ...worker,
       id: worker.id || `worker_${Date.now()}`,
       status: worker.status || "pending",
-      skill: worker.skill || worker.skills?.[0] || "", // Handle both single skill and skills array
-      originState: worker.originState || worker.location || "", // Handle both originState and location
+      skill: worker.skill || "", // Remove reference to skills array
+      originState: worker.originState || "", // Remove reference to location
     };
     
     addWorker(formattedWorker);

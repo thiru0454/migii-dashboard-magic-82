@@ -18,6 +18,10 @@ interface WorkerLocation {
   timestamp: number;
 }
 
+interface MockMessageEvent {
+  data: string;
+}
+
 export function WorkerTrackingMap() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -78,7 +82,7 @@ export function WorkerTrackingMap() {
         startMockLocationUpdates();
       };
       
-      mockSocket.onmessage = (event) => {
+      mockSocket.onmessage = (event: MockMessageEvent) => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'location_update') {
@@ -94,7 +98,7 @@ export function WorkerTrackingMap() {
         toast.error("Disconnected from location service");
       };
       
-      mockSocket.onerror = (error) => {
+      mockSocket.onerror = (error: any) => {
         console.error("WebSocket error:", error);
         toast.error("Location service connection error");
       };
@@ -266,7 +270,7 @@ export function WorkerTrackingMap() {
   class MockWebSocket {
     url: string;
     onopen: (() => void) | null = null;
-    onmessage: ((event: { data: string }) => void) | null = null;
+    onmessage: ((event: MockMessageEvent) => void) | null = null;
     onclose: (() => void) | null = null;
     onerror: ((error: any) => void) | null = null;
     readyState = 0;
@@ -336,12 +340,14 @@ export function WorkerTrackingMap() {
           
           // Simulate receiving a WebSocket message
           if (socketRef.current && socketRef.current.onmessage) {
-            socketRef.current.onmessage({
+            const mockEvent: MockMessageEvent = {
               data: JSON.stringify({
                 type: 'location_update',
                 worker: newLocation
               })
-            });
+            };
+            
+            socketRef.current.onmessage(mockEvent);
           }
         });
       }, 3000); // Update every 3 seconds
