@@ -1,16 +1,17 @@
-export interface MigrantWorker {
+
+export type MigrantWorker = {
   id: string;
   name: string;
   age: number;
   phone: string;
-  email: string;
-  originState: string;
+  email?: string;
   skill: string;
-  aadhaar: string;
-  photoUrl: string;
-  latitude: number;
-  longitude: number;
-  status: 'pending' | 'approved' | 'rejected';
+  originState: string;
+  status: "active" | "inactive" | "pending";
   registrationDate: string;
-  updatedAt?: string;
-}
+  photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  aadhaar: string; // Changed from optional to required
+  assignedBusinessId?: string;
+};

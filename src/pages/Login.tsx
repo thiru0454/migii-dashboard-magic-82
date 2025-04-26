@@ -53,13 +53,11 @@ export default function Login() {
     try {
       const success = await login(username.trim(), password, "admin");
       if (success) {
-        toast.success("Admin login successful!");
-        navigate("/admin-dashboard", { replace: true });
+        navigate("/admin-dashboard");
       } else {
         toast.error("Invalid admin credentials");
       }
     } catch (error) {
-      console.error("Login error:", error);
       toast.error("Login failed. Please try again.");
     } finally {
       setIsSubmitting(false);

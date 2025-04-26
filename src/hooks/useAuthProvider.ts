@@ -115,6 +115,7 @@ export const useAuthProvider = () => {
       return false;
     } catch (error) {
       console.error("Login error:", error);
+      toast.error("An error occurred during login.");
       setIsLoading(false);
       return false;
     }

@@ -11,7 +11,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, MapPin } from "lucide-react";
-import { registerWorker } from "@/services/workerService";
+import { registerWorkerInStorage } from "@/utils/firebase";
 
 const SKILLS = ["Construction Worker", "Plumber", "Electrician", "Carpenter", "Painter", "Gardener", "Driver", "Cleaner", "Cook", "Other"];
 const STATES = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"];
@@ -20,7 +20,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   age: z.coerce.number().min(18, { message: "Worker must be at least 18 years old." }),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
-  email: z.string().email({ message: "Please enter a valid email address." }),
+  email: z.string().email({ message: "Please enter a valid email address." }).optional(),
   originState: z.string({ required_error: "Please select your origin state." }),
   skill: z.string({ required_error: "Please select your primary skill." }),
   aadhaar: z.string().min(12, { message: "Aadhaar number must be 12 digits." }).max(12, { message: "Aadhaar number must be 12 digits." }).regex(/^\d+$/, { message: "Aadhaar number must contain only digits." }),
@@ -70,8 +70,8 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         longitude: location.longitude,
       };
 
-      // Register worker in local storage
-      const registeredWorker = await registerWorker(workerData);
+      // Register worker directly without OTP verification
+      const registeredWorker = await registerWorkerInStorage(workerData);
       
       if (onSuccess) {
         onSuccess(registeredWorker);
@@ -80,12 +80,10 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
       form.reset();
       setPhotoPreview(null);
       
-      toast.success("Worker registered successfully!");
-      
     } catch (error: any) {
       console.error("Registration error:", error);
       setError(error?.message || "Registration failed. Please try again.");
-      toast.error(error?.message || "Registration failed. Please try again.");
+      toast.error("Registration failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -170,9 +168,9 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
           )}/>
           <FormField control={form.control} name="email" render={({ field }) => (
             <FormItem>
-              <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>Email Address</FormLabel>
               <FormControl><Input type="email" placeholder="worker@example.com" {...field} /></FormControl>
-              <FormDescription>Required for communication and OTP verification</FormDescription>
+              <FormDescription>Used for communication and OTP verification</FormDescription>
               <FormMessage />
             </FormItem>
           )}/>
@@ -186,7 +184,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
           )}/>
           <FormField control={form.control} name="originState" render={({ field }) => (
             <FormItem>
-              <FormLabel>Origin State <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>Origin State</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger><SelectValue placeholder="Select your origin state" /></SelectTrigger>
@@ -200,7 +198,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
           )}/>
           <FormField control={form.control} name="skill" render={({ field }) => (
             <FormItem>
-              <FormLabel>Primary Skill <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>Primary Skill</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger><SelectValue placeholder="Select your primary skill" /></SelectTrigger>
@@ -240,14 +238,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
           </div>
         </div>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? (
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-              Registering...
-            </div>
-          ) : (
-            "Register Worker"
-          )}
+          {isSubmitting ? "Registering..." : "Register Worker"}
         </Button>
         <div className="text-center text-sm text-muted-foreground mt-2">
           Registration typically completes in 2-3 seconds
