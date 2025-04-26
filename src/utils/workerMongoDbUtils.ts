@@ -9,8 +9,15 @@ export const addWorker = async (worker: MigrantWorker): Promise<MigrantWorker> =
     // First attempt to add to Supabase (if available)
     try {
       const { data, error } = await supabase.from("workers").insert(worker).select().single();
-      if (error) throw error;
-      if (data) return data;
+      if (error) {
+        console.warn("Failed to add worker to Supabase, falling back to local storage", error);
+        throw error; // Force using fallback
+      }
+      if (data) {
+        // Also update MongoDB
+        storeWorkerInMongoDB(data);
+        return data;
+      }
     } catch (supabaseError) {
       console.warn("Failed to add worker to Supabase, falling back to local storage", supabaseError);
     }
@@ -21,20 +28,26 @@ export const addWorker = async (worker: MigrantWorker): Promise<MigrantWorker> =
     localStorage.setItem("workers", JSON.stringify(updatedWorkers));
     
     // Also update our MongoDB service (for location tracking)
-    if (worker.latitude && worker.longitude) {
-      mongoDbService.updateWorkerLocation({
-        workerId: worker.id,
-        name: worker.name,
-        latitude: worker.latitude,
-        longitude: worker.longitude,
-        timestamp: Date.now()
-      });
-    }
+    storeWorkerInMongoDB(worker);
     
     return worker;
   } catch (error) {
     console.error("Error adding worker:", error);
     throw new Error("Failed to add worker");
+  }
+};
+
+// Function to store worker data in MongoDB
+const storeWorkerInMongoDB = (worker: MigrantWorker): void => {
+  // Ensure we have initial location data if available
+  if (worker.latitude && worker.longitude) {
+    mongoDbService.updateWorkerLocation({
+      workerId: worker.id,
+      name: worker.name,
+      latitude: worker.latitude,
+      longitude: worker.longitude,
+      timestamp: Date.now()
+    });
   }
 };
 
@@ -65,7 +78,19 @@ export const updateWorkerData = async (
         .single();
         
       if (error) throw error;
-      if (data) return data;
+      if (data) {
+        // Update MongoDB if location changed
+        if (updates.latitude && updates.longitude) {
+          mongoDbService.updateWorkerLocation({
+            workerId: data.id,
+            name: data.name,
+            latitude: updates.latitude,
+            longitude: updates.longitude,
+            timestamp: Date.now()
+          });
+        }
+        return data;
+      }
     } catch (supabaseError) {
       console.warn("Failed to update worker in Supabase, falling back to local storage", supabaseError);
     }
