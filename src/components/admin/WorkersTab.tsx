@@ -1,3 +1,4 @@
+
 import { MigrantWorker } from "@/types/worker";
 import { useWorkersContext } from "@/contexts/WorkersContext";
 import { DataTable } from "@/components/ui/data-table";
@@ -15,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { WorkerDetailsDialog } from "./WorkerDetailsDialog";
+import { WorkerLocationDialog } from "./WorkerLocationDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +35,8 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<MigrantWorker | null>(null);
 
   const { workers, updateWorker } = useWorkersContext();
@@ -108,7 +111,7 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
               <DropdownMenuItem
                 onClick={() => {
                   setSelectedWorker(worker);
-                  setIsDialogOpen(true);
+                  setIsDetailsDialogOpen(true);
                 }}
               >
                 <User className="mr-2 h-4 w-4" />
@@ -116,8 +119,8 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
-                  // Handle location tracking
-                  toast.info("Location tracking feature coming soon");
+                  setSelectedWorker(worker);
+                  setIsLocationDialogOpen(true);
                 }}
               >
                 <MapPin className="mr-2 h-4 w-4" />
@@ -152,12 +155,21 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
   return (
     <div className="space-y-4">
       <DataTable table={table} />
+      
       {selectedWorker && (
-        <WorkerDetailsDialog
-          worker={selectedWorker}
-          open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
-        />
+        <>
+          <WorkerDetailsDialog
+            worker={selectedWorker}
+            open={isDetailsDialogOpen}
+            onOpenChange={setIsDetailsDialogOpen}
+          />
+          
+          <WorkerLocationDialog
+            worker={selectedWorker}
+            open={isLocationDialogOpen}
+            onOpenChange={setIsLocationDialogOpen}
+          />
+        </>
       )}
     </div>
   );
