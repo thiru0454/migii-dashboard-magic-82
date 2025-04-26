@@ -57,7 +57,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
       setIsSubmitting(true);
       setError(null);
 
-      // Prepare worker data including location
+      // Prepare worker data including location with explicit status type
       const workerData: MigrantWorker = {
         name: values.name,
         age: values.age,
@@ -70,7 +70,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         latitude: location.latitude,
         longitude: location.longitude,
         id: `worker_${Date.now()}`,
-        status: "pending",  // Explicitly use a valid status from the union type
+        status: "pending" as "pending" | "approved" | "rejected" | "active" | "inactive", // Use type assertion to specify exact literal type
         registrationDate: new Date().toISOString()
       };
 
