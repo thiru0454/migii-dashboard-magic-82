@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,7 +58,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
       setError(null);
 
       // Prepare worker data including location
-      const workerData = {
+      const workerData: MigrantWorker = {
         name: values.name,
         age: values.age,
         phone: values.phone,
@@ -69,7 +70,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         latitude: location.latitude,
         longitude: location.longitude,
         id: `worker_${Date.now()}`,
-        status: "pending" as const,
+        status: "pending",  // Explicitly use a valid status from the union type
         registrationDate: new Date().toISOString()
       };
 
