@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,18 @@ import { RequestStatusTab } from "@/components/business/RequestStatusTab";
 import { MigrantWorker } from "@/types/worker";
 import { useWorkerRequests } from "@/contexts/WorkerRequestsContext";
 import { toast } from "sonner";
+
+// Define the WorkerRequest type
+interface WorkerRequest {
+  id?: string;
+  businessId: string;
+  numberOfWorkers: number;
+  skillsRequired: string[];
+  startDate: string;
+  endDate: string;
+  additionalNotes: string;
+  status: 'pending' | 'approved' | 'rejected';
+}
 
 const BusinessDashboard = () => {
   const { currentUser } = useAuth();

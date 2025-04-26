@@ -31,7 +31,7 @@ const Index = () => {
   
   const typedWorkers = workers as MigrantWorker[];
   
-  const activeWorkers = typedWorkers.filter(w => w.status === "active").length;
+  const activeWorkers = typedWorkers.filter(w => w.status === "approved").length;
   const pendingRegistrations = typedWorkers.filter(w => w.status === "pending").length;
   
   const skillCounts: Record<string, number> = {};

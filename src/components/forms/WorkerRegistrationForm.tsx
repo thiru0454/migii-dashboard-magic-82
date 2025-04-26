@@ -1,14 +1,16 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MigrantWorker } from "@/types/worker";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
+<<<<<<< HEAD
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, MapPin } from "lucide-react";
 import { registerWorkerInStorage } from "@/utils/firebase";
@@ -24,52 +26,73 @@ const formSchema = z.object({
   originState: z.string({ required_error: "Please select your origin state." }),
   skill: z.string({ required_error: "Please select your primary skill." }),
   aadhaar: z.string().min(12, { message: "Aadhaar number must be 12 digits." }).max(12, { message: "Aadhaar number must be 12 digits." }).regex(/^\d+$/, { message: "Aadhaar number must contain only digits." }),
+=======
+import { registerWorkerInStorage } from "@/utils/firebase";
+import { MigrantWorker } from "@/types/worker";
+
+const formSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  age: z.string().transform(val => parseInt(val, 10)).refine((val) => val >= 18 && val <= 100, "Age must be between 18 and 100"),
+  phone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits."),
+  email: z.string().email().optional().or(z.literal("")),
+  originState: z.string().min(1, "Please select your origin state"),
+  skill: z.string().min(1, "Please select your skill"),
+  aadhaar: z.string().regex(/^\d{12}$/, "Aadhaar must be 12 digits."),
+>>>>>>> 7ced357b9f9b45b9bba7dffc1b78bfe5b0923c30
 });
 
-interface WorkerRegistrationFormProps {
-  onSuccess?: (data: MigrantWorker) => void;
-}
+const states = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
+  "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
+  "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttarakhand",
+  "Uttar Pradesh", "West Bengal"
+];
 
-export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProps) {
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+const skills = [
+  "Masonry", "Carpentry", "Plumbing", "Electrical", "Painting", "Welding", "Machine Operator",
+  "Driver", "Construction Labor", "Cleaning", "Security", "Gardening", "Factory Worker", "Other"
+];
+
+export function WorkerRegistrationForm() {
+  const { getLocation, location, locationError } = useGeolocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const location = useGeolocation();
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      age: undefined,
+      age: "",
       phone: "",
       email: "",
       originState: "",
       skill: "",
-      aadhaar: ""
+      aadhaar: "",
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (isSubmitting) return;
-    
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      setError(null);
-
-      // Prepare worker data including location
-      const workerData = {
+      await getLocation();
+      
+      const workerData: MigrantWorker = {
         name: values.name,
         age: values.age,
         phone: values.phone,
-        email: values.email,
+        email: values.email || undefined,
         originState: values.originState,
         skill: values.skill,
         aadhaar: values.aadhaar,
-        photoUrl: photoPreview || undefined,
+        photoUrl,
         latitude: location.latitude,
         longitude: location.longitude,
+        id: `worker_${Date.now()}`,
+        status: "pending", // This is correctly typed as literal "pending" which matches MigrantWorker type
+        registrationDate: new Date().toISOString()
       };
 
+<<<<<<< HEAD
       // Register worker directly without OTP verification
       const registeredWorker = await registerWorkerInStorage(workerData);
       
@@ -83,59 +106,33 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
     } catch (error: any) {
       console.error("Registration error:", error);
       setError(error?.message || "Registration failed. Please try again.");
+=======
+      await registerWorkerInStorage(workerData);
+      toast.success("Registration successful!");
+      form.reset();
+      setPhotoUrl(undefined);
+    } catch (error) {
+      console.error("Registration error:", error);
+>>>>>>> 7ced357b9f9b45b9bba7dffc1b78bfe5b0923c30
       toast.error("Registration failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const compressImage = (file: File, maxSizeInMB: number = 0.5): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const maxDimension = 400;
-          if (width > height && width > maxDimension) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else if (height > maxDimension) {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          const quality = 0.4;
-          const dataUrl = canvas.toDataURL('image/jpeg', quality);
-          resolve(dataUrl);
-        };
-        img.onerror = (error) => { reject(error); };
-      };
-      reader.onerror = (error) => { reject(error); };
-    });
-  };
-
-  const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
-      try {
-        const compressedImage = await compressImage(file);
-        setPhotoPreview(compressedImage);
-      } catch (error) {
-        console.error("Error compressing image:", error);
-        toast.error("Error processing image. Please try a smaller image.");
-      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   return (
+<<<<<<< HEAD
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {error && (
@@ -186,9 +183,35 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
             <FormItem>
               <FormLabel>Origin State</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
+=======
+    <div className="space-y-6">
+      <div className="space-y-2 text-center">
+        <h1 className="text-3xl font-bold">Worker Registration</h1>
+        <p className="text-gray-500 dark:text-gray-400">Enter your details to register as a migrant worker</p>
+      </div>
+
+      {locationError && (
+        <Alert variant="destructive">
+          <AlertTitle>Location Error</AlertTitle>
+          <AlertDescription>
+            We need your location to register you. Please allow location access.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full Name</FormLabel>
+>>>>>>> 7ced357b9f9b45b9bba7dffc1b78bfe5b0923c30
                 <FormControl>
-                  <SelectTrigger><SelectValue placeholder="Select your origin state" /></SelectTrigger>
+                  <Input placeholder="Enter your full name" {...field} />
                 </FormControl>
+<<<<<<< HEAD
                 <SelectContent>
                   {STATES.map((state) => (<SelectItem key={state} value={state}>{state}</SelectItem>))}
                 </SelectContent>
@@ -200,42 +223,124 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
             <FormItem>
               <FormLabel>Primary Skill</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
+=======
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="age"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Age</FormLabel>
+>>>>>>> 7ced357b9f9b45b9bba7dffc1b78bfe5b0923c30
                 <FormControl>
-                  <SelectTrigger><SelectValue placeholder="Select your primary skill" /></SelectTrigger>
+                  <Input type="number" placeholder="Enter your age" {...field} />
                 </FormControl>
-                <SelectContent>
-                  {SKILLS.map((skill) => (<SelectItem key={skill} value={skill}>{skill}</SelectItem>))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}/>
-        </div>
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">
-            {location.loading
-              ? "Detecting your location..."
-              : location.error
-                ? `Location unavailable`
-                : `Latitude: ${location.latitude?.toFixed(4)}, Longitude: ${location.longitude?.toFixed(4)}`}
-          </span>
-        </div>
-        <div className="space-y-2">
-          <FormLabel>Photo</FormLabel>
-          <div className="flex flex-col items-center space-y-2">
-            <div className="border-2 border-dashed border-gray-300 rounded-md p-4 w-full text-center">
-              <Input type="file" accept="image/*" className="hidden" id="worker-photo" onChange={handlePhotoChange}/>
-              <label htmlFor="worker-photo" className="cursor-pointer text-primary hover:text-primary/80">
-                {photoPreview ? (
-                  <div className="flex flex-col items-center">
-                    <img src={photoPreview} alt="Preview" className="h-32 w-32 object-cover rounded-full mb-2"/>
-                    <span>Change photo</span>
-                  </div>
-                ) : (<div className="py-4">Click to upload photo</div>)}
-              </label>
-            </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <Input type="tel" placeholder="10-digit phone number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email (Optional)</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="your@email.com (optional)" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="originState"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Origin State</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your home state" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {states.map((state) => (
+                      <SelectItem key={state} value={state}>
+                        {state}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="skill"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Primary Skill</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your primary skill" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {skills.map((skill) => (
+                      <SelectItem key={skill} value={skill}>
+                        {skill}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="aadhaar"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Aadhaar Number</FormLabel>
+                <FormControl>
+                  <Input placeholder="12-digit Aadhaar number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="space-y-2">
+            <FormLabel>Photo (Optional)</FormLabel>
+            <Input type="file" accept="image/*" onChange={handlePhotoChange} />
           </div>
+<<<<<<< HEAD
         </div>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? "Registering..." : "Register Worker"}
@@ -245,5 +350,24 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         </div>
       </form>
     </Form>
+=======
+
+          {photoUrl && (
+            <div className="flex justify-center">
+              <img src={photoUrl} alt="Preview" className="max-h-40 object-cover rounded-md" />
+            </div>
+          )}
+
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isSubmitting || Boolean(locationError)}
+          >
+            {isSubmitting ? "Registering..." : "Register"}
+          </Button>
+        </form>
+      </Form>
+    </div>
+>>>>>>> 7ced357b9f9b45b9bba7dffc1b78bfe5b0923c30
   );
 }

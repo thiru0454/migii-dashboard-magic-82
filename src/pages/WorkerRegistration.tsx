@@ -24,8 +24,8 @@ const WorkerRegistration = () => {
       ...worker,
       id: worker.id || `worker_${Date.now()}`,
       status: worker.status || "pending",
-      skill: worker.skill || worker.skills?.[0] || "", // Handle both single skill and skills array
-      originState: worker.originState || worker.location || "", // Handle both originState and location
+      skill: worker.skill || "", // Fixed reference
+      originState: worker.originState || "", // Fixed reference
     };
     
     addWorker(formattedWorker);
