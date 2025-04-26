@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,14 +8,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { RecaptchaVerifier } from "firebase/auth";
-import { auth } from "@/utils/firebase";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "@/utils/firebase";
+import { sendOtpEmail, verifyOtp } from "@/utils/emailService";
 
 interface WorkerLoginFormProps {
   onSuccess: () => void;
 }
 
-// Form validation schema
 const formSchema = z.object({
   phone: z
     .string()
@@ -29,6 +27,12 @@ const formSchema = z.object({
     .regex(/^[0-9]+$/, {
       message: "Phone number can only contain digits.",
     }),
+  email: z
+    .string()
+    .email({
+      message: "Please enter a valid email address.",
+    })
+    .optional(),
 });
 
 const OTP_LENGTH = 6;
@@ -37,32 +41,57 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [otp, setOtp] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [verificationId, setVerificationId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { loginWithPhone, verifyOtp } = useAuth();
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+  const { loginWithPhone } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       phone: "",
+      email: "",
     },
   });
 
   const onSubmitPhone = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     const phoneNumber = values.phone;
+    const emailAddress = values.email || "";
+    
     setPhone(phoneNumber);
+    setEmail(emailAddress);
     
     try {
-      const verId = await loginWithPhone(phoneNumber);
-      if (verId) {
-        setVerificationId(verId);
-        setStep("otp");
+      if (emailAddress) {
+        console.log(`Attempting to send OTP to email: ${emailAddress}`);
+        const otpSent = await sendOtpEmail(emailAddress);
+        
+        if (otpSent) {
+          setVerificationId("email-verification");
+          setStep("otp");
+          toast.success(`OTP sent to ${emailAddress}. Please check your inbox.`);
+        } else {
+          toast.error("Failed to send OTP email. Please try again or use phone number.");
+        }
+      } else {
+        try {
+          console.log(`Attempting to send OTP via SMS to: ${phoneNumber}`);
+          const verId = await signInWithPhoneNumber(phoneNumber);
+          if (verId) {
+            setVerificationId(verId);
+            setStep("otp");
+            toast.success("OTP sent successfully!");
+          }
+        } catch (smsError: any) {
+          console.error("SMS OTP error:", smsError);
+          toast.error(smsError.message || "SMS OTP failed. Please provide an email address for OTP instead.");
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending OTP:", error);
-      // Error is already handled by loginWithPhone
+      toast.error(error.message || "Failed to send OTP. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -78,13 +107,61 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const handleVerifyOtp = async () => {
     setIsSubmitting(true);
     try {
-      const success = await verifyOtp(verificationId, otp);
-      if (success) {
-        onSuccess();
+      if (verificationId === "email-verification") {
+        // Verify email OTP
+        if (email && verifyOtp(email, otp)) {
+          // Try login with phone (which is available from registration)
+          try {
+            await loginWithPhone(phone);
+            toast.success("Login successful!");
+            onSuccess();
+          } catch (loginError: any) {
+            console.error("Login error after OTP verification:", loginError);
+            toast.error(loginError.message || "Login failed after OTP verification");
+          }
+        } else {
+          toast.error("Invalid OTP. Please try again.");
+        }
+      } else {
+        try {
+          // For SMS verification
+          await loginWithPhone(phone);
+          toast.success("Login successful!");
+          onSuccess();
+        } catch (error: any) {
+          console.error("Phone login error:", error);
+          toast.error(error.message || "OTP verification failed");
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error verifying OTP:", error);
-      toast.error("Failed to verify OTP. Please try again.");
+      toast.error(error.message || "Failed to verify OTP. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setIsSubmitting(true);
+    try {
+      if (email) {
+        const otpSent = await sendOtpEmail(email);
+        if (otpSent) {
+          toast.success("OTP resent to your email");
+        } else {
+          toast.error("Failed to resend OTP to email");
+        }
+      } else if (phone) {
+        try {
+          await signInWithPhoneNumber(phone);
+          toast.success("OTP resent successfully!");
+        } catch (error: any) {
+          console.error("Error resending SMS OTP:", error);
+          toast.error("Failed to resend OTP via SMS");
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to resend OTP");
     } finally {
       setIsSubmitting(false);
     }
@@ -118,6 +195,31 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
                   </FormItem>
                 )}
               />
+              
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <Label htmlFor="email">Email Address (Recommended)</Label>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        id="email"
+                        placeholder="Enter your email address"
+                        type="email"
+                        className="text-base py-2"
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Using email for OTP is more reliable than SMS
+                    </p>
+                  </FormItem>
+                )}
+              />
+              
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Sending..." : "Send OTP"}
               </Button>
@@ -128,7 +230,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         <div className="space-y-6">
           <div>
             <Label htmlFor="otp" className="block mb-2">
-              Enter OTP sent to {phone}
+              Enter OTP sent to {email || phone}
             </Label>
             <div className="flex items-center">
               <Input
@@ -149,7 +251,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
                 onClick={() => setStep("phone")}
                 disabled={isSubmitting}
               >
-                Change phone number
+                Change contact information
               </Button>
             </div>
           </div>
@@ -165,20 +267,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
               variant="link"
               type="button"
               className="text-xs"
-              onClick={async () => {
-                setIsSubmitting(true);
-                try {
-                  const verId = await loginWithPhone(phone);
-                  if (verId) {
-                    setVerificationId(verId);
-                    toast.success("OTP resent successfully!");
-                  }
-                } catch (error) {
-                  toast.error("Failed to resend OTP");
-                } finally {
-                  setIsSubmitting(false);
-                }
-              }}
+              onClick={handleResendOtp}
               disabled={isSubmitting}
             >
               Didn't receive code? Resend OTP

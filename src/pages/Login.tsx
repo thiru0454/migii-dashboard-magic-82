@@ -1,144 +1,191 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useAuth, UserType } from "@/contexts/AuthContext";
-import { WorkerLoginForm } from "@/components/forms/WorkerLoginForm";
-import { ShieldAlert, Building, User } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
-const formSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
-  }),
-});
+const ADMIN_CREDENTIALS = {
+  username: "admin@migii.com",
+  password: "admin123",
+};
+
+const BUSINESS_CREDENTIALS = {
+  username: "business@migii.com",
+  password: "business0454",
+};
+
+type LoginMode = "none" | "admin" | "business";
 
 export default function Login() {
-  const { login } = useAuth();
+  const [mode, setMode] = useState<LoginMode>("none");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>(() => {
+  const { login } = useAuth();
+
+  // Check for tab query parameter
+  useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab");
-    return tab && ["admin", "business", "worker"].includes(tab) ? tab : "admin";
-  });
-
-  function getDefaultRedirectPath(userType: UserType | "worker") {
-    switch (userType) {
-      case "admin": return "/admin-dashboard";
-      case "business": return "/business-dashboard";
-      case "worker": return "/worker-login";
-      default: return "/";
+    if (tab === "admin") {
+      setMode("admin");
+    } else if (tab === "business") {
+      setMode("business");
+    } else if (tab === "worker") {
+      navigate("/worker-login");
     }
-  }
+  }, [location, navigate]);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
+  const resetForm = () => {
+    setUsername("");
+    setPassword("");
+    setIsSubmitting(false);
+  };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
     try {
-      const userType = activeTab as UserType;
-      if (userType !== "worker") {
-        const success = await login(values.email, values.password, userType);
-        if (success) {
-          navigate(getDefaultRedirectPath(userType));
-        }
+      const success = await login(username.trim(), password, "admin");
+      if (success) {
+        toast.success("Admin login successful!");
+        navigate("/admin-dashboard", { replace: true });
+      } else {
+        toast.error("Invalid admin credentials");
       }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Login failed. Please try again.");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleWorkerLoginSuccess = () => {
+  const handleBusinessLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const success = await login(username.trim(), password, "business");
+      if (success) {
+        navigate("/business-dashboard");
+      } else {
+        toast.error("Invalid business credentials");
+      }
+    } catch (error) {
+      toast.error("Login failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const goToWorkerLogin = () => {
     navigate("/worker-login");
   };
 
   return (
-    <div className="container flex h-screen w-screen items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
-          <CardDescription>Choose your account type to login</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="admin" className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4" />
-                Admin
-              </TabsTrigger>
-              <TabsTrigger value="business" className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                Business
-              </TabsTrigger>
-              <TabsTrigger value="worker" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Worker
-              </TabsTrigger>
-            </TabsList>
+    <DashboardLayout>
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <div className="space-y-6 bg-card shadow-lg p-8 rounded-lg max-w-sm w-full">
+          <h2 className="text-2xl font-bold mb-6 text-center">MIGII Login Portal</h2>
+          {mode === "none" && (
+            <div className="space-y-4">
+              <Button className="w-full" variant="outline" onClick={() => { setMode("admin"); resetForm(); }}>
+                Admin Login
+              </Button>
+              <Button className="w-full" variant="outline" onClick={() => { setMode("business"); resetForm(); }}>
+                Business Login
+              </Button>
+              <Button className="w-full" variant="outline" onClick={goToWorkerLogin}>
+                Worker Login
+              </Button>
+            </div>
+          )}
 
-            {(activeTab === "admin" || activeTab === "business") && (
-              <TabsContent value={activeTab}>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder={activeTab === "admin" ? "admin@gmail.com" : "buis@gmail.com"} 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder={activeTab === "admin" ? "admin0454" : "buis0454"} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Signing in..." : `Sign in as ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-            )}
+          {mode === "admin" && (
+            <form
+              className="space-y-6"
+              onSubmit={handleAdminLogin}
+            >
+              <h3 className="text-xl font-semibold text-center">Admin Login</h3>
+              <Input
+                type="text"
+                placeholder="Enter admin email"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={isSubmitting}
+              />
+              <Input
+                type="password"
+                placeholder="Enter password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isSubmitting}
+              />
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? "Signing in..." : "Sign In as Admin"}
+              </Button>
+              <Button
+                type="button"
+                variant="link"
+                className="w-full"
+                onClick={() => setMode("none")}
+                disabled={isSubmitting}
+              >
+                Back to Login Options
+              </Button>
+            </form>
+          )}
 
-            <TabsContent value="worker">
-              <WorkerLoginForm onSuccess={handleWorkerLoginSuccess} />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </div>
+          {mode === "business" && (
+            <form
+              className="space-y-6"
+              onSubmit={handleBusinessLogin}
+            >
+              <h3 className="text-xl font-semibold text-center">Business Login</h3>
+              <Input
+                type="text"
+                placeholder="Enter business email"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={isSubmitting}
+              />
+              <Input
+                type="password"
+                placeholder="Enter password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isSubmitting}
+              />
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? "Signing in..." : "Sign In as Business"}
+              </Button>
+              <Button
+                type="button"
+                variant="link"
+                className="w-full"
+                onClick={() => setMode("none")}
+                disabled={isSubmitting}
+              >
+                Back to Login Options
+              </Button>
+            </form>
+          )}
+        </div>
+      </div>
+    </DashboardLayout>
   );
 }

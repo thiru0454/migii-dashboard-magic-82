@@ -1,116 +1,202 @@
+// This is a compatibility layer between Firebase and Supabase
+import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient';
+import { MigrantWorker } from '@/types/worker';
+import { toast } from 'sonner';
+import { generateWorkerId } from "./workerUtils";
 
-import { initializeApp } from "firebase/app";
-import { getAuth, RecaptchaVerifier, PhoneAuthProvider } from "firebase/auth";
-import { getStorage } from "firebase/storage";
-
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBj08OqMntL5m24BhPsnP1KYWc52TPjTP4",
-  authDomain: "migii-login.firebaseapp.com",
-  projectId: "migii-login",
-  storageBucket: "migii-login.appspot.com",
-  messagingSenderId: "153772267209",
-  appId: "1:153772267209:web:4bcb9fc65f97308f5a5f18",
-  databaseURL: "https://migii-login-default-rtdb.firebaseio.com"
+// Firebase auth compatibility types
+export const auth = {
+  currentUser: null,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const storage = getStorage(app);
+// Dummy RecaptchaVerifier for Firebase Auth compatibility
+export class RecaptchaVerifier {
+  constructor(_auth: any, containerId: string, _options: any) {
+    if (!document.getElementById(containerId)) {
+      const container = document.createElement('div');
+      container.id = containerId;
+      document.body.appendChild(container);
+    }
+  }
+  
+  clear() {
+    // No-op for compatibility
+  }
+  
+  render() {
+    return Promise.resolve('');
+  }
+}
 
-// Initialize reCAPTCHA verifier
-export const initRecaptcha = (buttonId: string) => {
-  return new RecaptchaVerifier(auth, buttonId, {
-    size: 'invisible',
-  });
+// Get all workers from localStorage
+export const getAllWorkersFromStorage = (): MigrantWorker[] => {
+  const workersStr = localStorage.getItem('workers');
+  return workersStr ? JSON.parse(workersStr) : [];
 };
 
-// Local storage solution for worker data
-const WORKERS_STORAGE_KEY = 'migii_workers';
-
-// Get all workers from local storage
-export const getAllWorkersFromStorage = (): any[] => {
-  const workersData = localStorage.getItem(WORKERS_STORAGE_KEY);
-  return workersData ? JSON.parse(workersData) : [];
-};
-
-// Register a worker using local storage
-export const registerWorkerInStorage = async (
-  worker: Omit<any, "id" | "status" | "registrationDate">
-): Promise<any> => {
+// Firebase-compatible functions for Supabase
+export const registerWorkerInStorage = async (worker: {
+  name: string;
+  age: number;
+  phone: string;
+  originState: string;
+  skill: string;
+  aadhaar: string;
+  email?: string;
+  photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
+}): Promise<MigrantWorker> => {
   try {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const dateStr = `${year}${month}${day}`;
-    
-    // Generate a worker ID
-    const randomSuffix = Math.floor(10000 + Math.random() * 90000).toString();
-    const workerId = `TN-MIG-${dateStr}-${randomSuffix}`;
-    
-    // Create the complete worker object
-    const completeWorker = {
+    const newWorker = {
       ...worker,
-      id: workerId,
-      status: "active",
-      registrationDate: `${month}/${day}/${year}`,
+      id: generateWorkerId(),
+      status: "active" as const,
+      registrationDate: new Date().toISOString(),
     };
 
-    // Get current workers array
-    const workers = getAllWorkersFromStorage();
-    
-    // Add new worker
-    workers.push(completeWorker);
-    
-    // Save back to storage
-    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(workers));
+    // First save to localStorage in case Supabase fails
+    const existingWorkers = getAllWorkersFromStorage();
+    localStorage.setItem('workers', JSON.stringify([...existingWorkers, newWorker]));
 
-    console.log("Worker registered:", completeWorker);
-    
-    return completeWorker;
-  } catch (error) {
-    console.error("Error registering worker:", error);
-    throw new Error("Failed to register worker. Please try again.");
-  }
-};
+    // Then try to save to Supabase
+    const { data, error } = await supabase
+      .from('workers')
+      .insert([newWorker])
+      .select();
 
-// Update worker status in local storage
-export const updateWorkerStatus = async (workerId: string, status: string) => {
-  try {
-    const workers = getAllWorkersFromStorage();
-    const updatedWorkers = workers.map(worker => {
-      if (worker.id === workerId) {
-        return { ...worker, status };
-      }
-      return worker;
-    });
-    
-    localStorage.setItem(WORKERS_STORAGE_KEY, JSON.stringify(updatedWorkers));
-    return true;
-  } catch (error) {
-    console.error("Error updating worker status:", error);
-    throw new Error("Failed to update worker status. Please try again.");
-  }
-};
-
-// Get all workers with a callback for real-time updates (simulated)
-export const getAllWorkersRealtime = (callback: (workers: any[]) => void) => {
-  // Initial call with current data
-  callback(getAllWorkersFromStorage());
-  
-  // Set up storage event listener to detect changes
-  const handleStorageChange = (e: StorageEvent) => {
-    if (e.key === WORKERS_STORAGE_KEY) {
-      callback(getAllWorkersFromStorage());
+    if (error) {
+      console.error("Error inserting into Supabase:", error);
+      return newWorker;
     }
-  };
-  
-  window.addEventListener('storage', handleStorageChange);
-  
-  // Return cleanup function
-  return () => window.removeEventListener('storage', handleStorageChange);
+
+    return data?.[0] as MigrantWorker || newWorker;
+  } catch (error) {
+    console.error("Error in registerWorkerInStorage:", error);
+    throw error;
+  }
 };
 
-export default app;
+export const updateWorkerStatus = async (workerId: string, status: string): Promise<void> => {
+  try {
+    // Update in localStorage first
+    const workers = getAllWorkersFromStorage();
+    const updatedWorkers = workers.map(worker => 
+      worker.id === workerId ? { ...worker, status } : worker
+    );
+    localStorage.setItem('workers', JSON.stringify(updatedWorkers));
+
+    // Then try Supabase update
+    const { error } = await supabase
+      .from('workers')
+      .update({ status })
+      .eq('id', workerId);
+
+    if (error) {
+      console.error("Error updating worker status in Supabase:", error);
+    }
+  } catch (error) {
+    console.error("Error in updateWorkerStatus:", error);
+    throw error;
+  }
+};
+
+export const getAllWorkersRealtime = (callback: (workers: MigrantWorker[]) => void) => {
+  // Initial fetch
+  supabase
+    .from('workers')
+    .select('*')
+    .then(({ data, error }) => {
+      if (error) {
+        console.error("Error fetching workers:", error);
+        // Fall back to localStorage if Supabase fails
+        const localWorkers = getAllWorkersFromStorage();
+        callback(localWorkers);
+        return;
+      }
+      
+      if (data) {
+        callback(data as MigrantWorker[]);
+        // Also update localStorage
+        localStorage.setItem('workers', JSON.stringify(data));
+      }
+    });
+
+  // Set up real-time subscription
+  const subscription = supabase
+    .channel('workers-changes')
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'workers' 
+    }, (payload) => {
+      // When a change happens, fetch all workers again
+      supabase
+        .from('workers')
+        .select('*')
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Error fetching workers after change:", error);
+            return;
+          }
+          
+          if (data) {
+            callback(data as MigrantWorker[]);
+            // Update localStorage
+            localStorage.setItem('workers', JSON.stringify(data));
+          }
+        });
+    })
+    .subscribe();
+
+  // Return unsubscribe function
+  return () => {
+    subscription.unsubscribe();
+  };
+};
+
+// Mock phone authentication for demo purposes
+export const signInWithPhoneNumber = async (phoneNumber: string) => {
+  try {
+    // For demo, we'll just add a delay to simulate the real process
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Check if phone exists in workers
+    const workers = getAllWorkersFromStorage();
+    const worker = workers.find(w => w.phone === phoneNumber);
+    
+    if (!worker) {
+      throw new Error("Phone number not registered. Please register first.");
+    }
+    
+    // Return a mock verification ID (we'll use the phone number itself)
+    return phoneNumber;
+  } catch (error) {
+    console.error("Error in signInWithPhoneNumber:", error);
+    throw error;
+  }
+};
+
+export const confirmOtp = async (verificationId: string, otp: string) => {
+  try {
+    // For demo, we'll accept any 6-digit OTP
+    if (otp.length !== 6 || !/^\d+$/.test(otp)) {
+      throw new Error("Invalid OTP format. Must be 6 digits.");
+    }
+    
+    // Simulate verification delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In a real app, we would verify with Firebase/Supabase here
+    // For demo, we'll just return the phone number (verification ID)
+    return {
+      user: {
+        phoneNumber: verificationId
+      }
+    };
+  } catch (error) {
+    console.error("Error in confirmOtp:", error);
+    throw error;
+  }
+};

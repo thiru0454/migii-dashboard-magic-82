@@ -13,7 +13,7 @@ export function WorkerLoginCard({ onSuccess }: WorkerLoginCardProps) {
         <CardHeader className="text-center space-y-2 pb-6">
           <CardTitle className="text-2xl font-bold text-primary">Worker Login</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Enter your phone number to receive an OTP via SMS
+            Enter your phone number or email to receive an OTP
           </CardDescription>
         </CardHeader>
         <CardContent className="px-6 pb-8">

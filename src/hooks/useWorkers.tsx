@@ -32,7 +32,18 @@ export function useWorkers() {
 
   // Register worker mutation
   const registerWorker = useMutation({
-    mutationFn: async (worker: Omit<MigrantWorker, "id" | "status" | "registrationDate">) => {
+    mutationFn: async (worker: {
+      name: string;
+      age: number;
+      phone: string;
+      originState: string;
+      skill: string;
+      aadhaar: string;
+      email?: string;
+      photoUrl?: string;
+      latitude?: number;
+      longitude?: number;
+    }) => {
       try {
         return await registerWorkerInStorage(worker);
       } catch (error: any) {

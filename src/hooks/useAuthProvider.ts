@@ -1,19 +1,14 @@
-
 import { useState, useEffect, useRef } from "react";
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  PhoneAuthProvider,
-  signInWithCredential,
-  RecaptchaVerifier
-} from "firebase/auth";
-import { auth } from "@/utils/firebase";
+import { supabase } from "@/utils/supabaseClient";
 import { User, UserType } from "@/types/auth";
 import { getAllBusinessUsers } from "@/utils/businessDatabase";
 import { toast } from "sonner";
-import { getAllWorkersFromStorage } from "@/utils/firebase";
+import { 
+  getAllWorkersFromStorage, 
+  RecaptchaVerifier, 
+  signInWithPhoneNumber, 
+  confirmOtp 
+} from "@/utils/firebase";
 
 export const useAuthProvider = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -21,21 +16,31 @@ export const useAuthProvider = () => {
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
+    // Restore user from localStorage if available
     const storedUser = localStorage.getItem("currentUser");
     if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
+      try {
+        const user = JSON.parse(storedUser);
+        setCurrentUser(user);
+      } catch (error) {
+        console.error("Error parsing stored user:", error);
+        localStorage.removeItem("currentUser");
+      }
     }
     
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    // Check Supabase session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsLoading(false);
       
-      if (user && !storedUser) {
-        signOut(auth);
+      if (!session) {
+        // If there's no Supabase session, clear any stored user data
+        setCurrentUser(null);
+        localStorage.removeItem("currentUser");
       }
     });
 
     return () => {
-      unsubscribe();
+      subscription.unsubscribe();
       if (recaptchaVerifierRef.current) {
         recaptchaVerifierRef.current.clear();
       }
@@ -55,7 +60,6 @@ export const useAuthProvider = () => {
           };
           setCurrentUser(user);
           localStorage.setItem("currentUser", JSON.stringify(user));
-          toast.success("Admin login successful!");
           setIsLoading(false);
           return true;
         }
@@ -69,8 +73,25 @@ export const useAuthProvider = () => {
         );
         
         if (businessUser) {
-          await signInWithEmailAndPassword(auth, email, password)
-            .catch(() => createUserWithEmailAndPassword(auth, email, password));
+          // Try to sign in with Supabase
+          const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          // If user doesn't exist in Supabase, create them
+          if (error && error.message.includes('Invalid login credentials')) {
+            await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                data: {
+                  name: businessUser.name,
+                  userType: "business",
+                }
+              }
+            });
+          }
           
           const user: User = {
             id: businessUser.id,
@@ -81,7 +102,6 @@ export const useAuthProvider = () => {
           };
           setCurrentUser(user);
           localStorage.setItem("currentUser", JSON.stringify(user));
-          toast.success("Business login successful!");
           setIsLoading(false);
           return true;
         }
@@ -95,7 +115,6 @@ export const useAuthProvider = () => {
       return false;
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("An error occurred during login.");
       setIsLoading(false);
       return false;
     }
@@ -106,7 +125,7 @@ export const useAuthProvider = () => {
       setIsLoading(true);
       
       if (!recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(null, 'recaptcha-container', {
           size: 'invisible',
           callback: () => {
             console.log("Recaptcha verified");
@@ -117,17 +136,31 @@ export const useAuthProvider = () => {
         });
       }
       
-      const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
+      // Get all workers from local storage
+      const workers = getAllWorkersFromStorage();
       
-      const provider = new PhoneAuthProvider(auth);
-      const verificationId = await provider.verifyPhoneNumber(
-        formattedPhone, 
-        recaptchaVerifierRef.current
-      );
+      // Find worker by phone
+      const worker = workers.find(w => w.phone === phone);
       
-      toast.success("OTP sent successfully!");
+      if (!worker) {
+        throw new Error("Phone number not registered. Please register first.");
+      }
+      
+      // Set current user immediately if we found the worker (for demo purposes)
+      const workerUser: User = {
+        id: worker.id,
+        email: worker.email || `worker-${worker.phone}@migii.app`,
+        name: worker.name,
+        userType: "worker",
+        phone: worker.phone,
+      };
+      
+      setCurrentUser(workerUser);
+      localStorage.setItem("currentUser", JSON.stringify(workerUser));
       setIsLoading(false);
-      return verificationId;
+      
+      // Just return the phone for verification ID
+      return phone;
     } catch (error: any) {
       console.error("Phone login error:", error);
       toast.error(`Failed to send OTP: ${error.message || error}`);
@@ -140,25 +173,25 @@ export const useAuthProvider = () => {
     try {
       setIsLoading(true);
       
-      const credential = PhoneAuthProvider.credential(verificationId, otp);
+      // Confirm OTP using our mock function
+      const result = await confirmOtp(verificationId, otp);
       
-      const userCredential = await signInWithCredential(auth, credential);
-      const firebaseUser = userCredential.user;
+      if (!result || !result.user) {
+        throw new Error("Invalid OTP verification result");
+      }
+      
+      const phone = verificationId;
       
       // Get all workers from local storage
       const workers = getAllWorkersFromStorage();
       
-      const formattedPhone = firebaseUser.phoneNumber?.startsWith("+91") 
-        ? firebaseUser.phoneNumber.substring(3) 
-        : firebaseUser.phoneNumber;
-      
       // Find worker by phone
-      const worker = workers.find(w => w.phone === formattedPhone);
+      const worker = workers.find(w => w.phone === phone);
       
       if (worker) {
         const workerUser: User = {
           id: worker.id,
-          email: `worker-${worker.phone}@migii.app`,
+          email: worker.email || `worker-${worker.phone}@migii.app`,
           name: worker.name,
           userType: "worker",
           phone: worker.phone,
@@ -167,12 +200,11 @@ export const useAuthProvider = () => {
         setCurrentUser(workerUser);
         localStorage.setItem("currentUser", JSON.stringify(workerUser));
         
-        toast.success("Login successful!");
         setIsLoading(false);
         return true;
       } else {
         toast.error("Phone number not found in registered workers. Please register first.");
-        await signOut(auth);
+        await supabase.auth.signOut();
         setIsLoading(false);
         return false;
       }
@@ -185,7 +217,7 @@ export const useAuthProvider = () => {
   };
 
   const logout = () => {
-    signOut(auth).then(() => {
+    supabase.auth.signOut().then(() => {
       setCurrentUser(null);
       localStorage.removeItem("currentUser");
       toast.success("Logged out successfully");

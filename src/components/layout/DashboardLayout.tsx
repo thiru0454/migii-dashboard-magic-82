@@ -1,7 +1,6 @@
 
 import { Sidebar } from "./Sidebar";
 import { cn } from "@/lib/utils";
-import { Toaster } from "@/components/ui/sonner";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -16,7 +15,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {children}
         </div>
       </main>
-      <Toaster position="top-right" />
     </div>
   );
 }

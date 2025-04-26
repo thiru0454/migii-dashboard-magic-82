@@ -10,7 +10,11 @@ import { WorkersTable } from "@/components/admin/WorkersTable";
 import { useWorkers } from "@/hooks/useWorkers";
 import { AssignWorkersTab } from "@/components/business/AssignWorkersTab";
 import { ProjectsTab } from "@/components/business/ProjectsTab";
+import { RequestWorkersForm } from "@/components/business/RequestWorkersForm";
+import { RequestStatusTab } from "@/components/business/RequestStatusTab";
 import { MigrantWorker } from "@/types/worker";
+import { useWorkerRequests } from "@/contexts/WorkerRequestsContext";
+import { toast } from "sonner";
 
 const BusinessDashboard = () => {
   const { currentUser } = useAuth();
@@ -18,6 +22,7 @@ const BusinessDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const { workers } = useWorkers();
   const [assignedWorkers, setAssignedWorkers] = useState<MigrantWorker[]>([]);
+  const { addRequest } = useWorkerRequests();
 
   useEffect(() => {
     // Simulate assigned workers based on business ID
@@ -41,6 +46,19 @@ const BusinessDashboard = () => {
     navigate("/login");
   };
 
+  const handleSubmitRequest = (request: WorkerRequest) => {
+    addRequest(request);
+    toast.success("Worker Request Submitted", {
+      description: `Your request for ${request.numberOfWorkers} workers has been submitted successfully. The admin will review it shortly.`,
+      duration: 5000,
+      action: {
+        label: "View Requests",
+        onClick: () => setActiveTab("requests")
+      }
+    });
+    setActiveTab("requests");
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -62,6 +80,8 @@ const BusinessDashboard = () => {
             <TabsTrigger value="workers">Workers</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="assign">Assign Workers</TabsTrigger>
+            <TabsTrigger value="request">Request Workers</TabsTrigger>
+            <TabsTrigger value="requests">Request Status</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -158,6 +178,17 @@ const BusinessDashboard = () => {
               businessId={currentUser?.businessId} 
               currentWorkers={assignedWorkers} 
             />
+          </TabsContent>
+
+          <TabsContent value="request">
+            <RequestWorkersForm 
+              businessId={currentUser?.businessId || ""} 
+              onSubmit={handleSubmitRequest}
+            />
+          </TabsContent>
+
+          <TabsContent value="requests">
+            <RequestStatusTab />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,6 +1,5 @@
-
 import { MigrantWorker } from "@/types/worker";
-import { useWorkers } from "@/hooks/useWorkers";
+import { useWorkersContext } from "@/contexts/WorkersContext";
 import { DataTable } from "@/components/ui/data-table";
 import {
   ColumnDef,
@@ -16,6 +15,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { WorkerDetailsDialog } from "./WorkerDetailsDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, User, MapPin } from "lucide-react";
+import { toast } from "sonner";
 
 interface WorkersTabProps {
   onViewDetails?: (worker: MigrantWorker) => void;
@@ -29,16 +36,19 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<MigrantWorker | null>(null);
 
-  const { workers, isLoadingWorkers, updateWorker } = useWorkers();
+  const { workers, updateWorker } = useWorkersContext();
+
+  const updateWorkerStatus = (worker: MigrantWorker, newStatus: "active" | "inactive" | "pending") => {
+    updateWorker(worker.id, { status: newStatus });
+    toast.success("Worker status updated", {
+      description: `${worker.name}'s status has been updated to ${newStatus}`,
+    });
+  };
 
   const columns: ColumnDef<MigrantWorker>[] = [
     {
       accessorKey: "name",
       header: "Name",
-    },
-    {
-      accessorKey: "age",
-      header: "Age",
     },
     {
       accessorKey: "phone",
@@ -47,6 +57,16 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
     {
       accessorKey: "skill",
       header: "Skill",
+      cell: ({ row }) => {
+        const skill = row.original.skill;
+        return (
+          <div className="flex flex-wrap gap-1">
+            <span className="px-2 py-1 bg-primary/10 rounded-full text-sm">
+              {skill}
+            </span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "originState",
@@ -75,25 +95,50 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
     },
     {
       id: "actions",
-      cell: ({ row }) => (
-        <Button onClick={() => {
-          handleViewDetails(row.original);
-        }}>
-          View Details
-        </Button>
-      )
-    }
+      cell: ({ row }) => {
+        const worker = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedWorker(worker);
+                  setIsDialogOpen(true);
+                }}
+              >
+                <User className="mr-2 h-4 w-4" />
+                View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  // Handle location tracking
+                  toast.info("Location tracking feature coming soon");
+                }}
+              >
+                <MapPin className="mr-2 h-4 w-4" />
+                Track Location
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
   ];
 
   const table = useReactTable({
-    data: workers as MigrantWorker[],
+    data: workers,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
@@ -104,32 +149,14 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
     },
   });
 
-  const handleViewDetails = (worker: MigrantWorker) => {
-    setSelectedWorker(worker);
-    setIsDialogOpen(true);
-    if (onViewDetails) {
-      onViewDetails(worker);
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setSelectedWorker(null);
-  };
-
-  const updateWorkerStatus = (worker: MigrantWorker, status: "active" | "inactive" | "pending") => {
-    const updatedWorker = { ...worker, status };
-    updateWorker.mutate(updatedWorker);
-  };
-
   return (
-    <div>
+    <div className="space-y-4">
       <DataTable table={table} />
       {selectedWorker && (
         <WorkerDetailsDialog
+          worker={selectedWorker}
           open={isDialogOpen}
           onOpenChange={setIsDialogOpen}
-          worker={selectedWorker}
         />
       )}
     </div>

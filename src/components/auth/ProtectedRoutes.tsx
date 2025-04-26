@@ -1,7 +1,7 @@
-
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { User } from "@/types/auth";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,7 +13,16 @@ const ProtectedRoute = ({ children, userType }: ProtectedRouteProps) => {
   const location = useLocation();
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[70vh]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   if (!currentUser) {

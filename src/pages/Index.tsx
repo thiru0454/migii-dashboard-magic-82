@@ -67,7 +67,7 @@ const Index = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight">MIGII</h1>
             <p className="text-muted-foreground">
               Welcome to Migii Worker Management System
             </p>
@@ -231,42 +231,6 @@ const Index = () => {
                       No worker data available
                     </div>
                   )}
-                </div>
-              </DashboardCard>
-            </div>
-            
-            <div className="grid gap-4 grid-cols-1">
-              <DashboardCard
-                title="Recent Workers"
-                icon={<UserPlus size={16} />}
-              >
-                <div className="space-y-2">
-                  {typedWorkers.length > 0 ? (
-                    typedWorkers.slice(0, 5).map((worker) => (
-                      <div key={worker.id} className="flex items-center justify-between border-b pb-2">
-                        <div className="space-y-1">
-                          <p className="font-medium">{worker.name}</p>
-                          <p className="text-xs text-muted-foreground">{worker.skill}</p>
-                        </div>
-                        <div className="flex items-center">
-                          <Button variant="ghost" size="icon" asChild>
-                            <a href={`/admin-dashboard`}>
-                              <ChevronRight className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-muted-foreground text-center py-4">
-                      No recent workers
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 text-center">
-                  <Button variant="outline" size="sm" asChild>
-                    <a href="/admin-dashboard">View All Workers</a>
-                  </Button>
                 </div>
               </DashboardCard>
             </div>

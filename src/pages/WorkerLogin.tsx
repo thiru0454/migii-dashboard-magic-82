@@ -7,25 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { LogIn } from "lucide-react";
+import { WorkerLoginForm } from "@/components/forms/WorkerLoginForm";
+import { getAllWorkersFromStorage } from "@/utils/firebase";
 
 const WorkerLogin = () => {
   const { currentUser, logout } = useAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const navigate = useNavigate();
-  
-  // Check if already logged in
-  useEffect(() => {
-    if (currentUser && currentUser.userType === "worker") {
-      setIsLoggedIn(true);
-    } else {
-      setIsLoggedIn(false);
-    }
-  }, [currentUser]);
-  
-  const workerData = {
-    workerId: currentUser?.id || "TN-MIG-20240101-12345",
-    name: currentUser?.name || "Worker User",
-    phone: currentUser?.phone || "9876543210",
+  const [workerData, setWorkerData] = useState({
+    workerId: "",
+    name: "Worker User",
+    phone: "",
     skill: "Construction Worker",
     originState: "Bihar",
     status: "Active",
@@ -43,15 +34,42 @@ const WorkerLogin = () => {
         status: "Resolved",
       },
     ],
-  };
+  });
+  
+  const navigate = useNavigate();
+  
+  // Check if already logged in and fetch worker data
+  useEffect(() => {
+    if (currentUser && currentUser.userType === "worker") {
+      setIsLoggedIn(true);
+      
+      // Fetch worker details from storage based on currentUser info
+      const workers = getAllWorkersFromStorage();
+      const worker = workers.find(w => w.id === currentUser.id || w.phone === currentUser.phone);
+      
+      if (worker) {
+        setWorkerData({
+          workerId: worker.id,
+          name: worker.name,
+          phone: worker.phone,
+          skill: worker.skill || "Construction Worker",
+          originState: worker.originState,
+          status: worker.status || "Active",
+          supportHistory: workerData.supportHistory, // Keep existing support history
+        });
+      }
+    } else {
+      setIsLoggedIn(false);
+    }
+  }, [currentUser]);
 
   const handleSignOut = () => {
     logout();
     setIsLoggedIn(false);
   };
 
-  const redirectToLogin = () => {
-    navigate("/login?tab=worker");
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
   };
 
   return (
@@ -79,13 +97,7 @@ const WorkerLogin = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-6 pb-8">
-                <Button 
-                  className="w-full flex items-center justify-center gap-2"
-                  onClick={redirectToLogin}
-                >
-                  <LogIn className="h-4 w-4" />
-                  Login with Phone Number
-                </Button>
+                <WorkerLoginForm onSuccess={handleLoginSuccess} />
                 <div className="mt-4 text-center text-sm text-muted-foreground">
                   <p>Not registered yet?</p>
                   <Button 
