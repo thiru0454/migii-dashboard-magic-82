@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -18,8 +17,15 @@ interface WorkerLocation {
   timestamp: number;
 }
 
-interface MockMessageEvent {
+// Fix: Extend from MessageEvent to ensure compatibility
+interface MockMessageEvent extends Omit<MessageEvent<any>, 'data'> {
   data: string;
+  // Add required MessageEvent properties with default values
+  lastEventId: string;
+  origin: string;
+  ports: MessagePort[];
+  source: MessageEventSource | null;
+  // Add any other required properties
 }
 
 export function WorkerTrackingMap() {
@@ -82,6 +88,7 @@ export function WorkerTrackingMap() {
         startMockLocationUpdates();
       };
       
+      // Fix: Cast the mock event to MessageEvent<any> to satisfy TypeScript
       mockSocket.onmessage = (event: MockMessageEvent) => {
         try {
           const data = JSON.parse(event.data);

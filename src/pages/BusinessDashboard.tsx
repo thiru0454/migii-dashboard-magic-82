@@ -13,21 +13,6 @@ import { useWorkers } from "@/hooks/useWorkers";
 import { useWorkerRequests } from "@/contexts/WorkerRequestsContext";
 import { toast } from "sonner";
 
-// Define WorkerRequest type here
-interface WorkerRequest {
-  id: string;
-  businessId: string;
-  businessName: string;
-  contactPerson: string;
-  phone: string;
-  email: string;
-  requiredSkills: string;
-  numberOfWorkers: number;
-  description: string;
-  status: "pending" | "approved" | "rejected";
-  createdAt: string;
-}
-
 export default function AdminDashboard() {
   const { logout } = useAuth();
   const [tab, setTab] = useState("workers");
@@ -74,10 +59,8 @@ export default function AdminDashboard() {
         </TabsContent>
         <TabsContent value="requests">
           <div className="mt-4">
-            <WorkerRequestsTab 
-              requests={requests}
-              onUpdateRequest={handleUpdateRequest}
-            />
+            {/* Remove the props as they're not needed - WorkerRequestsTab manages its own state */}
+            <WorkerRequestsTab />
           </div>
         </TabsContent>
       </Tabs>

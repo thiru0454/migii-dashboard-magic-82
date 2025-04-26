@@ -1,3 +1,4 @@
+
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { AdminDashboardHeader } from "@/components/admin/AdminDashboardHeader";
 import { WorkersTab } from "@/components/admin/WorkersTab";
@@ -58,10 +59,8 @@ export default function AdminDashboard() {
         </TabsContent>
         <TabsContent value="requests">
           <div className="mt-4">
-            <WorkerRequestsTab 
-              requests={requests}
-              onUpdateRequest={handleUpdateRequest}
-            />
+            {/* Remove the props as they're not needed - WorkerRequestsTab manages its own state */}
+            <WorkerRequestsTab />
           </div>
         </TabsContent>
       </Tabs>
