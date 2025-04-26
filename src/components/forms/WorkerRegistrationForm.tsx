@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -70,7 +69,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         latitude: location.latitude,
         longitude: location.longitude,
         id: `worker_${Date.now()}`,
-        status: "pending" as "pending" | "approved" | "rejected" | "active" | "inactive", // Use type assertion to specify exact literal type
+        status: "pending",
         registrationDate: new Date().toISOString()
       };
 
