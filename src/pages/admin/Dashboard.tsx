@@ -1,9 +1,11 @@
+
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { WorkerRequestsList } from "@/components/admin/WorkerRequestsList";
 import { AssignWorkersTab } from "@/components/admin/AssignWorkersTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkersTab } from "@/components/admin/WorkersTab";
+import { WorkerTrackingMap } from "@/components/admin/WorkerTrackingMap";
 import { useWorkersContext } from "@/contexts/WorkersContext";
 
 export default function AdminDashboard() {
@@ -15,10 +17,11 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         
         <Tabs defaultValue="workers" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="workers">Workers</TabsTrigger>
             <TabsTrigger value="requests">Worker Requests</TabsTrigger>
             <TabsTrigger value="assign">Assign Workers</TabsTrigger>
+            <TabsTrigger value="tracking">Live Tracking</TabsTrigger>
           </TabsList>
           
           <TabsContent value="workers">
@@ -38,8 +41,14 @@ export default function AdminDashboard() {
               <AssignWorkersTab />
             </DashboardCard>
           </TabsContent>
+          
+          <TabsContent value="tracking">
+            <DashboardCard title="Live Worker Tracking">
+              <WorkerTrackingMap />
+            </DashboardCard>
+          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
   );
-} 
+}

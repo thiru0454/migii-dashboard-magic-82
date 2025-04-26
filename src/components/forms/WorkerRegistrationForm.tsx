@@ -66,8 +66,9 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         skill: values.skill,
         aadhaar: values.aadhaar,
         photoUrl: photoPreview || undefined,
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude: location.latitude || undefined,
+        longitude: location.longitude || undefined,
+        status: "pending" as const, // Explicitly set the literal type
       };
 
       // Register worker directly without OTP verification

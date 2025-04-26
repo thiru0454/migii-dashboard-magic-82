@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WorkerRegistrationForm } from "@/components/forms/WorkerRegistrationForm";
@@ -13,7 +14,11 @@ import { CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useWorkersContext } from "@/contexts/WorkersContext";
 
-const WorkerRegistration = () => {
+interface WorkerRegistrationProps {
+  // Add any props if needed
+}
+
+const WorkerRegistration: React.FC<WorkerRegistrationProps> = () => {
   const [registeredWorker, setRegisteredWorker] = useState<MigrantWorker | null>(null);
   const navigate = useNavigate();
   const { addWorker } = useWorkersContext();
