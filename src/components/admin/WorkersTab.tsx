@@ -1,3 +1,4 @@
+
 import { MigrantWorker } from "@/types/worker";
 import { useWorkersContext } from "@/contexts/WorkersContext";
 import { DataTable } from "@/components/ui/data-table";
@@ -38,7 +39,7 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
 
   const { workers, updateWorker } = useWorkersContext();
 
-  const updateWorkerStatus = (worker: MigrantWorker, newStatus: "active" | "inactive" | "pending") => {
+  const updateWorkerStatus = (worker: MigrantWorker, newStatus: "pending" | "approved" | "rejected") => {
     updateWorker(worker.id, { status: newStatus });
     toast.success("Worker status updated", {
       description: `${worker.name}'s status has been updated to ${newStatus}`,
@@ -82,13 +83,13 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
             className="border rounded px-2 py-1"
             value={worker.status}
             onChange={(e) => {
-              const newStatus = e.target.value as "active" | "inactive" | "pending";
+              const newStatus = e.target.value as "pending" | "approved" | "rejected";
               updateWorkerStatus(worker, newStatus);
             }}
           >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
             <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
           </select>
         );
       },

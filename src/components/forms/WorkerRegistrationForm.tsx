@@ -68,6 +68,9 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
         photoUrl: photoPreview || undefined,
         latitude: location.latitude,
         longitude: location.longitude,
+        id: `worker_${Date.now()}`,
+        status: "pending" as const,
+        registrationDate: new Date().toISOString()
       };
 
       // Register worker in local storage
