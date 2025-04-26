@@ -23,52 +23,17 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 interface DataTableProps<TData, TValue> {
-  columns?: ColumnDef<TData, TValue>[];
-  data?: TData[];
-  loading?: boolean;
-  table?: any;
-  onStatusChange?: (workerId: string, status: 'pending' | 'approved' | 'rejected') => void;
+  table: ReturnType<typeof useReactTable<TData>>;
 }
 
 export function DataTable<TData, TValue>({
-  columns = [],
-  data = [],
-  loading = false,
   table,
-  onStatusChange,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  
-  // Create a table instance if one is not provided
-  const tableInstance = table || useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: getFilteredRowModel(),
-    state: {
-      sorting,
-      columnFilters,
-    },
-  });
-  
-  if (loading) {
-    return (
-      <div className="rounded-md border p-8 flex items-center justify-center">
-        <div className="text-center text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
-          {tableInstance.getHeaderGroups().map((headerGroup) => (
+          {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <TableHead key={header.id}>
@@ -84,8 +49,8 @@ export function DataTable<TData, TValue>({
           ))}
         </TableHeader>
         <TableBody>
-          {tableInstance.getRowModel().rows.length ? (
-            tableInstance.getRowModel().rows.map((row) => (
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
@@ -100,7 +65,7 @@ export function DataTable<TData, TValue>({
           ) : (
             <TableRow>
               <TableCell
-                colSpan={tableInstance.getAllColumns().length}
+                colSpan={table.getAllColumns().length}
                 className="h-24 text-center"
               >
                 No results.
@@ -113,16 +78,16 @@ export function DataTable<TData, TValue>({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => tableInstance.previousPage()}
-          disabled={!tableInstance.getCanPreviousPage()}
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
         >
           Previous
         </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => tableInstance.nextPage()}
-          disabled={!tableInstance.getCanNextPage()}
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
         >
           Next
         </Button>

@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-=======
-
-import { useState, useEffect } from "react";
->>>>>>> 7ced357b9f9b45b9bba7dffc1b78bfe5b0923c30
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { AdminDashboardHeader } from "@/components/admin/AdminDashboardHeader";
 import { WorkersTab } from "@/components/admin/WorkersTab";
@@ -16,7 +11,6 @@ import { useState } from "react";
 import { useWorkers } from "@/hooks/useWorkers";
 import { useWorkerRequests } from "@/contexts/WorkerRequestsContext";
 import { toast } from "sonner";
-import { useReactTable, getCoreRowModel, getPaginationRowModel } from "@tanstack/react-table";
 
 export default function AdminDashboard() {
   const { logout } = useAuth();
@@ -24,61 +18,9 @@ export default function AdminDashboard() {
   const { workers } = useWorkers();
   const { requests, updateRequest } = useWorkerRequests();
 
-<<<<<<< HEAD
   const handleUpdateRequest = (businessId: string, status: "approved" | "rejected") => {
     updateRequest(businessId, status);
     toast.success(`Request ${status} successfully!`);
-=======
-  // Load initial data
-  useEffect(() => {
-    loadWorkers();
-
-    // Listen for worker status change events
-    const handleWorkerStatusChange = (event: CustomEvent) => {
-      const { workerId, status } = event.detail;
-      handleStatusChange(workerId, status);
-    };
-
-    window.addEventListener('workerStatusChange', handleWorkerStatusChange as EventListener);
-    return () => {
-      window.removeEventListener('workerStatusChange', handleWorkerStatusChange as EventListener);
-    };
-  }, []);
-
-  // Listen for real-time updates
-  useEffect(() => {
-    const handleWorkersUpdated = (event: CustomEvent) => {
-      setWorkers(event.detail.workers);
-    };
-
-    window.addEventListener('workersUpdated', handleWorkersUpdated as EventListener);
-    return () => {
-      window.removeEventListener('workersUpdated', handleWorkersUpdated as EventListener);
-    };
-  }, []);
-
-  const loadWorkers = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllWorkers();
-      setWorkers(data);
-    } catch (error) {
-      console.error('Error loading workers:', error);
-      toast.error('Failed to load workers');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStatusChange = async (workerId: string, newStatus: 'pending' | 'approved' | 'rejected') => {
-    try {
-      await updateWorkerStatus(workerId, newStatus);
-      toast.success('Worker status updated successfully');
-    } catch (error) {
-      console.error('Error updating worker status:', error);
-      toast.error('Failed to update worker status');
-    }
->>>>>>> 7ced357b9f9b45b9bba7dffc1b78bfe5b0923c30
   };
 
   return (

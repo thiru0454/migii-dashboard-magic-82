@@ -1,4 +1,3 @@
-
 // This is a compatibility layer between Firebase and Supabase
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
@@ -50,11 +49,10 @@ export const registerWorkerInStorage = async (worker: {
   longitude?: number;
 }): Promise<MigrantWorker> => {
   try {
-    const newWorker: MigrantWorker = {
+    const newWorker = {
       ...worker,
       id: generateWorkerId(),
-      status: "active",
-      email: worker.email || "", // Ensure email is defined
+      status: "active" as const,
       registrationDate: new Date().toISOString(),
     };
 

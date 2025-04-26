@@ -51,7 +51,7 @@ export function WorkerRequestForm() {
   const loadAvailableWorkers = () => {
     try {
       const workers = getAllWorkersFromStorage();
-      const activeWorkers = workers.filter(worker => worker.status === "approved");
+      const activeWorkers = workers.filter(worker => worker.status === "active");
       setAvailableWorkers(activeWorkers);
     } catch (error) {
       console.error("Error loading workers:", error);
@@ -189,4 +189,4 @@ export function WorkerRequestForm() {
       </CardContent>
     </Card>
   );
-}
+} 
