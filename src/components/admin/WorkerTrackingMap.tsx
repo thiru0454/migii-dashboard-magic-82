@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -374,9 +375,9 @@ export function WorkerTrackingMap() {
               preventDefault: () => {},
               stopImmediatePropagation: () => {},
               stopPropagation: () => {},
-              AT_TARGET: 0,
-              BUBBLING_PHASE: 0,
-              CAPTURING_PHASE: 0,
+              AT_TARGET: 2, // Changed from 0 to 2
+              BUBBLING_PHASE: 3, // Changed from 0 to 3
+              CAPTURING_PHASE: 1, // Changed from 0 to 1
               NONE: 0
             };
             
