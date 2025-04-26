@@ -352,9 +352,9 @@ export function WorkerTrackingMap() {
                 bubbles: boolean = false, 
                 cancelable: boolean = false, 
                 data?: any, 
-                origin?: string, 
-                lastEventId?: string, 
-                source?: MessageEventSource | null
+                origin?: string = '', 
+                lastEventId?: string = '', 
+                source?: MessageEventSource | null = null
               ) => {
                 console.log('Mock initMessageEvent called', { type, bubbles, cancelable, data, origin, lastEventId, source });
               }
