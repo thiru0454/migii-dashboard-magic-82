@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DataTable } from "@/components/ui/data-table";
@@ -5,6 +6,7 @@ import { columns } from "@/components/tables/worker-columns";
 import { MigrantWorker } from "@/types/worker";
 import { getAllWorkers, updateWorkerStatus } from "@/services/workerService";
 import { toast } from "sonner";
+import { useReactTable, getCoreRowModel, getPaginationRowModel } from "@tanstack/react-table";
 
 const AdminDashboard = () => {
   const [workers, setWorkers] = useState<MigrantWorker[]>([]);
@@ -13,6 +15,17 @@ const AdminDashboard = () => {
   // Load initial data
   useEffect(() => {
     loadWorkers();
+
+    // Listen for worker status change events
+    const handleWorkerStatusChange = (event: CustomEvent) => {
+      const { workerId, status } = event.detail;
+      handleStatusChange(workerId, status);
+    };
+
+    window.addEventListener('workerStatusChange', handleWorkerStatusChange as EventListener);
+    return () => {
+      window.removeEventListener('workerStatusChange', handleWorkerStatusChange as EventListener);
+    };
   }, []);
 
   // Listen for real-time updates
