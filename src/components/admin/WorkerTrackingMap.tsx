@@ -345,13 +345,39 @@ export function WorkerTrackingMap() {
             timestamp: Date.now()
           };
           
-          // Simulate receiving a WebSocket message
+          // Simulate receiving a WebSocket message with all required properties
           if (socketRef.current && socketRef.current.onmessage) {
             const mockEvent: MockMessageEvent = {
               data: JSON.stringify({
                 type: 'location_update',
                 worker: newLocation
-              })
+              }),
+              lastEventId: '',
+              origin: '',
+              ports: [],
+              source: null,
+              bubbles: false,
+              cancelBubble: false,
+              cancelable: false,
+              composed: false,
+              currentTarget: null,
+              defaultPrevented: false,
+              eventPhase: 0,
+              isTrusted: true,
+              returnValue: true,
+              srcElement: null,
+              target: null,
+              timeStamp: Date.now(),
+              type: 'message',
+              composedPath: () => [],
+              initEvent: () => {},
+              preventDefault: () => {},
+              stopImmediatePropagation: () => {},
+              stopPropagation: () => {},
+              AT_TARGET: 0,
+              BUBBLING_PHASE: 0,
+              CAPTURING_PHASE: 0,
+              NONE: 0
             };
             
             socketRef.current.onmessage(mockEvent);
