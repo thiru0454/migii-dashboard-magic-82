@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { AlertCircle, Loader2, Mail, MessageSquare, Phone, Timer } from "lucide-react";
 import { findWorkerByEmail, findWorkerByPhone } from "@/utils/firebase";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const contactSchema = z.object({
   contact: z.string().min(1, { message: "Email or phone number is required" }),
@@ -176,7 +177,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   return (
     <div className="space-y-6">
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="animate-in fade-in slide-in-from-top duration-300">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -184,19 +185,19 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
 
       {step === "contact" ? (
         <Form {...contactForm}>
-          <form onSubmit={contactForm.handleSubmit(handleSendOTP)} className="space-y-6">
+          <form onSubmit={contactForm.handleSubmit(handleSendOTP)} className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
             <FormField
               control={contactForm.control}
               name="contact"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="hover-glow rounded-lg">
                   <FormLabel>Email or Phone Number</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input 
                         placeholder="Enter your email or phone number" 
                         {...field} 
-                        className="pl-10"
+                        className="pl-10 transition-all duration-200 hover:border-primary/50 focus:border-primary"
                       />
                       <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                         {field.value.includes('@') ? 
@@ -213,10 +214,10 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Sending OTP...
                 </>
               ) : (
@@ -227,7 +228,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         </Form>
       ) : (
         <Form {...otpForm}>
-          <form onSubmit={otpForm.handleSubmit(handleVerifyOTP)} className="space-y-6">
+          <form onSubmit={otpForm.handleSubmit(handleVerifyOTP)} className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
             <div className="space-y-2">
               <FormLabel>Enter OTP sent to {contact}</FormLabel>
               <FormField
@@ -272,10 +273,10 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
               />
             </div>
             
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Verifying...
                 </>
               ) : (
@@ -289,7 +290,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <Button 
               type="button" 
               variant="outline" 
-              className="w-full"
+              className="w-full hover-scale"
               onClick={() => setStep("contact")}
               disabled={isLoading}
             >

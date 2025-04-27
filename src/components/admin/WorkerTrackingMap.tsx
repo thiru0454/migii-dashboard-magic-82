@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { WorkerLocationDialog } from "./WorkerLocationDialog";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZGVtb3VzZXIiLCJhIjoiY2xhd2lioTJzMGkwbzN5bXBwZjE2bnF1cCJ9.8rCpA8p9no3k4YrPQjd5dg";
 
@@ -53,26 +54,6 @@ export function WorkerTrackingMap() {
     
     console.log("Initializing worker tracking map");
     
-    // Small delay to ensure the container is properly rendered
-    const timer = setTimeout(() => {
-      initializeMap();
-    }, 300);
-    
-    return () => {
-      clearTimeout(timer);
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
-    };
-  }, []);
-  
-  const initializeMap = () => {
-    if (!mapContainer.current || mapRef.current) return;
-
     try {
       mapboxgl.accessToken = MAPBOX_TOKEN;
       const map = new mapboxgl.Map({
@@ -80,9 +61,14 @@ export function WorkerTrackingMap() {
         style: "mapbox://styles/mapbox/streets-v11",
         center: [80.2707, 13.0827],
         zoom: 10,
+        attributionControl: false
       });
 
-      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+      map.addControl(new mapboxgl.NavigationControl({ 
+        showCompass: true,
+        showZoom: true,
+        visualizePitch: true
+      }), "top-right");
       
       map.on('load', () => {
         console.log("Map loaded successfully");
@@ -96,11 +82,27 @@ export function WorkerTrackingMap() {
       });
       
       mapRef.current = map;
+      
+      // Improve mobile responsiveness
+      const resizeMap = () => {
+        if (mapRef.current) {
+          mapRef.current.resize();
+        }
+      };
+      
+      window.addEventListener('resize', resizeMap);
+      return () => {
+        window.removeEventListener('resize', resizeMap);
+        if (mapRef.current) {
+          mapRef.current.remove();
+        }
+      };
+      
     } catch (error) {
       console.error("Failed to initialize map:", error);
       toast.error("Failed to initialize map");
     }
-  };
+  }, []);
 
   useEffect(() => {
     const mockWebSocketConnection = async () => {
@@ -589,7 +591,7 @@ export function WorkerTrackingMap() {
         <div className="flex flex-wrap gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="relative">
+              <Button variant="outline" size="sm" className="relative hover-scale">
                 <Bell className="h-4 w-4 mr-1" />
                 Alerts
                 {unreadAlerts > 0 && (
@@ -603,7 +605,7 @@ export function WorkerTrackingMap() {
               <DropdownMenuLabel className="flex justify-between items-center">
                 <span>Recent Alerts</span>
                 {unreadAlerts > 0 && (
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllAlertsAsRead}>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs hover-scale" onClick={markAllAlertsAsRead}>
                     Mark all as read
                   </Button>
                 )}
@@ -637,7 +639,7 @@ export function WorkerTrackingMap() {
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="justify-center" asChild>
-                <Button variant="ghost" size="sm" className="w-full">
+                <Button variant="ghost" size="sm" className="w-full hover-scale">
                   View All Alerts
                 </Button>
               </DropdownMenuItem>
@@ -648,6 +650,7 @@ export function WorkerTrackingMap() {
             variant="outline" 
             size="sm"
             onClick={toggleZonesView}
+            className="hover-scale"
           >
             {showZones ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
             {showZones ? 'Hide Zones' : 'Show Zones'}
@@ -657,6 +660,7 @@ export function WorkerTrackingMap() {
             variant="outline" 
             size="sm"
             onClick={toggleHistoryView}
+            className="hover-scale"
           >
             <Layers className="h-4 w-4 mr-1" />
             {showHistory ? 'Hide History' : 'Show History'}
@@ -666,6 +670,7 @@ export function WorkerTrackingMap() {
             variant="outline" 
             size="sm"
             onClick={centerMap}
+            className="hover-scale"
           >
             <Map className="h-4 w-4 mr-1" />
             Center Map
@@ -675,13 +680,15 @@ export function WorkerTrackingMap() {
       
       <div 
         ref={mapContainer} 
-        className="w-full h-[60vh] rounded-lg border shadow relative"
+        className="w-full h-[60vh] md:h-[70vh] lg:h-[75vh] rounded-lg border shadow-lg relative overflow-hidden transition-all duration-300"
       >
-        {!connected && (
+        {(!mapInitialized || !connected) && (
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p>Connecting to tracking service...</p>
+            <div className="text-center space-y-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-lg font-medium text-primary animate-pulse">
+                {!mapInitialized ? 'Initializing map...' : 'Connecting to tracking service...'}
+              </p>
             </div>
           </div>
         )}
