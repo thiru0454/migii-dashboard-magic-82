@@ -7,6 +7,28 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabaseClient";
 import mongoDbService, { WorkerLocation } from "@/utils/mongoDbService";
+import { geoAlertService, GeoZone } from "@/utils/geoAlertService";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Bell,
+  MapPin,
+  AlertTriangle,
+  AlertCircle,
+  Map,
+  Layers,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { WorkerLocationDialog } from "./WorkerLocationDialog";
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZGVtb3VzZXIiLCJhIjoiY2xhd2lioTJzMGkwbzN5bXBwZjE2bnF1cCJ9.8rCpA8p9no3k4YrPQjd5dg";
 
@@ -14,12 +36,18 @@ export function WorkerTrackingMap() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
+  const zoneLayersRef = useRef<string[]>([]);
   const [workers, setWorkers] = useState<MigrantWorker[]>([]);
   const [workerLocations, setWorkerLocations] = useState<Record<string, WorkerLocation>>({});
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showZones, setShowZones] = useState(true);
   const [mapInitialized, setMapInitialized] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState<MigrantWorker | null>(null);
+  const [showWorkerDialog, setShowWorkerDialog] = useState(false);
+  const [unreadAlerts, setUnreadAlerts] = useState<number>(0);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -113,6 +141,7 @@ export function WorkerTrackingMap() {
     
     console.log("Updating worker locations on map:", Object.keys(workerLocations).length);
     
+    // Update markers for worker locations
     Object.values(workerLocations).forEach((location) => {
       const { workerId, name, latitude, longitude } = location;
       
@@ -134,6 +163,16 @@ export function WorkerTrackingMap() {
           .addTo(mapRef.current);
           
         markersRef.current[workerId] = marker;
+        
+        // Add click handler to marker element
+        const markerElement = marker.getElement();
+        markerElement.addEventListener('click', () => {
+          const worker = workers.find(w => w.id === workerId);
+          if (worker) {
+            setSelectedWorker(worker);
+            setShowWorkerDialog(true);
+          }
+        });
       }
     });
 
@@ -146,10 +185,33 @@ export function WorkerTrackingMap() {
       });
     }
     
+    // Update zones on map
+    if (showZones) {
+      displayGeoZones();
+    } else {
+      hideGeoZones();
+    }
+    
     if (showHistory) {
       displayHistoryPaths();
     }
-  }, [workerLocations, showHistory, mapInitialized]);
+  }, [workerLocations, showHistory, showZones, mapInitialized, workers]);
+
+  // Check for unread alerts periodically
+  useEffect(() => {
+    const checkAlerts = () => {
+      const unread = geoAlertService.getUnreadAlerts().length;
+      setUnreadAlerts(unread);
+    };
+    
+    // Initial check
+    checkAlerts();
+    
+    // Set up interval
+    const interval = setInterval(checkAlerts, 10000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchWorkers = async () => {
     try {
@@ -184,6 +246,21 @@ export function WorkerTrackingMap() {
           ...prev,
           [location.workerId]: location
         }));
+        
+        // Check for geofence events
+        const worker = workers.find(w => w.id === location.workerId);
+        if (worker) {
+          const alerts = geoAlertService.updateWorkerLocation(
+            worker, 
+            location.latitude, 
+            location.longitude
+          );
+          
+          // Update unread alerts count
+          if (alerts.length > 0) {
+            setUnreadAlerts(prev => prev + alerts.length);
+          }
+        }
       })
       .catch(error => {
         console.error("Failed to update worker location:", error);
@@ -247,6 +324,164 @@ export function WorkerTrackingMap() {
     });
   };
 
+  const displayGeoZones = () => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    
+    // Clear previous zones
+    hideGeoZones();
+    
+    // Get all zones
+    const zones = geoAlertService.getAllGeoZones();
+    
+    // Add each zone to the map
+    zones.forEach((zone, index) => {
+      const zoneId = `zone-${zone.id}`;
+      const zoneOutlineId = `zone-outline-${zone.id}`;
+      
+      // Zone colors based on type
+      let fillColor;
+      let outlineColor;
+      
+      switch (zone.type) {
+        case 'work':
+          fillColor = 'rgba(46, 204, 113, 0.2)';
+          outlineColor = 'rgba(46, 204, 113, 0.8)';
+          break;
+        case 'restricted':
+          fillColor = 'rgba(231, 76, 60, 0.2)';
+          outlineColor = 'rgba(231, 76, 60, 0.8)';
+          break;
+        case 'safe':
+          fillColor = 'rgba(52, 152, 219, 0.2)';
+          outlineColor = 'rgba(52, 152, 219, 0.8)';
+          break;
+        default:
+          fillColor = 'rgba(155, 89, 182, 0.2)';
+          outlineColor = 'rgba(155, 89, 182, 0.8)';
+      }
+      
+      // Create a circle representing the zone
+      const center = [zone.center.longitude, zone.center.latitude];
+      const radiusInKm = zone.radiusInMeters / 1000;
+      
+      // Create a source for the circle
+      map.addSource(zoneId, {
+        'type': 'geojson',
+        'data': createGeoJSONCircle(center, radiusInKm)
+      });
+      
+      // Add fill layer
+      map.addLayer({
+        'id': zoneId,
+        'type': 'fill',
+        'source': zoneId,
+        'layout': {},
+        'paint': {
+          'fill-color': fillColor,
+          'fill-opacity': 0.5
+        }
+      });
+      
+      // Add outline layer
+      map.addLayer({
+        'id': zoneOutlineId,
+        'type': 'line',
+        'source': zoneId,
+        'layout': {},
+        'paint': {
+          'line-color': outlineColor,
+          'line-width': 2
+        }
+      });
+      
+      // Add to tracking array
+      zoneLayersRef.current.push(zoneId, zoneOutlineId);
+      
+      // Add zone label
+      const labelId = `zone-label-${zone.id}`;
+      
+      map.addSource(labelId, {
+        'type': 'geojson',
+        'data': {
+          'type': 'Feature',
+          'properties': {
+            'description': zone.name
+          },
+          'geometry': {
+            'type': 'Point',
+            'coordinates': center
+          }
+        }
+      });
+      
+      map.addLayer({
+        'id': labelId,
+        'type': 'symbol',
+        'source': labelId,
+        'layout': {
+          'text-field': ['get', 'description'],
+          'text-offset': [0, 0],
+          'text-anchor': 'center',
+          'text-size': 12
+        },
+        'paint': {
+          'text-color': '#000000',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1
+        }
+      });
+      
+      zoneLayersRef.current.push(labelId);
+    });
+  };
+
+  const hideGeoZones = () => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    
+    // Remove all zone layers and sources
+    zoneLayersRef.current.forEach(layerId => {
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
+      if (map.getSource(layerId)) map.removeSource(layerId);
+    });
+    
+    zoneLayersRef.current = [];
+  };
+
+  // Create GeoJSON for a circle
+  const createGeoJSONCircle = (center: number[], radiusInKm: number, points: number = 64) => {
+    const coords = {
+      latitude: center[1],
+      longitude: center[0]
+    };
+    
+    const km = radiusInKm;
+    
+    const ret = [];
+    const distanceX = km / (111.320 * Math.cos((coords.latitude * Math.PI) / 180));
+    const distanceY = km / 110.574;
+    
+    let theta, x, y;
+    for (let i = 0; i < points; i++) {
+      theta = (i / points) * (2 * Math.PI);
+      x = distanceX * Math.cos(theta);
+      y = distanceY * Math.sin(theta);
+      
+      ret.push([coords.longitude + x, coords.latitude + y]);
+    }
+    ret.push(ret[0]);
+    
+    return {
+      'type': 'Feature',
+      'geometry': {
+        'type': 'Polygon',
+        'coordinates': [ret]
+      },
+      'properties': {}
+    };
+  };
+
   const startMockLocationUpdates = () => {
     fetchWorkers().then(() => {
       const baseCoordinates = {
@@ -306,6 +541,10 @@ export function WorkerTrackingMap() {
     setShowHistory(!showHistory);
   };
 
+  const toggleZonesView = () => {
+    setShowZones(!showZones);
+  };
+
   const centerMap = () => {
     if (!mapRef.current || Object.keys(workerLocations).length === 0) return;
     
@@ -327,10 +566,19 @@ export function WorkerTrackingMap() {
     const workersStr = localStorage.getItem('workers');
     return workersStr ? JSON.parse(workersStr) : [];
   };
+  
+  const markAllAlertsAsRead = () => {
+    const alerts = geoAlertService.getUnreadAlerts();
+    alerts.forEach(alert => {
+      geoAlertService.markAlertAsRead(alert.id);
+    });
+    setUnreadAlerts(0);
+    toast.success("All alerts marked as read");
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="space-y-1">
           <h2 className="text-xl font-semibold">Worker Tracking</h2>
           <p className="text-sm text-muted-foreground">
@@ -339,19 +587,88 @@ export function WorkerTrackingMap() {
               'Connecting to tracking service...'}
           </p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="relative">
+                <Bell className="h-4 w-4 mr-1" />
+                Alerts
+                {unreadAlerts > 0 && (
+                  <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    {unreadAlerts}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className={isMobile ? "w-[300px]" : "w-[350px]"}>
+              <DropdownMenuLabel className="flex justify-between items-center">
+                <span>Recent Alerts</span>
+                {unreadAlerts > 0 && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllAlertsAsRead}>
+                    Mark all as read
+                  </Button>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {geoAlertService.getAllAlerts().slice(0, 5).map(alert => (
+                <DropdownMenuItem key={alert.id} className="p-3 cursor-default">
+                  <div className="flex gap-3 w-full">
+                    <div className="mt-0.5">
+                      {alert.type === 'zone_entry' && <MapPin className="h-5 w-5 text-green-500" />}
+                      {alert.type === 'zone_exit' && <MapPin className="h-5 w-5 text-yellow-500" />}
+                      {alert.type === 'sos' && <AlertCircle className="h-5 w-5 text-red-500" />}
+                      {alert.type === 'inactivity' && <AlertTriangle className="h-5 w-5 text-amber-500" />}
+                    </div>
+                    <div className="space-y-1 w-full">
+                      <p className={`text-sm font-medium ${!alert.read ? "text-primary" : ""}`}>{alert.message}</p>
+                      <div className="flex justify-between items-center w-full">
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(alert.timestamp).toLocaleTimeString()}
+                        </p>
+                        {!alert.read && <Badge variant="outline" className="h-5 text-[10px]">New</Badge>}
+                      </div>
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+              {geoAlertService.getAllAlerts().length === 0 && (
+                <div className="p-3 text-center text-sm text-muted-foreground">
+                  No alerts yet
+                </div>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="justify-center" asChild>
+                <Button variant="ghost" size="sm" className="w-full">
+                  View All Alerts
+                </Button>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={toggleZonesView}
+          >
+            {showZones ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+            {showZones ? 'Hide Zones' : 'Show Zones'}
+          </Button>
+          
           <Button 
             variant="outline" 
             size="sm"
             onClick={toggleHistoryView}
           >
+            <Layers className="h-4 w-4 mr-1" />
             {showHistory ? 'Hide History' : 'Show History'}
           </Button>
+          
           <Button 
             variant="outline" 
             size="sm"
             onClick={centerMap}
           >
+            <Map className="h-4 w-4 mr-1" />
             Center Map
           </Button>
         </div>
@@ -370,7 +687,14 @@ export function WorkerTrackingMap() {
           </div>
         )}
       </div>
+      
+      {selectedWorker && (
+        <WorkerLocationDialog
+          worker={selectedWorker}
+          open={showWorkerDialog}
+          onOpenChange={setShowWorkerDialog}
+        />
+      )}
     </div>
   );
 }
-

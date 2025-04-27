@@ -1,280 +1,317 @@
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
-import { RecaptchaVerifier, signInWithPhoneNumber } from "@/utils/firebase";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { sendOtpEmail, verifyOtp } from "@/utils/emailService";
+import { toast } from "sonner";
+import { AlertCircle, Loader2, Mail, MessageSquareCheck, Phone, Timer } from "lucide-react";
+import { findWorkerByEmail, findWorkerByPhone } from "@/utils/firebase";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const contactSchema = z.object({
+  contact: z.string().min(1, { message: "Email or phone number is required" }),
+});
+
+const otpSchema = z.object({
+  otp: z.string().min(6, { message: "OTP should be 6 digits" }),
+});
 
 interface WorkerLoginFormProps {
   onSuccess: () => void;
 }
 
-const formSchema = z.object({
-  phone: z
-    .string()
-    .min(10, {
-      message: "Phone number must be at least 10 digits.",
-    })
-    .max(15, {
-      message: "Phone number cannot be longer than 15 digits.",
-    })
-    .regex(/^[0-9]+$/, {
-      message: "Phone number can only contain digits.",
-    }),
-  email: z
-    .string()
-    .email({
-      message: "Please enter a valid email address.",
-    })
-    .optional(),
-});
-
-const OTP_LENGTH = 6;
-
 export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
-  const [step, setStep] = useState<"phone" | "otp">("phone");
-  const [otp, setOtp] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [verificationId, setVerificationId] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
-  const { loginWithPhone } = useAuth();
+  const [step, setStep] = useState<"contact" | "otp">("contact");
+  const [isLoading, setIsLoading] = useState(false);
+  const [contact, setContact] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const isMobile = useIsMobile();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const contactForm = useForm<z.infer<typeof contactSchema>>({
+    resolver: zodResolver(contactSchema),
     defaultValues: {
-      phone: "",
-      email: "",
+      contact: "",
     },
   });
 
-  const onSubmitPhone = async (values: z.infer<typeof formSchema>) => {
-    setIsSubmitting(true);
-    const phoneNumber = values.phone;
-    const emailAddress = values.email || "";
-    
-    setPhone(phoneNumber);
-    setEmail(emailAddress);
-    
+  const otpForm = useForm<z.infer<typeof otpSchema>>({
+    resolver: zodResolver(otpSchema),
+    defaultValues: {
+      otp: "",
+    },
+  });
+
+  const handleSendOTP = async (data: z.infer<typeof contactSchema>) => {
+    setIsLoading(true);
+    setError(null);
     try {
-      if (emailAddress) {
-        console.log(`Attempting to send OTP to email: ${emailAddress}`);
-        const otpSent = await sendOtpEmail(emailAddress);
+      const contactValue = data.contact.trim();
+      setContact(contactValue);
+      
+      // Determine if email or phone
+      const isEmail = contactValue.includes('@');
+      
+      // Check if worker exists
+      const worker = isEmail
+        ? await findWorkerByEmail(contactValue)
+        : await findWorkerByPhone(contactValue);
+      
+      if (!worker) {
+        setError(`No worker found with this ${isEmail ? 'email' : 'phone number'}`);
+        setIsLoading(false);
+        return;
+      }
+      
+      // For phone numbers, convert to email if possible
+      const emailToUse = isEmail 
+        ? contactValue 
+        : (worker.email || `${contactValue}@migii.worker.temp`);
+      
+      // Send OTP
+      const sent = await sendOtpEmail(emailToUse);
+      
+      if (sent) {
+        setStep("otp");
         
-        if (otpSent) {
-          setVerificationId("email-verification");
-          setStep("otp");
-          toast.success(`OTP sent to ${emailAddress}. Please check your inbox.`);
-        } else {
-          toast.error("Failed to send OTP email. Please try again or use phone number.");
-        }
+        // Start countdown timer for resend
+        setTimeLeft(60);
+        const timer = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
       } else {
-        try {
-          console.log(`Attempting to send OTP via SMS to: ${phoneNumber}`);
-          const verId = await signInWithPhoneNumber(phoneNumber);
-          if (verId) {
-            setVerificationId(verId);
-            setStep("otp");
-            toast.success("OTP sent successfully!");
-          }
-        } catch (smsError: any) {
-          console.error("SMS OTP error:", smsError);
-          toast.error(smsError.message || "SMS OTP failed. Please provide an email address for OTP instead.");
-        }
+        setError("Failed to send OTP. Please try again.");
       }
-    } catch (error: any) {
-      console.error("Error sending OTP:", error);
-      toast.error(error.message || "Failed to send OTP. Please try again.");
+    } catch (err: any) {
+      setError(err.message || "An error occurred while sending OTP");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    if (value.length <= OTP_LENGTH) {
-      setOtp(value);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setIsSubmitting(true);
+  const handleVerifyOTP = async (data: z.infer<typeof otpSchema>) => {
+    setIsLoading(true);
+    setError(null);
     try {
-      if (verificationId === "email-verification") {
-        // Verify email OTP
-        if (email && verifyOtp(email, otp)) {
-          // Try login with phone (which is available from registration)
-          try {
-            await loginWithPhone(phone);
-            toast.success("Login successful!");
-            onSuccess();
-          } catch (loginError: any) {
-            console.error("Login error after OTP verification:", loginError);
-            toast.error(loginError.message || "Login failed after OTP verification");
-          }
-        } else {
-          toast.error("Invalid OTP. Please try again.");
-        }
+      // Determine if contact is email or phone
+      const isEmail = contact.includes('@');
+      
+      // For verification, convert phone to email format if needed
+      const worker = isEmail
+        ? await findWorkerByEmail(contact)
+        : await findWorkerByPhone(contact);
+        
+      if (!worker) {
+        setError("Worker not found");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Email to use for verification
+      const emailToUse = isEmail 
+        ? contact 
+        : (worker.email || `${contact}@migii.worker.temp`);
+        
+      const isValid = verifyOtp(emailToUse, data.otp);
+      
+      if (isValid) {
+        toast.success("Login successful!");
+        // Store worker info in localStorage for session
+        localStorage.setItem('currentWorker', JSON.stringify(worker));
+        onSuccess();
       } else {
-        try {
-          // For SMS verification
-          await loginWithPhone(phone);
-          toast.success("Login successful!");
-          onSuccess();
-        } catch (error: any) {
-          console.error("Phone login error:", error);
-          toast.error(error.message || "OTP verification failed");
-        }
+        setError("Invalid OTP. Please try again.");
       }
-    } catch (error: any) {
-      console.error("Error verifying OTP:", error);
-      toast.error(error.message || "Failed to verify OTP. Please try again.");
+    } catch (err: any) {
+      setError(err.message || "An error occurred during verification");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const handleResendOtp = async () => {
-    setIsSubmitting(true);
+  const handleResendOTP = async () => {
+    if (timeLeft > 0) return;
+    
+    setIsLoading(true);
     try {
-      if (email) {
-        const otpSent = await sendOtpEmail(email);
-        if (otpSent) {
-          toast.success("OTP resent to your email");
-        } else {
-          toast.error("Failed to resend OTP to email");
-        }
-      } else if (phone) {
-        try {
-          await signInWithPhoneNumber(phone);
-          toast.success("OTP resent successfully!");
-        } catch (error: any) {
-          console.error("Error resending SMS OTP:", error);
-          toast.error("Failed to resend OTP via SMS");
-        }
+      // Determine if contact is email or phone
+      const isEmail = contact.includes('@');
+      
+      // For verification, convert phone to email format if needed
+      const worker = isEmail
+        ? await findWorkerByEmail(contact)
+        : await findWorkerByPhone(contact);
+        
+      if (!worker) {
+        setError("Worker not found");
+        setIsLoading(false);
+        return;
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to resend OTP");
+      
+      // Email to use for verification
+      const emailToUse = isEmail 
+        ? contact 
+        : (worker.email || `${contact}@migii.worker.temp`);
+        
+      const sent = await sendOtpEmail(emailToUse);
+      
+      if (sent) {
+        // Restart countdown timer
+        setTimeLeft(60);
+        const timer = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred while resending OTP");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <>
-      {step === "phone" ? (
-        <>
-          <div id="recaptcha-container" ref={recaptchaContainerRef}></div>
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmitPhone)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        id="phone"
-                        placeholder="Enter your phone number"
-                        type="tel"
-                        className="text-base py-2"
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <Label htmlFor="email">Email Address (Recommended)</Label>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        id="email"
-                        placeholder="Enter your email address"
-                        type="email"
-                        className="text-base py-2"
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Using email for OTP is more reliable than SMS
-                    </p>
-                  </FormItem>
-                )}
-              />
-              
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Sending..." : "Send OTP"}
-              </Button>
-            </form>
-          </Form>
-        </>
-      ) : (
-        <div className="space-y-6">
-          <div>
-            <Label htmlFor="otp" className="block mb-2">
-              Enter OTP sent to {email || phone}
-            </Label>
-            <div className="flex items-center">
-              <Input
-                id="otp"
-                value={otp}
-                onChange={handleOtpChange}
-                placeholder={`Enter ${OTP_LENGTH}-digit OTP`}
-                maxLength={OTP_LENGTH}
-                className="text-center text-2xl tracking-widest py-2"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="text-center mt-2">
-              <Button
-                variant="link"
-                type="button"
-                className="text-xs"
-                onClick={() => setStep("phone")}
-                disabled={isSubmitting}
-              >
-                Change contact information
-              </Button>
-            </div>
-          </div>
-          <Button 
-            onClick={handleVerifyOtp} 
-            className="w-full"
-            disabled={isSubmitting || otp.length !== OTP_LENGTH}
-          >
-            {isSubmitting ? "Verifying..." : "Verify & Login"}
-          </Button>
-          <div className="text-center">
-            <Button
-              variant="link"
-              type="button"
-              className="text-xs"
-              onClick={handleResendOtp}
-              disabled={isSubmitting}
-            >
-              Didn't receive code? Resend OTP
-            </Button>
-          </div>
-        </div>
+    <div className="space-y-6">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
-    </>
+
+      {step === "contact" ? (
+        <Form {...contactForm}>
+          <form onSubmit={contactForm.handleSubmit(handleSendOTP)} className="space-y-6">
+            <FormField
+              control={contactForm.control}
+              name="contact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email or Phone Number</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input 
+                        placeholder="Enter your email or phone number" 
+                        {...field} 
+                        className="pl-10"
+                      />
+                      <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        {field.value.includes('@') ? 
+                          <Mail className="h-5 w-5" /> : 
+                          <Phone className="h-5 w-5" />
+                        }
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    We'll send a one-time password to this contact
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending OTP...
+                </>
+              ) : (
+                "Get OTP"
+              )}
+            </Button>
+          </form>
+        </Form>
+      ) : (
+        <Form {...otpForm}>
+          <form onSubmit={otpForm.handleSubmit(handleVerifyOTP)} className="space-y-6">
+            <div className="space-y-2">
+              <FormLabel>Enter OTP sent to {contact}</FormLabel>
+              <FormField
+                control={otpForm.control}
+                name="otp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <div className="flex justify-center">
+                        <InputOTP maxLength={6} {...field}>
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+                    </FormControl>
+                    <FormDescription className="text-center">
+                      {timeLeft > 0 ? (
+                        <div className="flex items-center justify-center gap-1 text-muted-foreground">
+                          <Timer className="h-4 w-4" />
+                          <span>Resend OTP in {timeLeft} seconds</span>
+                        </div>
+                      ) : (
+                        <button 
+                          type="button" 
+                          onClick={handleResendOTP} 
+                          className="text-primary hover:underline"
+                          disabled={isLoading}
+                        >
+                          Resend OTP
+                        </button>
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <MessageSquareCheck className="h-4 w-4" />
+                  <span>Verify OTP</span>
+                </div>
+              )}
+            </Button>
+            
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setStep("contact")}
+              disabled={isLoading}
+            >
+              Back to Login
+            </Button>
+          </form>
+        </Form>
+      )}
+    </div>
   );
 }
