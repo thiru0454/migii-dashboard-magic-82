@@ -14,6 +14,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { MigrantWorker } from "@/types/worker";
 import mongoDbService, { WorkerLocation } from "@/utils/mongoDbService";
 import { MapPin, Navigation, Clock } from "lucide-react";
+import { toast } from "sonner";
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZGVtb3VzZXIiLCJhIjoiY2xhd2lioTJzMGkwbzN5bXBwZjE2bnF1cCJ9.8rCpA8p9no3k4YrPQjd5dg";
 
@@ -35,85 +36,96 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<WorkerLocation | null>(null);
   const [locationHistory, setLocationHistory] = useState<WorkerLocation[]>([]);
+  const [mapInitialized, setMapInitialized] = useState(false);
 
   // Initialize map when dialog opens
   useEffect(() => {
     if (!open || !worker || !mapContainer.current) return;
     
     setLoading(true);
+
+    const initializeMap = () => {
+      console.log("Initializing map in WorkerLocationDialog");
+      
+      if (mapRef.current) {
+        // Map already exists, just resize it
+        mapRef.current.resize();
+      } else {
+        // Initialize new map
+        try {
+          mapboxgl.accessToken = MAPBOX_TOKEN;
+          const map = new mapboxgl.Map({
+            container: mapContainer.current!,
+            style: "mapbox://styles/mapbox/streets-v11",
+            center: [80.2707, 13.0827], // Default center
+            zoom: 12,
+          });
+          
+          map.addControl(new mapboxgl.NavigationControl(), "top-right");
+          
+          map.on('load', () => {
+            console.log("Map loaded successfully");
+            setMapInitialized(true);
+            fetchWorkerLocation();
+          });
+          
+          map.on('error', (e) => {
+            console.error("Map error:", e);
+            toast.error("Error loading map");
+          });
+          
+          mapRef.current = map;
+        } catch (error) {
+          console.error("Failed to initialize map:", error);
+          toast.error("Failed to initialize map");
+          setLoading(false);
+        }
+      }
+    };
     
-    if (!mapRef.current) {
-      mapboxgl.accessToken = MAPBOX_TOKEN;
-      const map = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: "mapbox://styles/mapbox/streets-v11",
-        center: [80.2707, 13.0827], // Default center
-        zoom: 12,
-      });
-      
-      map.addControl(new mapboxgl.NavigationControl(), "top-right");
-      mapRef.current = map;
-      
-      map.on('load', () => {
-        // Map is loaded, now fetch location data
-        fetchWorkerLocation();
-      });
-    } else {
-      // Map already exists, just fetch location data
-      fetchWorkerLocation();
-    }
+    // Small delay to ensure the container is properly rendered
+    const timer = setTimeout(() => {
+      initializeMap();
+    }, 300);
     
     // Poll for location updates
     const interval = setInterval(fetchWorkerLocation, 10000);
     
     return () => {
+      clearTimeout(timer);
       clearInterval(interval);
+      
       if (!open) {
-        // Cleanup when dialog closes
-        if (mapRef.current && routeLayerRef.current) {
-          if (mapRef.current.getLayer(routeLayerRef.current)) {
-            mapRef.current.removeLayer(routeLayerRef.current);
-          }
-        }
-        
-        if (mapRef.current && routeSourceRef.current) {
-          if (mapRef.current.getSource(routeSourceRef.current)) {
-            mapRef.current.removeSource(routeSourceRef.current);
-          }
-        }
-        
-        if (markerRef.current) {
-          markerRef.current.remove();
-          markerRef.current = null;
-        }
+        cleanupMap();
       }
     };
   }, [open, worker]);
   
   // Update UI when location changes
   useEffect(() => {
-    if (!mapRef.current || !location) return;
+    if (!mapInitialized || !mapRef.current || !location) return;
 
     updateMapWithLocation(location);
     setLastUpdated(new Date());
     setLoading(false);
-  }, [location]);
+  }, [location, mapInitialized]);
   
   // Update history display when toggled
   useEffect(() => {
-    if (!mapRef.current || !worker) return;
+    if (!mapInitialized || !mapRef.current || !worker) return;
     
     if (showHistory) {
       displayLocationHistory();
     } else {
       hideLocationHistory();
     }
-  }, [showHistory, locationHistory]);
+  }, [showHistory, locationHistory, mapInitialized]);
   
   const fetchWorkerLocation = async () => {
     if (!worker) return;
     
     try {
+      console.log(`Fetching location for worker: ${worker.id}`);
       // In a real implementation, this would fetch from a backend API connected to MongoDB
       // For this demo, we'll use the mock service
       const currentLocation = mongoDbService.getWorkerLocation(worker.id);
@@ -121,6 +133,7 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
       
       if (!currentLocation) {
         // If no location exists, generate a mock one
+        console.log("No location found, generating mock location");
         const mockLocation: WorkerLocation = {
           workerId: worker.id,
           name: worker.name,
@@ -132,6 +145,7 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
         await mongoDbService.updateWorkerLocation(mockLocation);
         setLocation(mockLocation);
       } else {
+        console.log("Found existing location:", currentLocation);
         setLocation(currentLocation);
       }
       
@@ -256,6 +270,25 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
     routeSourceRef.current = null;
   };
 
+  const cleanupMap = () => {
+    if (mapRef.current && routeLayerRef.current) {
+      if (mapRef.current.getLayer(routeLayerRef.current)) {
+        mapRef.current.removeLayer(routeLayerRef.current);
+      }
+    }
+    
+    if (mapRef.current && routeSourceRef.current) {
+      if (mapRef.current.getSource(routeSourceRef.current)) {
+        mapRef.current.removeSource(routeSourceRef.current);
+      }
+    }
+    
+    if (markerRef.current) {
+      markerRef.current.remove();
+      markerRef.current = null;
+    }
+  };
+
   if (!worker) return null;
 
   return (
@@ -330,3 +363,4 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
     </Dialog>
   );
 }
+

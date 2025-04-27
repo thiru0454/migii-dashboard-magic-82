@@ -19,31 +19,61 @@ export function WorkerTrackingMap() {
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
 
   useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return;
-
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    const map = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/streets-v11",
-      center: [80.2707, 13.0827],
-      zoom: 10,
-    });
-
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    if (!mapContainer.current) return;
     
-    mapRef.current = map;
-
-    fetchWorkers();
-
+    console.log("Initializing worker tracking map");
+    
+    // Small delay to ensure the container is properly rendered
+    const timer = setTimeout(() => {
+      initializeMap();
+    }, 300);
+    
     return () => {
-      map.remove();
+      clearTimeout(timer);
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
       if (socketRef.current) {
         socketRef.current.close();
       }
     };
   }, []);
+  
+  const initializeMap = () => {
+    if (!mapContainer.current || mapRef.current) return;
+
+    try {
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      const map = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/streets-v11",
+        center: [80.2707, 13.0827],
+        zoom: 10,
+      });
+
+      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+      
+      map.on('load', () => {
+        console.log("Map loaded successfully");
+        setMapInitialized(true);
+        fetchWorkers();
+      });
+      
+      map.on('error', (e) => {
+        console.error("Map error:", e);
+        toast.error("Error loading map");
+      });
+      
+      mapRef.current = map;
+    } catch (error) {
+      console.error("Failed to initialize map:", error);
+      toast.error("Failed to initialize map");
+    }
+  };
 
   useEffect(() => {
     const mockWebSocketConnection = async () => {
@@ -59,6 +89,9 @@ export function WorkerTrackingMap() {
         } else {
           toast.error("Failed to connect to location service");
           setConnected(false);
+          
+          // Force reconnect
+          mongoDbService.forceReconnect();
         }
       } catch (error) {
         console.error("WebSocket error:", error);
@@ -66,15 +99,19 @@ export function WorkerTrackingMap() {
       }
     };
     
-    mockWebSocketConnection();
+    if (mapInitialized) {
+      mockWebSocketConnection();
+    }
     
     return () => {
       // Cleanup
     };
-  }, []);
+  }, [mapInitialized]);
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapInitialized) return;
+    
+    console.log("Updating worker locations on map:", Object.keys(workerLocations).length);
     
     Object.values(workerLocations).forEach((location) => {
       const { workerId, name, latitude, longitude } = location;
@@ -112,17 +149,27 @@ export function WorkerTrackingMap() {
     if (showHistory) {
       displayHistoryPaths();
     }
-  }, [workerLocations, showHistory]);
+  }, [workerLocations, showHistory, mapInitialized]);
 
   const fetchWorkers = async () => {
     try {
+      console.log("Fetching workers");
       const { data: workerData, error } = await supabase.from("workers").select("*");
       
       if (error || !workerData) {
+        console.log("Error fetching from Supabase, using local storage");
         const localWorkers = getAllWorkersFromStorage();
         setWorkers(localWorkers);
       } else {
+        console.log(`Loaded ${workerData.length} workers from Supabase`);
         setWorkers(workerData);
+        
+        // Also load all existing locations
+        const existingLocations = mongoDbService.getAllWorkerLocations();
+        if (Object.keys(existingLocations).length > 0) {
+          console.log(`Loaded ${Object.keys(existingLocations).length} existing locations`);
+          setWorkerLocations(existingLocations);
+        }
       }
     } catch (error) {
       console.error("Error fetching workers:", error);
@@ -208,18 +255,29 @@ export function WorkerTrackingMap() {
       };
       
       workers.forEach((worker) => {
-        const latitude = baseCoordinates.latitude + (Math.random() - 0.5) * 0.1;
-        const longitude = baseCoordinates.longitude + (Math.random() - 0.5) * 0.1;
+        // Check if worker already has a location
+        const existingLocation = mongoDbService.getWorkerLocation(worker.id);
         
-        const initialLocation = {
-          workerId: worker.id,
-          name: worker.name,
-          latitude,
-          longitude, 
-          timestamp: Date.now()
-        };
-        
-        updateWorkerLocation(initialLocation);
+        if (!existingLocation) {
+          const latitude = baseCoordinates.latitude + (Math.random() - 0.5) * 0.1;
+          const longitude = baseCoordinates.longitude + (Math.random() - 0.5) * 0.1;
+          
+          const initialLocation = {
+            workerId: worker.id,
+            name: worker.name,
+            latitude,
+            longitude, 
+            timestamp: Date.now()
+          };
+          
+          updateWorkerLocation(initialLocation);
+        } else {
+          // Use existing location
+          setWorkerLocations(prev => ({
+            ...prev,
+            [worker.id]: existingLocation
+          }));
+        }
       });
       
       const interval = setInterval(() => {
@@ -315,3 +373,4 @@ export function WorkerTrackingMap() {
     </div>
   );
 }
+
