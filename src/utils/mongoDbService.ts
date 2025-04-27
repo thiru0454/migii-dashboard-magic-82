@@ -1,7 +1,7 @@
 import { MigrantWorker } from "@/types/worker";
 
-// MongoDB connection URI
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://thirumalai0454:6936MlsrTO5SYslL@cluster0.zwlpnzk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+// MongoDB connection URI - using Vite's import.meta.env approach instead of process.env
+const MONGODB_URI = import.meta.env.VITE_MONGODB_URI || "mongodb+srv://thirumalai0454:6936MlsrTO5SYslL@cluster0.zwlpnzk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // Interface for worker location data
 export interface WorkerLocation {
