@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { sendOtpEmail, verifyOtp } from "@/utils/emailService";
 import { toast } from "sonner";
 import { AlertCircle, Loader2, Mail, MessageSquare, Phone, Timer } from "lucide-react";
+import { findWorkerByEmail, findWorkerByPhone } from "@/utils/firebase";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const contactSchema = z.object({
@@ -54,10 +54,8 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       const contactValue = data.contact.trim();
       setContact(contactValue);
       
-      // Determine if email or phone
       const isEmail = contactValue.includes('@');
       
-      // Check if worker exists
       const worker = isEmail
         ? await findWorkerByEmail(contactValue)
         : await findWorkerByPhone(contactValue);
@@ -68,18 +66,15 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         return;
       }
       
-      // For phone numbers, convert to email if possible
       const emailToUse = isEmail 
         ? contactValue 
         : (worker.email || `${contactValue}@migii.worker.temp`);
       
-      // Send OTP
       const sent = await sendOtpEmail(emailToUse);
       
       if (sent) {
         setStep("otp");
         
-        // Start countdown timer for resend
         setTimeLeft(60);
         const timer = setInterval(() => {
           setTimeLeft((prev) => {
@@ -104,10 +99,8 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     setIsLoading(true);
     setError(null);
     try {
-      // Determine if contact is email or phone
       const isEmail = contact.includes('@');
       
-      // For verification, convert phone to email format if needed
       const worker = isEmail
         ? await findWorkerByEmail(contact)
         : await findWorkerByPhone(contact);
@@ -118,7 +111,6 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         return;
       }
       
-      // Email to use for verification
       const emailToUse = isEmail 
         ? contact 
         : (worker.email || `${contact}@migii.worker.temp`);
@@ -127,7 +119,6 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       
       if (isValid) {
         toast.success("Login successful!");
-        // Store worker info in localStorage for session
         localStorage.setItem('currentWorker', JSON.stringify(worker));
         onSuccess();
       } else {
@@ -145,10 +136,8 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     
     setIsLoading(true);
     try {
-      // Determine if contact is email or phone
       const isEmail = contact.includes('@');
       
-      // For verification, convert phone to email format if needed
       const worker = isEmail
         ? await findWorkerByEmail(contact)
         : await findWorkerByPhone(contact);
@@ -159,7 +148,6 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         return;
       }
       
-      // Email to use for verification
       const emailToUse = isEmail 
         ? contact 
         : (worker.email || `${contact}@migii.worker.temp`);
@@ -167,7 +155,6 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       const sent = await sendOtpEmail(emailToUse);
       
       if (sent) {
-        // Restart countdown timer
         setTimeLeft(60);
         const timer = setInterval(() => {
           setTimeLeft((prev) => {

@@ -1,52 +1,22 @@
 
 import { toast } from "sonner";
-import nodemailer from 'nodemailer';
 
 // Store OTPs temporarily (in a real app, this would be in a database)
 const otpStore: Record<string, { otp: string, timestamp: number }> = {};
-
-// Email configuration
-const emailConfig = {
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: 'migiiworker@gmail.com',
-    pass: 'egcq rdzr bmar xvva'
-  }
-};
-
-// Create transporter
-const transporter = nodemailer.createTransport(emailConfig);
 
 // Generate a 6-digit OTP
 export const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send email using SMTP
-const sendEmail = async (to: string, subject: string, html: string): Promise<boolean> => {
-  try {
-    const mailOptions = {
-      from: '"Migii Worker Portal" <migiiworker@gmail.com>',
-      to,
-      subject,
-      html
-    };
-
-    // For development/demo, log the email content
-    console.log(`Sending email to ${to} with subject: ${subject}`);
-    console.log(`Email content: ${html}`);
-
-    // Send email using nodemailer
-    await transporter.sendMail(mailOptions);
-    return true;
-  } catch (error: any) {
-    console.error('Error sending email:', error);
-    // Fall back to mock email service if SMTP fails
-    console.log(`Mock email service: Email to ${to} would have been sent in production.`);
-    return false;
-  }
+// Mock email service for browser environment
+const mockSendEmail = (to: string, subject: string, html: string): boolean => {
+  // For development/demo, log the email content
+  console.log(`[Mock Email] To: ${to}, Subject: ${subject}`);
+  console.log(`[Mock Email] Content: ${html}`);
+  
+  // In a browser, we can't actually send emails directly, so we simulate success
+  return true;
 };
 
 // Send OTP email
@@ -79,15 +49,11 @@ export const sendOtpEmail = async (email: string, otp?: string): Promise<boolean
       </div>
     `;
     
-    // Send email
-    const success = await sendEmail(email, subject, html);
+    // Mock send email (in a real app, this would use a backend API)
+    const success = mockSendEmail(email, subject, html);
     
-    if (success) {
-      toast.success(`OTP sent to ${email}. Please check your inbox.`);
-    } else {
-      // For demo purposes, show the OTP in toast when email sending fails
-      toast.success(`OTP sent to ${email}. For testing, use: ${generatedOtp}`);
-    }
+    // Always show the OTP in toast for testing purposes
+    toast.success(`OTP sent to ${email}. For testing, use: ${generatedOtp}`);
     
     return true;
   } catch (error: any) {
@@ -137,7 +103,8 @@ export const sendRegistrationEmail = async (worker: {
       </div>
     `;
 
-    const success = await sendEmail(worker.email, subject, html);
+    // Mock send email
+    const success = mockSendEmail(worker.email, subject, html);
     
     if (success) {
       toast.success(`Registration confirmation sent to ${worker.email}`);
