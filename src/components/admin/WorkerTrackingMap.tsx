@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -473,9 +472,9 @@ export function WorkerTrackingMap() {
     ret.push(ret[0]);
     
     return {
-      'type': 'Feature',
+      'type': 'Feature' as const,
       'geometry': {
-        'type': 'Polygon',
+        'type': 'Polygon' as const,
         'coordinates': [ret]
       },
       'properties': {}

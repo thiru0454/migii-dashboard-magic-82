@@ -10,8 +10,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { sendOtpEmail, verifyOtp } from "@/utils/emailService";
 import { toast } from "sonner";
-import { AlertCircle, Loader2, Mail, MessageSquareCheck, Phone, Timer } from "lucide-react";
-import { findWorkerByEmail, findWorkerByPhone } from "@/utils/firebase";
+import { AlertCircle, Loader2, Mail, MessageSquare, Phone, Timer } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const contactSchema = z.object({
@@ -294,7 +293,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
                 </>
               ) : (
                 <div className="flex items-center justify-center gap-2">
-                  <MessageSquareCheck className="h-4 w-4" />
+                  <MessageSquare className="h-4 w-4" />
                   <span>Verify OTP</span>
                 </div>
               )}

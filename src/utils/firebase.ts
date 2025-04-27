@@ -1,3 +1,4 @@
+
 // This is a compatibility layer between Firebase and Supabase
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
@@ -33,6 +34,54 @@ export class RecaptchaVerifier {
 export const getAllWorkersFromStorage = (): MigrantWorker[] => {
   const workersStr = localStorage.getItem('workers');
   return workersStr ? JSON.parse(workersStr) : [];
+};
+
+// Find worker by email
+export const findWorkerByEmail = async (email: string): Promise<MigrantWorker | null> => {
+  try {
+    // Try to fetch from Supabase first
+    const { data, error } = await supabase
+      .from('workers')
+      .select('*')
+      .eq('email', email)
+      .single();
+    
+    if (error || !data) {
+      console.log("Email not found in Supabase, checking localStorage");
+      // Fall back to localStorage
+      const workers = getAllWorkersFromStorage();
+      return workers.find(w => w.email === email) || null;
+    }
+    
+    return data as MigrantWorker;
+  } catch (error) {
+    console.error("Error finding worker by email:", error);
+    return null;
+  }
+};
+
+// Find worker by phone
+export const findWorkerByPhone = async (phone: string): Promise<MigrantWorker | null> => {
+  try {
+    // Try to fetch from Supabase first
+    const { data, error } = await supabase
+      .from('workers')
+      .select('*')
+      .eq('phone', phone)
+      .single();
+    
+    if (error || !data) {
+      console.log("Phone not found in Supabase, checking localStorage");
+      // Fall back to localStorage
+      const workers = getAllWorkersFromStorage();
+      return workers.find(w => w.phone === phone) || null;
+    }
+    
+    return data as MigrantWorker;
+  } catch (error) {
+    console.error("Error finding worker by phone:", error);
+    return null;
+  }
 };
 
 // Firebase-compatible functions for Supabase
