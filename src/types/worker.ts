@@ -1,6 +1,5 @@
-
 export type MigrantWorker = {
-  id: string;
+  id: number;
   name: string;
   age: number;
   phone: string;

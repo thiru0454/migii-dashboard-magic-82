@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -16,6 +15,7 @@ import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./components/theme-provider";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { TestSupabaseConnection } from "@/components/TestSupabaseConnection";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +55,13 @@ const App = () => (
                   {/* Worker Routes */}
                   <Route path="/worker-registration" element={<WorkerRegistration />} />
                   <Route path="/worker-login" element={<WorkerLogin />} />
+                  
+                  {/* Test Routes */}
+                  <Route path="/test-supabase" element={
+                    <DashboardLayout>
+                      <TestSupabaseConnection />
+                    </DashboardLayout>
+                  } />
                   
                   {/* Utility Routes */}
                   <Route path="/unauthorized" element={<Unauthorized />} />

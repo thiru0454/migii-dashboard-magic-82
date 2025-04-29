@@ -1,82 +1,130 @@
 import { MigrantWorker } from '@/types/worker';
+import { 
+  registerWorker, 
+  getWorker, 
+  updateWorker, 
+  deleteWorker, 
+  getAllWorkers,
+  subscribeToWorkers 
+} from '@/utils/supabaseClient';
+import { toast } from 'sonner';
 
-export async function registerWorker(workerData: MigrantWorker) {
+export async function registerNewWorker(workerData: Omit<MigrantWorker, 'id'>) {
   try {
-    console.log('Starting worker registration...');
+    // Validate required fields (match form and DB schema)
+    if (
+      !workerData.name ||
+      !workerData.age ||
+      !workerData.phone ||
+      !workerData.aadhaar ||
+      !workerData.originState ||
+      !workerData.skill
+    ) {
+      throw new Error('Missing required fields');
+    }
 
-    // Generate a unique ID for the worker
+    // Map fields to match Supabase table columns (snake_case)
+    const {
+      originState,
+      photoUrl,
+      name,
+      age,
+      phone,
+      email,
+      aadhaar,
+      skill,
+      ...rest
+    } = workerData;
+
     const newWorker = {
-      ...workerData,
-      id: `worker_${Date.now()}`,
-      status: 'pending',
-      registrationDate: new Date().toISOString()
+      full_name: name,
+      phone_number: phone,
+      age: age,
+      email_address: email,
+      aadhaar_number: aadhaar,
+      origin_state: originState,
+      primary_skill: skill,
+      photo_url: photoUrl,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...rest
     };
 
-    // Get existing workers from localStorage
-    const existingWorkers = JSON.parse(localStorage.getItem('workers') || '[]');
-
-    // Check for duplicate registration
-    const isDuplicate = existingWorkers.some(
-      (worker: MigrantWorker) => 
-        worker.email === workerData.email || 
-        worker.phone === workerData.phone
-    );
-
-    if (isDuplicate) {
-      throw new Error('A worker with this email or phone number already exists');
-    }
-
-    // Add new worker to the list
-    const updatedWorkers = [...existingWorkers, newWorker];
-    localStorage.setItem('workers', JSON.stringify(updatedWorkers));
-
-    // Trigger a custom event for real-time updates
-    window.dispatchEvent(new CustomEvent('workersUpdated', { 
-      detail: { workers: updatedWorkers }
-    }));
-
-    return newWorker;
-  } catch (error: any) {
-    console.error('Error registering worker:', error);
-    throw new Error(error.message || 'Failed to register worker. Please try again.');
-  }
-}
-
-export async function getAllWorkers(): Promise<MigrantWorker[]> {
-  try {
-    const workers = JSON.parse(localStorage.getItem('workers') || '[]');
-    return workers;
-  } catch (error) {
-    console.error('Error getting workers:', error);
-    return [];
-  }
-}
-
-export async function updateWorkerStatus(workerId: string, status: 'pending' | 'approved' | 'rejected'): Promise<MigrantWorker> {
-  try {
-    const workers = JSON.parse(localStorage.getItem('workers') || '[]');
-    const workerIndex = workers.findIndex((w: MigrantWorker) => w.id === workerId);
+    const { data, error } = await registerWorker(newWorker);
     
-    if (workerIndex === -1) {
-      throw new Error('Worker not found');
+    if (error) {
+      // User-friendly error handling
+      if (error.message.includes('duplicate key value') && error.message.includes('workers_phone_key')) {
+        toast.error('This phone number is already registered. Please use a different phone number.');
+        return;
+      }
+      if (error.message.includes('violates not-null constraint')) {
+        toast.error('A required field is missing. Please fill in all required fields.');
+        return;
+      }
+      if (error.message.includes('invalid input syntax for type')) {
+        toast.error('Invalid input format. Please check your entries.');
+        return;
+      }
+      toast.error(error.message || 'Failed to register worker');
+      throw error;
     }
-
-    workers[workerIndex] = {
-      ...workers[workerIndex],
-      status,
-      updatedAt: new Date().toISOString()
-    };
-
-    localStorage.setItem('workers', JSON.stringify(workers));
-
-    // Trigger a custom event for real-time updates
-    window.dispatchEvent(new CustomEvent('workersUpdated', { 
-      detail: { workers }
-    }));
-
-    return workers[workerIndex];
-  } catch (error: any) {
-    console.error('Error updating worker status:', error);
-    throw new Error(error.message || 'Failed to update worker status');
+    toast.success('Worker registered successfully!');
+    return data;
+  } catch (error) {
+    console.error('Error registering worker:', error);
+    toast.error(error.message || 'Failed to register worker');
+    throw error;
   }
+}
+
+export async function getWorkerById(id: number) {
+  try {
+    const { data, error } = await getWorker(id);
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching worker:', error);
+    throw error;
+  }
+}
+
+export async function updateWorkerDetails(id: number, updates: Partial<MigrantWorker>) {
+  try {
+    const { data, error } = await updateWorker(id, {
+      ...updates,
+      updated_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error updating worker:', error);
+    throw error;
+  }
+}
+
+export async function deleteWorkerById(id: number) {
+  try {
+    const { error } = await deleteWorker(id);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting worker:', error);
+    throw error;
+  }
+}
+
+export async function getAllRegisteredWorkers() {
+  try {
+    const { data, error } = await getAllWorkers();
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching workers:', error);
+    throw error;
+  }
+}
+
+export function subscribeToWorkerUpdates(callback: () => void) {
+  return subscribeToWorkers(callback);
 } 
