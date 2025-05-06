@@ -6,19 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, CheckCircle2, XCircle, User, Phone, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/utils/supabaseClient";
 
 interface WorkerRequest {
   id: string;
-  businessName: string;
-  contactPerson: string;
-  phone: string;
-  email: string;
-  requiredSkills: string;
-  numberOfWorkers: number;
+  business_id: string;
+  business_name: string;
+  workers_needed: number;
+  skill: string;
+  priority: string;
+  duration: string;
   description: string;
-  status: "pending" | "approved" | "rejected";
-  createdAt: string;
-  selectedWorkers?: string[];
+  status: string;
+  created_at: string;
+  assigned_worker_name?: string;
 }
 
 interface Worker {
@@ -35,33 +36,41 @@ export function BusinessRequestsTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
+    loadRequests();
+    // Real-time subscription
+    const channel = supabase
+      .channel('worker_requests_business_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'worker_requests',
+        },
+        () => {
+          loadRequests();
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  const loadData = () => {
-    try {
-      // Load current business user
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      if (currentUser.type !== 'business') {
-        console.error('Current user is not a business');
-        return;
-      }
-
-      // Load requests for this business
-      const storedRequests = JSON.parse(localStorage.getItem('workerRequests') || '[]');
-      const businessRequests = storedRequests.filter(
-        (request: WorkerRequest) => request.businessName === currentUser.businessName
-      );
-      setRequests(businessRequests);
-
-      // Load all workers
-      const allWorkers = getAllWorkersFromStorage();
-      setWorkers(allWorkers);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      setLoading(false);
+  const loadRequests = async () => {
+    setLoading(true);
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const { data, error } = await supabase
+      .from("worker_requests")
+      .select("*")
+      .eq("business_id", currentUser.id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      setRequests([]);
+    } else {
+      setRequests(data || []);
     }
+    setLoading(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -127,6 +136,7 @@ export function BusinessRequestsTab() {
                 <TableHead>Request Date</TableHead>
                 <TableHead>Required Skills</TableHead>
                 <TableHead>Workers Needed</TableHead>
+                <TableHead>Assigned Worker</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Selected Workers</TableHead>
                 <TableHead>Description</TableHead>
@@ -142,12 +152,36 @@ export function BusinessRequestsTab() {
               ) : (
                 requests.map((request) => (
                   <TableRow key={request.id}>
-                    <TableCell>{new Date(request.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>{request.requiredSkills}</TableCell>
-                    <TableCell>{request.numberOfWorkers}</TableCell>
-                    <TableCell>{getStatusBadge(request.status)}</TableCell>
+                    <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>{request.skill}</TableCell>
+                    <TableCell>{request.workers_needed}</TableCell>
                     <TableCell>
-                      {request.selectedWorkers && request.selectedWorkers.length > 0 ? (
+                      {request.assigned_worker_name ? (
+                        <span className="font-medium text-blue-700">{request.assigned_worker_name}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Not assigned</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {request.status === "pending" && getStatusBadge(request.status)}
+                      {request.status === "approved" && (
+                        <div className="text-green-600 text-xs">Worker request approved by admin</div>
+                      )}
+                      {request.status === "rejected" && (
+                        <div className="text-red-600 text-xs">Worker request rejected by admin</div>
+                      )}
+                      {request.status === "assigned" && (
+                        <div className="text-blue-600 text-xs">Worker assigned, awaiting response</div>
+                      )}
+                      {request.status === "accepted" && (
+                        <div className="text-green-700 text-xs">Worker accepted assignment</div>
+                      )}
+                      {request.status === "declined" && (
+                        <div className="text-red-700 text-xs">Worker declined assignment</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {request.status === "approved" && request.selectedWorkers && request.selectedWorkers.length > 0 ? (
                         <div className="space-y-2">
                           {request.selectedWorkers.map(workerId => {
                             const worker = getWorkerDetails(workerId);

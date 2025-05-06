@@ -1,16 +1,22 @@
 export type MigrantWorker = {
   id: number;
   name: string;
+  "Full Name": string;
   age: number;
+  "Age": number;
   phone: string;
+  "Phone Number": string;
   email?: string;
-  skill: string;
-  originState: string;
+  "Email Address"?: string;
+  "Primary Skill": string;
+  "Origin State": string;
   status: "active" | "inactive" | "pending";
   registrationDate: string;
+  "Photo URL"?: string;
   photoUrl?: string;
   latitude?: number;
   longitude?: number;
-  aadhaar: string; // Changed from optional to required
+  aadhaar: string;
+  "Aadhaar Number": string;
   assignedBusinessId?: string;
 };

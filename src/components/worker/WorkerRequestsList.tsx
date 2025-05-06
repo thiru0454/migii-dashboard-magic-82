@@ -1,122 +1,137 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { supabase } from "@/utils/supabaseClient";
 
 interface WorkerRequest {
   id: string;
-  businessName: string;
-  contactPerson: string;
-  phone: string;
-  email: string;
-  requiredSkills: string;
-  numberOfWorkers: number;
+  business_id: string;
+  business_name: string;
+  workers_needed: number;
+  skill: string;
+  priority: string;
+  duration: string;
   description: string;
-  status: "pending" | "approved" | "rejected";
-  createdAt: string;
+  status: string;
+  created_at: string;
+  assigned_worker_id?: string;
+  assigned_worker_name?: string;
 }
 
 export function WorkerRequestsList() {
   const [requests, setRequests] = useState<WorkerRequest[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load requests from localStorage
-    const loadRequests = () => {
-      const storedRequests = JSON.parse(localStorage.getItem('workerRequests') || '[]');
-      setRequests(storedRequests);
-    };
-
     loadRequests();
-    // Set up interval to check for new requests
-    const interval = setInterval(loadRequests, 5000);
-    return () => clearInterval(interval);
+    // Real-time subscription
+    const channel = supabase
+      .channel('worker_requests_worker_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'worker_requests',
+        },
+        () => {
+          loadRequests();
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  const handleStatusChange = (requestId: string, newStatus: "approved" | "rejected") => {
-    try {
-      const updatedRequests = requests.map(request => {
-        if (request.id === requestId) {
-          return { ...request, status: newStatus };
-        }
-        return request;
-      });
-
-      localStorage.setItem('workerRequests', JSON.stringify(updatedRequests));
-      setRequests(updatedRequests);
-      toast.success(`Request ${newStatus} successfully!`);
-    } catch (error) {
-      console.error("Error updating request status:", error);
-      toast.error("Failed to update request status");
+  const loadRequests = async () => {
+    setLoading(true);
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const { data, error } = await supabase
+      .from("worker_requests")
+      .select("*")
+      .eq("assigned_worker_id", currentUser.id)
+      .eq("status", "assigned")
+      .order("created_at", { ascending: false });
+    if (error) {
+      setRequests([]);
+    } else {
+      setRequests(data || []);
     }
+    setLoading(false);
+  };
+
+  const handleStatusChange = async (requestId: string, newStatus: "accepted" | "declined") => {
+    await supabase
+      .from("worker_requests")
+      .update({ status: newStatus })
+      .eq("id", requestId);
+    toast.success(`Request ${newStatus} successfully!`);
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending":
-        return <Badge variant="secondary">Pending</Badge>;
-      case "approved":
-        return <Badge className="bg-green-500 text-white">Approved</Badge>;
-      case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
+      case "assigned":
+        return <Badge variant="secondary">Assigned</Badge>;
+      case "accepted":
+        return <Badge className="bg-green-500 text-white">Accepted</Badge>;
+      case "declined":
+        return <Badge variant="destructive">Declined</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
+  if (loading) {
+    return <div>Loading requests...</div>;
+  }
+
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Worker Requests</CardTitle>
+        <CardTitle>Assigned Worker Requests</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {requests.length === 0 ? (
-            <p className="text-center text-muted-foreground">No worker requests found</p>
+            <p className="text-center text-muted-foreground">No assigned requests found</p>
           ) : (
             requests.map((request) => (
               <Card key={request.id} className="p-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-semibold">{request.businessName}</h3>
+                    <h3 className="font-semibold">{request.business_name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Contact: {request.contactPerson} ({request.email})
+                      Skill: {request.skill}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Phone: {request.phone}
+                      Workers Needed: {request.workers_needed}
                     </p>
                   </div>
                   {getStatusBadge(request.status)}
                 </div>
-                
                 <div className="mt-2">
                   <p className="text-sm">
-                    <span className="font-medium">Required Skills:</span> {request.requiredSkills}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Number of Workers:</span> {request.numberOfWorkers}
-                  </p>
-                  <p className="text-sm mt-2">
                     <span className="font-medium">Description:</span> {request.description}
                   </p>
                 </div>
-
-                {request.status === "pending" && (
+                {request.status === "assigned" && (
                   <div className="flex gap-2 mt-4">
                     <Button
                       size="sm"
                       className="bg-green-500 text-white hover:bg-green-600"
-                      onClick={() => handleStatusChange(request.id, "approved")}
+                      onClick={() => handleStatusChange(request.id, "accepted")}
                     >
-                      Approve
+                      Accept
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleStatusChange(request.id, "rejected")}
+                      onClick={() => handleStatusChange(request.id, "declined")}
                     >
-                      Reject
+                      Decline
                     </Button>
                   </div>
                 )}

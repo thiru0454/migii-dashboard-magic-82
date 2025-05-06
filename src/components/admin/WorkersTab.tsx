@@ -1,4 +1,3 @@
-
 import { MigrantWorker } from "@/types/worker";
 import { useWorkersContext } from "@/contexts/WorkersContext";
 import { DataTable } from "@/components/ui/data-table";
@@ -14,7 +13,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { WorkerDetailsDialog } from "./WorkerDetailsDialog";
 import { WorkerLocationDialog } from "./WorkerLocationDialog";
 import {
@@ -25,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, User, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { getAllWorkers } from "@/utils/supabaseClient";
 
 interface WorkersTabProps {
   onViewDetails?: (worker: MigrantWorker) => void;
@@ -38,8 +38,26 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<MigrantWorker | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const { workers, updateWorker } = useWorkersContext();
+
+  // Add direct data fetching
+  useEffect(() => {
+    console.log("Fetching workers directly...");
+    getAllWorkers().then(({ data, error }) => {
+      console.log("Direct Supabase response:", { data, error });
+      if (error) {
+        toast.error("Failed to fetch workers directly");
+      }
+      setIsLoading(false);
+    });
+  }, []);
+
+  // Debug log for workers from context
+  useEffect(() => {
+    console.log("Workers from context:", workers);
+  }, [workers]);
 
   const updateWorkerStatus = (worker: MigrantWorker, newStatus: "active" | "inactive" | "pending") => {
     updateWorker(worker.id, { status: newStatus });
@@ -58,10 +76,10 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
       header: "Phone",
     },
     {
-      accessorKey: "skill",
+      accessorKey: "Primary Skill",
       header: "Skill",
       cell: ({ row }) => {
-        const skill = row.original.skill;
+        const skill = row.original["Primary Skill"];
         return (
           <div className="flex flex-wrap gap-1">
             <span className="px-2 py-1 bg-primary/10 rounded-full text-sm">
@@ -72,7 +90,7 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
       },
     },
     {
-      accessorKey: "originState",
+      accessorKey: "Origin State",
       header: "Origin State",
     },
     {

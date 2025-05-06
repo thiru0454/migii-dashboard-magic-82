@@ -23,7 +23,7 @@ export async function registerNewWorker(workerData: Omit<MigrantWorker, 'id'>) {
       throw new Error('Missing required fields');
     }
 
-    // Map fields to match Supabase table columns (snake_case)
+    // Map fields to match Supabase table columns (with spaces and casing)
     const {
       originState,
       photoUrl,
@@ -37,14 +37,16 @@ export async function registerNewWorker(workerData: Omit<MigrantWorker, 'id'>) {
     } = workerData;
 
     const newWorker = {
-      full_name: name,
-      phone_number: phone,
-      age: age,
-      email_address: email,
-      aadhaar_number: aadhaar,
-      origin_state: originState,
-      primary_skill: skill,
-      photo_url: photoUrl,
+      name,
+      "Full Name": name,
+      phone,
+      "Phone Number": phone,
+      "Age": age,
+      "Email Address": email,
+      "Aadhaar Number": aadhaar,
+      "Origin State": originState,
+      "Primary Skill": skill,
+      "Photo URL": photoUrl,
       status: 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

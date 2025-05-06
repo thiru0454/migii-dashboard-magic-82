@@ -9,7 +9,7 @@ import Index from "./pages/Index";
 import WorkerRegistration from "./pages/WorkerRegistration";
 import WorkerLogin from "./pages/WorkerLogin";
 import AdminDashboard from "./pages/AdminDashboard";
-import BusinessDashboard from "./pages/BusinessDashboard";
+import BusinessDashboard from "./pages/business/Dashboard";
 import Login from "./pages/Login";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
