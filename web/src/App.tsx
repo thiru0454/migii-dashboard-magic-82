@@ -1,14 +1,15 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
+import { Toaster } from 'sonner';
 import Dashboard from './pages/Dashboard';
 import Workers from './pages/Workers';
 import Location from './pages/Location';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
-import { Toaster } from 'sonner';
-import { Suspense, lazy } from 'react';
 import { LoadingSpinner } from './components/ui/loading-spinner';
+import { LanguageProvider } from '../../src/contexts/LanguageContext'; // Import the provider
 
 // Lazy-loaded components
 const WorkerDetails = lazy(() => import('./pages/WorkerDetails'));
@@ -26,11 +27,15 @@ function App() {
   );
 
   if (!isAuthenticated) {
-    return <Login />;
+    return (
+      <LanguageProvider>
+        <Login />
+      </LanguageProvider>
+    );
   }
 
   return (
-    <>
+    <LanguageProvider>
       <Toaster position="top-right" />
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -57,7 +62,7 @@ function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-    </>
+    </LanguageProvider>
   );
 }
 

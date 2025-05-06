@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -13,6 +14,7 @@ import {
 } from '@tremor/react';
 import { Users, MapPin, ChartBar, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../../../src/contexts/LanguageContext';
 
 // Mock data - replace with actual API calls
 const fetchDashboardStats = async () => {
@@ -31,6 +33,7 @@ const fetchDashboardStats = async () => {
 
 export default function Dashboard() {
   const [selectedView, setSelectedView] = useState('overview');
+  const { t } = useLanguage();
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboardStats'],
@@ -38,29 +41,29 @@ export default function Dashboard() {
   });
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>{t('loading')}</div>;
   }
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-8">
-        <Title>Dashboard</Title>
+        <Title>{t('dashboard')}</Title>
         <div className="flex gap-4">
           <Link to="/workers" className="flex items-center gap-2 text-blue-600">
             <Users size={20} />
-            <span>Workers</span>
+            <span>{t('workers')}</span>
           </Link>
           <Link to="/location" className="flex items-center gap-2 text-blue-600">
             <MapPin size={20} />
-            <span>Location</span>
+            <span>{t('location')}</span>
           </Link>
           <Link to="/analytics" className="flex items-center gap-2 text-blue-600">
             <ChartBar size={20} />
-            <span>Analytics</span>
+            <span>{t('analytics')}</span>
           </Link>
           <Link to="/settings" className="flex items-center gap-2 text-blue-600">
             <Settings size={20} />
-            <span>Settings</span>
+            <span>{t('settings')}</span>
           </Link>
         </div>
       </div>
@@ -69,17 +72,17 @@ export default function Dashboard() {
         <TabList className="mb-8">
           <Tab>Overview</Tab>
           <Tab>Recent Updates</Tab>
-          <Tab>Analytics</Tab>
+          <Tab>{t('analytics')}</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
             <Grid numItems={1} numItemsSm={2} numItemsLg={3} className="gap-6">
               <Card>
-                <Title>Total Workers</Title>
+                <Title>{t('totalWorkers')}</Title>
                 <Text className="mt-2">{stats.totalWorkers}</Text>
               </Card>
               <Card>
-                <Title>Active Workers</Title>
+                <Title>{t('activeWorkers')}</Title>
                 <Text className="mt-2">{stats.activeWorkers}</Text>
               </Card>
               <Card>
@@ -103,7 +106,7 @@ export default function Dashboard() {
           </TabPanel>
           <TabPanel>
             <Card>
-              <Title>Analytics Overview</Title>
+              <Title>{t('analytics')} Overview</Title>
               <Text className="mt-2">Detailed analytics coming soon...</Text>
             </Card>
           </TabPanel>
@@ -111,4 +114,4 @@ export default function Dashboard() {
       </TabGroup>
     </div>
   );
-} 
+}

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -17,6 +18,7 @@ import {
   SelectItem,
 } from '@tremor/react';
 import { Search, Plus, Edit2, Trash2 } from 'lucide-react';
+import { useLanguage } from '../../../src/contexts/LanguageContext';
 
 // Mock data - replace with actual API calls
 const fetchWorkers = async () => {
@@ -54,6 +56,7 @@ const statusColors = {
 export default function Workers() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const { t } = useLanguage();
 
   const { data, isLoading } = useQuery({
     queryKey: ['workers'],
@@ -61,7 +64,7 @@ export default function Workers() {
   });
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>{t('loading')}</div>;
   }
 
   const filteredWorkers = data.workers.filter((worker) => {
@@ -77,13 +80,13 @@ export default function Workers() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-8">
-        <Title>Workers</Title>
+        <Title>{t('workers')}</Title>
         <Button
           icon={Plus}
           variant="primary"
           onClick={() => {/* Handle add worker */}}
         >
-          Add Worker
+          Add {t('workers')}
         </Button>
       </div>
 
@@ -92,7 +95,7 @@ export default function Workers() {
           <div className="flex-1 max-w-sm">
             <TextInput
               icon={Search}
-              placeholder="Search workers..."
+              placeholder={`${t('search')} ${t('workers')}...`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -102,7 +105,7 @@ export default function Workers() {
               value={statusFilter}
               onValueChange={setStatusFilter}
             >
-              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="all">All {t('status')}</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
@@ -113,13 +116,13 @@ export default function Workers() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableHeaderCell>Name</TableHeaderCell>
-              <TableHeaderCell>Email</TableHeaderCell>
-              <TableHeaderCell>Phone</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Location</TableHeaderCell>
+              <TableHeaderCell>{t('name')}</TableHeaderCell>
+              <TableHeaderCell>{t('email')}</TableHeaderCell>
+              <TableHeaderCell>{t('phone')}</TableHeaderCell>
+              <TableHeaderCell>{t('status')}</TableHeaderCell>
+              <TableHeaderCell>{t('location')}</TableHeaderCell>
               <TableHeaderCell>Role</TableHeaderCell>
-              <TableHeaderCell>Actions</TableHeaderCell>
+              <TableHeaderCell>{t('actions')}</TableHeaderCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -143,7 +146,7 @@ export default function Workers() {
                       icon={Edit2}
                       onClick={() => {/* Handle edit */}}
                     >
-                      Edit
+                      {t('edit')}
                     </Button>
                     <Button
                       size="xs"
@@ -152,7 +155,7 @@ export default function Workers() {
                       icon={Trash2}
                       onClick={() => {/* Handle delete */}}
                     >
-                      Delete
+                      {t('delete')}
                     </Button>
                   </div>
                 </TableCell>
@@ -163,4 +166,4 @@ export default function Workers() {
       </Card>
     </div>
   );
-} 
+}
