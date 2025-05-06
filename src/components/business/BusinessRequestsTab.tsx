@@ -8,6 +8,7 @@ import { Clock, CheckCircle2, XCircle, User, Phone, MessageSquare } from "lucide
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabaseClient";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface WorkerRequest {
   id: string;
@@ -38,9 +39,12 @@ export function BusinessRequestsTab() {
   const [requests, setRequests] = useState<WorkerRequest[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null); // For tracking individual actions
 
   useEffect(() => {
     loadRequests();
+    loadWorkers();
+    
     // Real-time subscription
     const channel = supabase
       .channel('worker_requests_business_changes')
@@ -63,18 +67,35 @@ export function BusinessRequestsTab() {
 
   const loadRequests = async () => {
     setLoading(true);
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    const { data, error } = await supabase
-      .from("worker_requests")
-      .select("*")
-      .eq("business_id", currentUser.id)
-      .order("created_at", { ascending: false });
-    if (error) {
-      setRequests([]);
-    } else {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const { data, error } = await supabase
+        .from("worker_requests")
+        .select("*")
+        .eq("business_id", currentUser.id)
+        .order("created_at", { ascending: false });
+        
+      if (error) {
+        throw error;
+      }
+      
       setRequests(data || []);
+    } catch (error) {
+      console.error("Error loading requests:", error);
+      toast.error("Failed to load worker requests");
+      setRequests([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+  
+  const loadWorkers = async () => {
+    try {
+      const workersData = await getAllWorkersFromStorage();
+      setWorkers(workersData || []);
+    } catch (error) {
+      console.error("Error loading workers:", error);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -116,15 +137,33 @@ export function BusinessRequestsTab() {
   };
 
   const handleCallWorker = (phone: string) => {
-    window.location.href = `tel:${phone}`;
+    setActionLoading("calling");
+    try {
+      window.location.href = `tel:${phone}`;
+    } finally {
+      // Reset after short delay
+      setTimeout(() => setActionLoading(null), 1000);
+    }
   };
 
   const handleMessageWorker = (phone: string) => {
-    window.location.href = `sms:${phone}`;
+    setActionLoading("messaging");
+    try {
+      window.location.href = `sms:${phone}`;
+    } finally {
+      // Reset after short delay
+      setTimeout(() => setActionLoading(null), 1000);
+    }
   };
 
   if (loading) {
-    return <div>Loading data...</div>;
+    return (
+      <Card>
+        <CardContent className="flex justify-center py-8">
+          <LoadingSpinner text="Loading worker requests..." />
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -149,7 +188,7 @@ export function BusinessRequestsTab() {
             <TableBody>
               {requests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">
+                  <TableCell colSpan={7} className="text-center">
                     No requests found
                   </TableCell>
                 </TableRow>
@@ -205,15 +244,25 @@ export function BusinessRequestsTab() {
                                     size="sm"
                                     variant="outline"
                                     onClick={() => handleCallWorker(worker.phone)}
+                                    disabled={actionLoading === "calling"}
                                   >
-                                    <Phone className="h-4 w-4" />
+                                    {actionLoading === "calling" ? (
+                                      <LoadingSpinner size="sm" />
+                                    ) : (
+                                      <Phone className="h-4 w-4" />
+                                    )}
                                   </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={() => handleMessageWorker(worker.phone)}
+                                    disabled={actionLoading === "messaging"}
                                   >
-                                    <MessageSquare className="h-4 w-4" />
+                                    {actionLoading === "messaging" ? (
+                                      <LoadingSpinner size="sm" />
+                                    ) : (
+                                      <MessageSquare className="h-4 w-4" />
+                                    )}
                                   </Button>
                                 </div>
                               </div>

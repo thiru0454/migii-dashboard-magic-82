@@ -1,3 +1,4 @@
+
 import { MigrantWorker } from '@/types/worker';
 import { 
   registerWorker, 
@@ -62,8 +63,6 @@ export async function registerNewWorker(workerData: Omit<{
       originState,
       "Primary Skill": skill,
       skill,
-      "Photo URL": photoUrl,
-      photoUrl,
       status: 'active' as const,
       registrationDate: new Date().toISOString(),
       ...rest
@@ -149,4 +148,46 @@ export async function getAllRegisteredWorkers() {
 
 export function subscribeToWorkerUpdates(callback: () => void) {
   return subscribeToWorkers(callback);
+}
+
+// Add a new function to assign workers with proper error handling
+export async function assignWorkerToBusiness(workerId: string, businessId: string) {
+  try {
+    console.log(`Attempting to assign worker ${workerId} to business ${businessId}`);
+    
+    // First, get the worker data to make sure it exists
+    const { data: workerData, error: workerError } = await getWorker(workerId);
+    
+    if (workerError) {
+      console.error('Error fetching worker for assignment:', workerError);
+      throw new Error(`Failed to find worker: ${workerError.message}`);
+    }
+    
+    if (!workerData) {
+      throw new Error('Worker not found');
+    }
+    
+    // Prepare update with assignedBusinessId
+    const updates = {
+      ...workerData,
+      assignedBusinessId: businessId
+    };
+    
+    // Update the worker with the business assignment
+    const { data, error } = await updateWorker(workerId, { 
+      assignedBusinessId: businessId 
+    });
+    
+    if (error) {
+      console.error('Error assigning worker to business:', error);
+      throw error;
+    }
+    
+    console.log('Worker assigned successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('Error in assignWorkerToBusiness:', error);
+    toast.error(error.message || 'Failed to assign worker to business');
+    throw error;
+  }
 }

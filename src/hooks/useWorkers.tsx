@@ -2,11 +2,12 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { MigrantWorker } from "@/types/worker";
-import { getAllWorkers, subscribeToWorkers } from "@/utils/supabaseClient";
+import { getAllWorkers, subscribeToWorkers, assignWorkerToBusiness } from "@/utils/supabaseClient";
 
 export function useWorkers() {
   const [workers, setWorkers] = useState<MigrantWorker[]>([]);
   const [isLoadingWorkers, setIsLoadingWorkers] = useState(true);
+  const [isAssigning, setIsAssigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,18 +66,12 @@ export function useWorkers() {
 
   // Function to assign a worker to a business
   const assignWorker = async (workerId: string, businessId: string) => {
+    setIsAssigning(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/workers/assign`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ workerId, businessId }),
-      });
+      console.log(`Assigning worker ${workerId} to business ${businessId}`);
       
-      if (!response.ok) {
-        throw new Error('Failed to assign worker');
-      }
+      // Use our enhanced service function
+      await assignWorkerToBusiness(workerId, businessId);
       
       // Update local state
       setWorkers(prev => 
@@ -88,10 +83,12 @@ export function useWorkers() {
       );
       
       toast.success("Worker assigned successfully");
+      setIsAssigning(false);
       return true;
     } catch (error) {
       console.error("Error assigning worker:", error);
-      toast.error("Failed to assign worker");
+      toast.error(error.message || "Failed to assign worker");
+      setIsAssigning(false);
       return false;
     }
   };
@@ -99,6 +96,7 @@ export function useWorkers() {
   return {
     workers,
     isLoadingWorkers,
+    isAssigning,
     error,
     assignWorker,
   };

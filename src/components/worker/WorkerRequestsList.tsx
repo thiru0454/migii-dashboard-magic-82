@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabaseClient";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface WorkerRequest {
   id: string;
@@ -23,6 +25,7 @@ interface WorkerRequest {
 export function WorkerRequestsList() {
   const [requests, setRequests] = useState<WorkerRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   useEffect(() => {
     loadRequests();
@@ -48,27 +51,51 @@ export function WorkerRequestsList() {
 
   const loadRequests = async () => {
     setLoading(true);
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    const { data, error } = await supabase
-      .from("worker_requests")
-      .select("*")
-      .eq("assigned_worker_id", currentUser.id)
-      .eq("status", "assigned")
-      .order("created_at", { ascending: false });
-    if (error) {
-      setRequests([]);
-    } else {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const { data, error } = await supabase
+        .from("worker_requests")
+        .select("*")
+        .eq("assigned_worker_id", currentUser.id)
+        .eq("status", "assigned")
+        .order("created_at", { ascending: false });
+        
+      if (error) {
+        throw error;
+      }
+      
       setRequests(data || []);
+    } catch (error) {
+      console.error("Error loading requests:", error);
+      toast.error("Failed to load assigned requests");
+      setRequests([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleStatusChange = async (requestId: string, newStatus: "accepted" | "declined") => {
-    await supabase
-      .from("worker_requests")
-      .update({ status: newStatus })
-      .eq("id", requestId);
-    toast.success(`Request ${newStatus} successfully!`);
+    setActionInProgress(requestId);
+    try {
+      const { error } = await supabase
+        .from("worker_requests")
+        .update({ status: newStatus })
+        .eq("id", requestId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setRequests(prev => 
+        prev.map(req => req.id === requestId ? { ...req, status: newStatus } : req)
+      );
+      
+      toast.success(`Request ${newStatus} successfully!`);
+    } catch (error) {
+      console.error(`Error changing request status to ${newStatus}:`, error);
+      toast.error(`Failed to ${newStatus} the request`);
+    } finally {
+      setActionInProgress(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -85,7 +112,13 @@ export function WorkerRequestsList() {
   };
 
   if (loading) {
-    return <div>Loading requests...</div>;
+    return (
+      <Card className="w-full">
+        <CardContent className="py-8 flex justify-center">
+          <LoadingSpinner text="Loading assigned requests..." />
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -96,10 +129,10 @@ export function WorkerRequestsList() {
       <CardContent>
         <div className="space-y-4">
           {requests.length === 0 ? (
-            <p className="text-center text-muted-foreground">No assigned requests found</p>
+            <p className="text-center text-muted-foreground p-4">No assigned requests found</p>
           ) : (
             requests.map((request) => (
-              <Card key={request.id} className="p-4">
+              <Card key={request.id} className="p-4 hover-glow">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-semibold">{request.business_name}</h3>
@@ -123,15 +156,27 @@ export function WorkerRequestsList() {
                       size="sm"
                       className="bg-green-500 text-white hover:bg-green-600"
                       onClick={() => handleStatusChange(request.id, "accepted")}
+                      disabled={actionInProgress === request.id}
                     >
-                      Accept
+                      {actionInProgress === request.id ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-1" />
+                          Processing...
+                        </>
+                      ) : 'Accept'}
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
                       onClick={() => handleStatusChange(request.id, "declined")}
+                      disabled={actionInProgress === request.id}
                     >
-                      Decline
+                      {actionInProgress === request.id ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-1" />
+                          Processing...
+                        </>
+                      ) : 'Decline'}
                     </Button>
                   </div>
                 )}
