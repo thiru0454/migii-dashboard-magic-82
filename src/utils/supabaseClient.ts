@@ -76,3 +76,25 @@ export function subscribeToWorkers(callback: () => void) {
     )
     .subscribe();
 }
+
+// Add the missing assignWorkerToBusiness function
+export async function assignWorkerToBusiness(workerId: string, businessId: string) {
+  // Get the worker data first
+  const { data, error: getError } = await getWorker(workerId);
+  
+  if (getError) {
+    throw getError;
+  }
+  
+  if (!data) {
+    throw new Error('Worker not found');
+  }
+  
+  // Update the worker with the business assignment
+  return await supabase
+    .from('workers')
+    .update({ assignedBusinessId: businessId })
+    .eq('id', workerId)
+    .select()
+    .single();
+}
