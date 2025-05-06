@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Language } from 'lucide-react';
+import { Languages } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Language {
@@ -40,7 +40,7 @@ export function LanguageSelector() {
   
   return (
     <div className="flex items-center gap-2">
-      <Language size={18} className="text-muted-foreground" />
+      <Languages size={18} className="text-muted-foreground" />
       
       <Select value={currentLang} onValueChange={handleLanguageChange}>
         <SelectTrigger className="w-[140px] h-9">
