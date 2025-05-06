@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { MigrantWorker } from "@/types/worker";
 import { getAllWorkers, subscribeToWorkers } from "@/utils/supabaseClient";
@@ -20,7 +21,7 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
   // Fetch initial workers data
   useEffect(() => {
     console.log("WorkersContext: Initial fetch starting...");
-    let unsubscribe: (() => void) | undefined;
+    let unsubscribeFunc: (() => void) | undefined;
 
     const fetchWorkers = async () => {
       try {
@@ -31,7 +32,12 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
           toast.error("Failed to fetch workers");
           console.error("Error fetching workers:", error);
         } else {
-          setWorkers(data || []);
+          // Ensure all worker IDs are strings
+          const formattedWorkers = data?.map(worker => ({
+            ...worker,
+            id: String(worker.id)
+          })) || [];
+          setWorkers(formattedWorkers);
         }
       } catch (err) {
         console.error("Error in fetchWorkers:", err);
@@ -44,13 +50,19 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
     fetchWorkers();
 
     // Set up real-time subscription
-    unsubscribe = subscribeToWorkers(() => {
+    const subscription = subscribeToWorkers(() => {
       console.log("WorkersContext: Subscription triggered, fetching updates...");
       fetchWorkers();
     });
+    
+    unsubscribeFunc = () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeFunc) unsubscribeFunc();
     };
   }, []);
 
@@ -96,4 +108,4 @@ export function useWorkersContext() {
     throw new Error("useWorkersContext must be used within a WorkersProvider");
   }
   return context;
-} 
+}

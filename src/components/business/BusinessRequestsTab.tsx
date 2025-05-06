@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,9 @@ interface WorkerRequest {
   status: string;
   created_at: string;
   assigned_worker_name?: string;
+  assigned_worker_id?: string;
+  assignedWorkers?: string[];
+  selectedWorkers?: string[];
 }
 
 interface Worker {
@@ -230,4 +234,4 @@ export function BusinessRequestsTab() {
       </CardContent>
     </Card>
   );
-} 
+}

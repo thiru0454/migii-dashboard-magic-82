@@ -1,6 +1,6 @@
 
 export type MigrantWorker = {
-  id: number;
+  id: string;
   name: string;
   "Full Name": string;
   age: number;
@@ -24,3 +24,17 @@ export type MigrantWorker = {
   assignedBusinessId?: string;
   skill?: string;
 };
+
+// Add a Worker interface that matches the one used in components
+export interface Worker {
+  id: string;
+  name: string;
+  phone: string;
+  skill: string;
+  status: string;
+  originState?: string;
+  age?: number;
+  email?: string;
+  photoUrl?: string;
+  aadhaar?: string;
+}

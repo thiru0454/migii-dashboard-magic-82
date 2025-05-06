@@ -19,7 +19,7 @@ const WorkerDetails = () => {
       if (!workerId) return;
       
       try {
-        const { data, error } = await getWorker(Number(workerId));
+        const { data, error } = await getWorker(workerId);
         
         if (error) {
           throw new Error(error.message);

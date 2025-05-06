@@ -1,11 +1,13 @@
+
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getAllWorkersFromStorage } from "@/utils/firebase";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserPlus, UserMinus } from "lucide-react";
+import { MigrantWorker, Worker } from "@/types/worker";
+import { useWorkers } from "@/hooks/useWorkers";
 
 interface WorkerRequest {
   id: string;
@@ -21,19 +23,11 @@ interface WorkerRequest {
   assignedWorkers?: string[];
 }
 
-interface Worker {
-  id: string;
-  name: string;
-  phone: string;
-  skill: string;
-  status: string;
-}
-
 export function AssignWorkersTab() {
   const [requests, setRequests] = useState<WorkerRequest[]>([]);
-  const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWorkers, setSelectedWorkers] = useState<{ [key: string]: string[] }>({});
+  const { workers, isLoadingWorkers } = useWorkers();
 
   useEffect(() => {
     loadData();
@@ -48,12 +42,6 @@ export function AssignWorkersTab() {
       );
       setRequests(approvedRequests);
 
-      // Load available workers
-      const availableWorkers = getAllWorkersFromStorage().filter(
-        (worker: Worker) => worker.status === "active"
-      );
-      setWorkers(availableWorkers);
-
       // Initialize selected workers for each request
       const initialSelectedWorkers: { [key: string]: string[] } = {};
       approvedRequests.forEach((request: WorkerRequest) => {
@@ -65,6 +53,24 @@ export function AssignWorkersTab() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Convert MigrantWorker array to Worker array with consistent types
+  const getAvailableWorkers = () => {
+    return workers.filter((worker: MigrantWorker) => 
+      worker.status === "active"
+    ).map((worker: MigrantWorker): Worker => ({
+      id: String(worker.id),
+      name: worker.name,
+      phone: worker.phone,
+      skill: worker.skill || worker.primarySkill || worker["Primary Skill"] || "",
+      status: worker.status,
+      originState: worker.originState,
+      age: worker.age,
+      email: worker.email,
+      photoUrl: worker.photoUrl,
+      aadhaar: worker.aadhaar
+    }));
   };
 
   const handleWorkerSelection = (requestId: string, workerId: string) => {
@@ -114,13 +120,16 @@ export function AssignWorkersTab() {
   };
 
   const getWorkerName = (workerId: string) => {
-    const worker = workers.find(w => w.id === workerId);
+    const availableWorkers = getAvailableWorkers();
+    const worker = availableWorkers.find(w => w.id === workerId);
     return worker ? `${worker.name} (${worker.skill})` : "Unknown Worker";
   };
 
-  if (loading) {
+  if (loading || isLoadingWorkers) {
     return <div>Loading data...</div>;
   }
+
+  const availableWorkers = getAvailableWorkers();
 
   return (
     <Card>
@@ -161,7 +170,7 @@ export function AssignWorkersTab() {
                           <SelectValue placeholder="Select worker" />
                         </SelectTrigger>
                         <SelectContent>
-                          {workers
+                          {availableWorkers
                             .filter(worker => 
                               worker.skill.toLowerCase().includes(request.requiredSkills.toLowerCase()) &&
                               !selectedWorkers[request.id]?.includes(worker.id)
@@ -209,4 +218,4 @@ export function AssignWorkersTab() {
       </CardContent>
     </Card>
   );
-} 
+}

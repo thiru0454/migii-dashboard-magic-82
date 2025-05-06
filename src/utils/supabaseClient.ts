@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { MigrantWorker } from '@/types/worker';
 
@@ -16,14 +17,15 @@ export async function registerWorker(workerData: Omit<MigrantWorker, 'id'>) {
     .from('workers')
     .insert([{
       ...workerData,
-      id: Math.floor(Math.random() * 1000000) // Generate a random bigint ID
+      // Generate a random ID as string
+      id: Math.floor(Math.random() * 1000000).toString()
     }])
     .select()
     .single();
 }
 
 // Get a single worker
-export async function getWorker(id: number) {
+export async function getWorker(id: string) {
   return await supabase
     .from('workers')
     .select('*')
@@ -32,7 +34,7 @@ export async function getWorker(id: number) {
 }
 
 // Update worker details
-export async function updateWorker(id: number, updates: Partial<MigrantWorker>) {
+export async function updateWorker(id: string, updates: Partial<MigrantWorker>) {
   return await supabase
     .from('workers')
     .update(updates)
@@ -42,7 +44,7 @@ export async function updateWorker(id: number, updates: Partial<MigrantWorker>) 
 }
 
 // Delete worker
-export async function deleteWorker(id: number) {
+export async function deleteWorker(id: string) {
   return await supabase
     .from('workers')
     .delete()

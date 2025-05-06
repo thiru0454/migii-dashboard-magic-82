@@ -10,7 +10,7 @@ export function useWorkers() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
+    let unsubscribeFunc: (() => void) | undefined;
     setIsLoadingWorkers(true);
     
     // Initial fetch from Supabase
@@ -23,32 +23,48 @@ export function useWorkers() {
           setError(error.message);
         } else {
           console.log("Workers fetched successfully:", data);
-          setWorkers(data || []);
+          // Ensure all worker IDs are strings
+          const formattedWorkers = data?.map(worker => ({
+            ...worker,
+            id: String(worker.id)
+          })) || [];
+          setWorkers(formattedWorkers);
           setError(null);
         }
         setIsLoadingWorkers(false);
       });
 
     // Real-time subscription
-    unsubscribe = subscribeToWorkers(() => {
+    const subscription = subscribeToWorkers(() => {
       console.log("Worker subscription triggered, fetching updated data...");
       getAllWorkers()
         .then(({ data, error }) => {
           if (!error) {
-            setWorkers(data || []);
+            // Ensure all worker IDs are strings
+            const formattedWorkers = data?.map(worker => ({
+              ...worker,
+              id: String(worker.id)
+            })) || [];
+            setWorkers(formattedWorkers);
           } else {
             console.error("Error in subscription update:", error);
           }
         });
     });
+    
+    unsubscribeFunc = () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeFunc) unsubscribeFunc();
     };
   }, []);
 
   // Function to assign a worker to a business
-  const assignWorker = async (workerId: number, businessId: string) => {
+  const assignWorker = async (workerId: string, businessId: string) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/workers/assign`, {
         method: 'POST',
