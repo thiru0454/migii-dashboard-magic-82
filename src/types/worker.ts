@@ -1,3 +1,4 @@
+
 export type MigrantWorker = {
   id: number;
   name: string;
@@ -8,7 +9,9 @@ export type MigrantWorker = {
   "Phone Number": string;
   email?: string;
   "Email Address"?: string;
+  primarySkill?: string;
   "Primary Skill": string;
+  originState?: string;
   "Origin State": string;
   status: "active" | "inactive" | "pending";
   registrationDate: string;
@@ -19,4 +22,5 @@ export type MigrantWorker = {
   aadhaar: string;
   "Aadhaar Number": string;
   assignedBusinessId?: string;
+  skill?: string;
 };

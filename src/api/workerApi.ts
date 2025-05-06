@@ -1,3 +1,4 @@
+
 import { MigrantWorker } from '@/types/worker';
 
 // Use explicit backend URL
@@ -102,6 +103,56 @@ export async function registerWorker(workerData: MigrantWorker) {
   }
 }
 
+export async function assignWorker(workerId: number, businessId: string) {
+  try {
+    console.log('Attempting to assign worker:', { workerId, businessId });
+    
+    // First check if server is available
+    const isHealthy = await checkServerHealth();
+    if (!isHealthy) {
+      // If server is not available, use a local fallback
+      console.log('Server unavailable, using local fallback for assignment');
+      
+      // Get current workers from local storage or create empty array
+      const storedWorkers = JSON.parse(localStorage.getItem('workers') || '[]');
+      
+      // Update the assigned business for the worker
+      const updatedWorkers = storedWorkers.map((worker: MigrantWorker) => 
+        worker.id === workerId ? { ...worker, assignedBusinessId: businessId } : worker
+      );
+      
+      // Save back to local storage
+      localStorage.setItem('workers', JSON.stringify(updatedWorkers));
+      
+      // Return mock success response
+      return { success: true, workerId, businessId };
+    }
+    
+    const response = await fetchWithRetry(
+      `${API_URL}/workers/assign`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ workerId, businessId }),
+      },
+      REGISTRATION_TIMEOUT
+    );
+
+    const data = await response.json();
+    console.log('Worker assigned successfully:', data);
+    return data;
+  } catch (error: any) {
+    console.error('Error assigning worker:', error);
+    if (error.message.includes('timed out')) {
+      throw new Error('Assignment request timed out. Please try again.');
+    }
+    throw new Error(error.message || 'Failed to assign worker');
+  }
+}
+
 export async function checkServerHealth() {
   try {
     console.log('Checking server health...');
@@ -136,4 +187,4 @@ export async function checkServerHealth() {
     console.error('Server health check failed:', error);
     return false;
   }
-} 
+}
