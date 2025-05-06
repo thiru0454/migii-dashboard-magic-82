@@ -10,20 +10,12 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { MigrantWorker } from "@/types/worker";
+import { MigrantWorker, WorkerLocation } from "@/types/worker";
 import { supabase } from "@/utils/supabaseClient";
 import { MapPin, Navigation, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZGVtb3VzZXIiLCJhIjoiY2xhd2lioTJzMGkwbzN5bXBwZjE2bnF1cCJ9.8rCpA8p9no3k4YrPQjd5dg";
-
-interface WorkerLocation {
-  workerId: number;
-  name: string;
-  latitude: number;
-  longitude: number;
-  timestamp: number;
-}
 
 interface WorkerLocationDialogProps {
   worker: MigrantWorker | null;
@@ -455,4 +447,3 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
     </Dialog>
   );
 }
-

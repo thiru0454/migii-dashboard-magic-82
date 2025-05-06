@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getAllWorkersFromStorage } from "@/utils/firebase";
+import { MigrantWorker, Worker } from "@/types/worker";
 
 interface WorkerRequest {
   businessName: string;
@@ -18,14 +20,6 @@ interface WorkerRequest {
   description: string;
   status: "pending" | "approved" | "rejected";
   selectedWorkers?: string[];
-}
-
-interface Worker {
-  id: string;
-  name: string;
-  phone: string;
-  skill: string;
-  status: string;
 }
 
 export function WorkerRequestForm() {
@@ -50,8 +44,22 @@ export function WorkerRequestForm() {
 
   const loadAvailableWorkers = () => {
     try {
-      const workers = getAllWorkersFromStorage();
-      const activeWorkers = workers.filter(worker => worker.status === "active");
+      const migrantWorkers = getAllWorkersFromStorage();
+      // Convert MigrantWorker[] to Worker[]
+      const activeWorkers: Worker[] = migrantWorkers
+        .filter(worker => worker.status === "active")
+        .map(worker => ({
+          id: worker.id,
+          name: worker.name,
+          phone: worker.phone,
+          skill: worker.skill || worker["Primary Skill"] || "",
+          status: worker.status,
+          originState: worker.originState,
+          age: worker.age,
+          email: worker.email,
+          photoUrl: worker.photoUrl,
+          aadhaar: worker.aadhaar
+        }));
       setAvailableWorkers(activeWorkers);
     } catch (error) {
       console.error("Error loading workers:", error);
@@ -189,4 +197,4 @@ export function WorkerRequestForm() {
       </CardContent>
     </Card>
   );
-} 
+}

@@ -1,28 +1,62 @@
-// Function to get the next sequence number from localStorage
-const getNextSequenceNumber = (): string => {
-  const currentDate = new Date();
-  const dateKey = currentDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-  
-  // Get the current sequence from localStorage
-  const sequences = JSON.parse(localStorage.getItem('workerSequences') || '{}');
-  const currentSequence = sequences[dateKey] || 0;
-  
-  // Increment the sequence
-  const nextSequence = currentSequence + 1;
-  
-  // Save the new sequence
-  sequences[dateKey] = nextSequence;
-  localStorage.setItem('workerSequences', JSON.stringify(sequences));
-  
-  // Format the sequence number with leading zeros
-  return nextSequence.toString().padStart(5, '0');
-};
 
-// Generate a unique worker ID in the format TN-DATE-XXXXX
-export const generateWorkerId = (): string => {
-  const date = new Date();
-  const dateStr = date.toISOString().split('T')[0].replace(/-/g, ''); // Format: YYYYMMDD
-  const sequence = getNextSequenceNumber();
+/**
+ * Generate a unique worker ID
+ */
+export function generateWorkerId(): string {
+  return `worker_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+}
+
+/**
+ * Format a phone number for display
+ */
+export function formatPhoneNumber(phone: string): string {
+  if (!phone) return '';
   
-  return `TN-${dateStr}-${sequence}`;
-}; 
+  // Simple formatting for Indian numbers
+  if (phone.length === 10) {
+    return `+91 ${phone.substring(0, 5)} ${phone.substring(5)}`;
+  }
+  
+  return phone;
+}
+
+/**
+ * Get age from birth date
+ */
+export function getAge(birthDate: string): number {
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  
+  return age;
+}
+
+/**
+ * Calculate distance between two points
+ */
+export function calculateDistance(
+  lat1: number, 
+  lon1: number, 
+  lat2: number, 
+  lon2: number
+): number {
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2); 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  const distance = R * c; // Distance in km
+  return distance;
+}
+
+function deg2rad(deg: number): number {
+  return deg * (Math.PI/180);
+}

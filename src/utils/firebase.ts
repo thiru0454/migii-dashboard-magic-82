@@ -2,7 +2,7 @@
 // This is a compatibility layer between Firebase and Supabase
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
-import { MigrantWorker } from '@/types/worker';
+import { MigrantWorker, Worker } from '@/types/worker';
 import { toast } from 'sonner';
 import { generateWorkerId } from "./workerUtils";
 
@@ -98,11 +98,30 @@ export const registerWorkerInStorage = async (worker: {
   longitude?: number;
 }): Promise<MigrantWorker> => {
   try {
-    const newWorker = {
-      ...worker,
-      id: generateWorkerId(),
-      status: "active" as const,
+    const workerId = generateWorkerId();
+    
+    const newWorker: MigrantWorker = {
+      id: workerId,
+      name: worker.name,
+      "Full Name": worker.name,
+      age: worker.age,
+      "Age": worker.age,
+      phone: worker.phone,
+      "Phone Number": worker.phone,
+      email: worker.email,
+      "Email Address": worker.email,
+      skill: worker.skill,
+      "Primary Skill": worker.skill,
+      originState: worker.originState,
+      "Origin State": worker.originState,
+      status: "active",
       registrationDate: new Date().toISOString(),
+      photoUrl: worker.photoUrl,
+      "Photo URL": worker.photoUrl,
+      latitude: worker.latitude,
+      longitude: worker.longitude,
+      aadhaar: worker.aadhaar,
+      "Aadhaar Number": worker.aadhaar
     };
 
     // First save to localStorage in case Supabase fails

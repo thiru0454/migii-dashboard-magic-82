@@ -22,7 +22,7 @@ export type MigrantWorker = {
   aadhaar: string;
   "Aadhaar Number": string;
   assignedBusinessId?: string;
-  skill?: string;
+  skill: string;
 };
 
 // Add a Worker interface that matches the one used in components
@@ -37,4 +37,13 @@ export interface Worker {
   email?: string;
   photoUrl?: string;
   aadhaar?: string;
+}
+
+// Define WorkerLocation interface to use in location tracking
+export interface WorkerLocation {
+  workerId: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  timestamp: number;
 }

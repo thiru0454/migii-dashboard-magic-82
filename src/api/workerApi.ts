@@ -103,7 +103,7 @@ export async function registerWorker(workerData: MigrantWorker) {
   }
 }
 
-export async function assignWorker(workerId: number, businessId: string) {
+export async function assignWorker(workerId: string, businessId: string) {
   try {
     console.log('Attempting to assign worker:', { workerId, businessId });
     

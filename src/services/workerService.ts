@@ -9,7 +9,18 @@ import {
 } from '@/utils/supabaseClient';
 import { toast } from 'sonner';
 
-export async function registerNewWorker(workerData: Omit<MigrantWorker, 'id'>) {
+export async function registerNewWorker(workerData: Omit<{
+  name: string;
+  age: number;
+  phone: string;
+  email?: string;
+  originState: string;
+  skill: string;
+  aadhaar: string;
+  photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
+}, "id">) {
   try {
     // Validate required fields (match form and DB schema)
     if (
@@ -41,15 +52,20 @@ export async function registerNewWorker(workerData: Omit<MigrantWorker, 'id'>) {
       "Full Name": name,
       phone,
       "Phone Number": phone,
+      age,
       "Age": age,
       "Email Address": email,
+      email,
       "Aadhaar Number": aadhaar,
+      aadhaar,
       "Origin State": originState,
+      originState,
       "Primary Skill": skill,
+      skill,
       "Photo URL": photoUrl,
-      status: 'active',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      photoUrl,
+      status: 'active' as const,
+      registrationDate: new Date().toISOString(),
       ...rest
     };
 
@@ -59,15 +75,15 @@ export async function registerNewWorker(workerData: Omit<MigrantWorker, 'id'>) {
       // User-friendly error handling
       if (error.message.includes('duplicate key value') && error.message.includes('workers_phone_key')) {
         toast.error('This phone number is already registered. Please use a different phone number.');
-        return;
+        return null;
       }
       if (error.message.includes('violates not-null constraint')) {
         toast.error('A required field is missing. Please fill in all required fields.');
-        return;
+        return null;
       }
       if (error.message.includes('invalid input syntax for type')) {
         toast.error('Invalid input format. Please check your entries.');
-        return;
+        return null;
       }
       toast.error(error.message || 'Failed to register worker');
       throw error;
@@ -81,7 +97,7 @@ export async function registerNewWorker(workerData: Omit<MigrantWorker, 'id'>) {
   }
 }
 
-export async function getWorkerById(id: number) {
+export async function getWorkerById(id: string) {
   try {
     const { data, error } = await getWorker(id);
     if (error) throw error;
@@ -92,7 +108,7 @@ export async function getWorkerById(id: number) {
   }
 }
 
-export async function updateWorkerDetails(id: number, updates: Partial<MigrantWorker>) {
+export async function updateWorkerDetails(id: string, updates: Partial<MigrantWorker>) {
   try {
     const { data, error } = await updateWorker(id, {
       ...updates,
@@ -106,7 +122,7 @@ export async function updateWorkerDetails(id: number, updates: Partial<MigrantWo
   }
 }
 
-export async function deleteWorkerById(id: number) {
+export async function deleteWorkerById(id: string) {
   try {
     const { error } = await deleteWorker(id);
     if (error) throw error;
@@ -129,4 +145,4 @@ export async function getAllRegisteredWorkers() {
 
 export function subscribeToWorkerUpdates(callback: () => void) {
   return subscribeToWorkers(callback);
-} 
+}
