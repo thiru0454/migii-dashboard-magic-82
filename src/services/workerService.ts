@@ -110,10 +110,14 @@ export async function getWorkerById(id: string) {
 
 export async function updateWorkerDetails(id: string, updates: Partial<MigrantWorker>) {
   try {
-    const { data, error } = await updateWorker(id, {
-      ...updates,
-      updated_at: new Date().toISOString()
-    });
+    // Create a new object with the updates, but remove any updated_at field
+    // since it's not part of the MigrantWorker type
+    const { updated_at, ...workerUpdates } = updates as Partial<MigrantWorker & { updated_at?: string }>;
+    
+    // Now pass the cleaned updates object to the updateWorker function
+    // and add the updated_at as a separate parameter if needed by the API
+    const { data, error } = await updateWorker(id, workerUpdates);
+    
     if (error) throw error;
     return data;
   } catch (error) {
