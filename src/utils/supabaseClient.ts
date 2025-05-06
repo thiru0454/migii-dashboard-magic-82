@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { MigrantWorker } from '@/types/worker';
 
@@ -77,24 +76,46 @@ export function subscribeToWorkers(callback: () => void) {
     .subscribe();
 }
 
-// Add the missing assignWorkerToBusiness function
+// Add the improved assignWorkerToBusiness function
 export async function assignWorkerToBusiness(workerId: string, businessId: string) {
-  // Get the worker data first
-  const { data, error: getError } = await getWorker(workerId);
+  console.log(`Assigning worker ${workerId} to business ${businessId}`);
   
-  if (getError) {
-    throw getError;
+  try {
+    // Get the worker data first to verify it exists
+    const { data: workerData, error: getError } = await getWorker(workerId);
+    
+    if (getError) {
+      console.error('Error fetching worker:', getError);
+      throw getError;
+    }
+    
+    if (!workerData) {
+      console.error('Worker not found');
+      throw new Error('Worker not found');
+    }
+    
+    console.log('Worker found:', workerData);
+    
+    // Update the worker with the business assignment
+    const { data, error } = await supabase
+      .from('workers')
+      .update({ 
+        assignedBusinessId: businessId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', workerId)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error assigning worker:', error);
+      throw error;
+    }
+    
+    console.log('Worker successfully assigned:', data);
+    return { data, error: null };
+  } catch (error) {
+    console.error('Exception during worker assignment:', error);
+    return { data: null, error };
   }
-  
-  if (!data) {
-    throw new Error('Worker not found');
-  }
-  
-  // Update the worker with the business assignment
-  return await supabase
-    .from('workers')
-    .update({ assignedBusinessId: businessId })
-    .eq('id', workerId)
-    .select()
-    .single();
 }

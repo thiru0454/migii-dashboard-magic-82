@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -5,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, RequireAdmin, RequireAuth, RequireBusiness } from "./contexts/AuthContext";
 import { WorkerRequestsProvider } from "@/contexts/WorkerRequestsContext";
 import { WorkersProvider } from "@/contexts/WorkersContext";
+import { CustomerSupport } from "@/components/CustomerSupport";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import Index from "./pages/Index";
 import WorkerRegistration from "./pages/WorkerRegistration";
 import WorkerLogin from "./pages/WorkerLogin";
@@ -28,6 +31,12 @@ const App = () => (
             <WorkerRequestsProvider>
               <BrowserRouter>
                 <Toaster position="top-right" />
+                
+                {/* Add language selector to all routes */}
+                <div className="fixed top-4 right-4 z-50">
+                  <LanguageSelector />
+                </div>
+                
                 <Routes>
                   <Route path="/" element={<Index />} />
                   
@@ -76,6 +85,9 @@ const App = () => (
                   {/* Catch-all */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                
+                {/* Add customer support to all routes */}
+                <CustomerSupport />
               </BrowserRouter>
             </WorkerRequestsProvider>
           </WorkersProvider>

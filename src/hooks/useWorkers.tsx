@@ -64,14 +64,22 @@ export function useWorkers() {
     };
   }, []);
 
-  // Function to assign a worker to a business
+  // Function to assign a worker to a business with improved error handling
   const assignWorker = async (workerId: string, businessId: string) => {
     setIsAssigning(true);
     try {
       console.log(`Assigning worker ${workerId} to business ${businessId}`);
       
       // Use our enhanced service function
-      await assignWorkerToBusiness(workerId, businessId);
+      const { data, error } = await assignWorkerToBusiness(workerId, businessId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (!data) {
+        throw new Error("Failed to assign worker - no data returned");
+      }
       
       // Update local state
       setWorkers(prev => 
@@ -85,7 +93,7 @@ export function useWorkers() {
       toast.success("Worker assigned successfully");
       setIsAssigning(false);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error assigning worker:", error);
       toast.error(error.message || "Failed to assign worker");
       setIsAssigning(false);

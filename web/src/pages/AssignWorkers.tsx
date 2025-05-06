@@ -62,10 +62,23 @@ const AssignWorkers = () => {
       return;
     }
 
-    const success = await assignWorker(selectedWorker.id, selectedBusinessId);
-    
-    if (success) {
-      setAssignDialogOpen(false);
+    // Display loading state
+    setIsAssigning(true);
+
+    try {
+      const success = await assignWorker(selectedWorker.id, selectedBusinessId);
+      
+      if (success) {
+        setAssignDialogOpen(false);
+        toast.success(`Worker ${selectedWorker.name} successfully assigned to business!`);
+      } else {
+        toast.error('Failed to assign worker. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error during worker assignment:', error);
+      toast.error('An error occurred while assigning the worker');
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -87,11 +100,7 @@ const AssignWorkers = () => {
   });
 
   if (isLoadingWorkers || isLoadingBusinesses) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <LoadingSpinner size="lg" text="Loading workers data..." />
-      </div>
-    );
+    return <PageLoadingSpinner text="Loading worker data..." />;
   }
 
   return (
