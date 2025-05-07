@@ -17,7 +17,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         "flex-1 p-4 md:p-6 pt-4 transition-all duration-300",
         "ml-0 md:ml-16 lg:ml-64",
         "mt-16 md:mt-0", // Add top margin on mobile for the header
-        "bg-gradient-to-b from-background to-background/95"
+        "bg-gradient-to-br from-background to-background/80 via-background/95"
       )}>
         <div className="mx-auto max-w-6xl">
           {children}

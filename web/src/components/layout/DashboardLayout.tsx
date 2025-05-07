@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -7,8 +8,11 @@ import {
   BarChart2, 
   Settings, 
   Bell,
-  LogOut
+  LogOut,
+  Menu
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -24,11 +28,45 @@ const navigation = [
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkWindowSize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', checkWindowSize);
+    checkWindowSize();
+    
+    return () => window.removeEventListener('resize', checkWindowSize);
+  }, []);
+
+  useEffect(() => {
+    // Close sidebar when navigating on mobile
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname, isMobile]);
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Mobile menu button */}
+      <div className="fixed top-4 left-4 z-40 md:hidden">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="bg-white"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      </div>
+
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
+      <div className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-30 ${
+        sidebarOpen || !isMobile ? 'translate-x-0' : '-translate-x-full'
+      }`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-center h-16 px-4 bg-primary">
@@ -77,11 +115,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </div>
 
+      {/* Backdrop for mobile */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/30 z-20"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
-      <div className="pl-64">
+      <div className={`transition-all duration-300 ${isMobile ? 'pl-0' : 'pl-64'}`}>
         {/* Top Bar */}
         <div className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 bg-white shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800">
+          <h2 className="text-lg font-semibold text-gray-800 ml-8 md:ml-0">
             {navigation.find(item => item.href === location.pathname)?.name || 'Dashboard'}
           </h2>
           <div className="flex items-center space-x-4">
@@ -93,7 +139,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Page Content */}
-        <main className="p-6">
+        <main className="p-4 md:p-6">
           {children}
         </main>
       </div>

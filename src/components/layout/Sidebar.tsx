@@ -1,8 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
-  Database,
   Home,
   Menu,
   User,
@@ -44,6 +44,12 @@ const adminLinks = [
     title: "Manage Businesses",
     href: "/admin-dashboard/businesses",
     icon: Building,
+  },
+  {
+    title: "Post Jobs",
+    href: "/admin-dashboard/jobs",
+    icon: Briefcase,
+    highlight: true
   }
 ];
 
@@ -72,6 +78,12 @@ const workerLinks = [
     title: "Worker Portal",
     href: "/worker-dashboard",
     icon: User,
+  },
+  {
+    title: "Available Jobs",
+    href: "/worker-dashboard/jobs",
+    icon: Briefcase,
+    highlight: true
   }
 ];
 
@@ -105,12 +117,21 @@ export function Sidebar() {
     const links = [...sidebarLinks];
     
     if (!currentUser) {
-      links.push({
-        title: "Worker Registration",
-        href: "/worker-registration",
-        icon: UserPlus,
-        public: true
-      });
+      links.push(
+        {
+          title: "Worker Registration",
+          href: "/worker-registration",
+          icon: UserPlus,
+          public: true
+        },
+        {
+          title: "Available Jobs",
+          href: "/jobs",
+          icon: Briefcase,
+          public: true,
+          highlight: true
+        }
+      );
       return links;
     }
     
@@ -154,8 +175,9 @@ export function Sidebar() {
         className={cn(
           "fixed top-4 left-4 z-50 md:hidden",
           "p-2 rounded-md transition-colors",
-          "bg-background hover:bg-accent",
-          "focus:outline-none focus:ring-2 focus:ring-accent"
+          "bg-background/90 hover:bg-accent",
+          "focus:outline-none focus:ring-2 focus:ring-accent",
+          "shadow-md"
         )}
       >
         {mobileMenuOpen ? (
@@ -168,7 +190,7 @@ export function Sidebar() {
       {/* Mobile Menu Overlay */}
       {isMobile && mobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40"
+          className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -177,9 +199,10 @@ export function Sidebar() {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-45",
-          "flex h-full w-64 flex-col",
+          "flex h-full flex-col",
           "bg-sidebar border-r",
           "transition-transform duration-300 ease-in-out",
+          "w-64",
           isMobile && !mobileMenuOpen && "-translate-x-full",
           isMobile && mobileMenuOpen && "translate-x-0"
         )}
@@ -207,11 +230,18 @@ export function Sidebar() {
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm",
                   "text-sidebar-foreground",
                   "transition-colors hover:bg-accent/50 hover:text-accent-foreground",
-                  active && "bg-accent text-accent-foreground font-medium"
+                  active && "bg-accent text-accent-foreground font-medium",
+                  link.highlight && !active && "bg-primary/10 border border-primary/30"
                 )}
               >
-                <link.icon size={20} className="shrink-0" />
+                <link.icon size={20} className={cn(
+                  "shrink-0", 
+                  link.highlight && "text-primary"
+                )} />
                 <span className="opacity-100">{link.title}</span>
+                {link.highlight && !active && (
+                  <span className="ml-auto text-xs font-medium bg-primary/20 text-primary px-1.5 py-0.5 rounded">New</span>
+                )}
               </Link>
             );
           })}
@@ -265,12 +295,6 @@ export function Sidebar() {
           </div>
         </div>
       </aside>
-
-      {/* Main Content Spacer */}
-      <div className={cn(
-        "transition-all duration-300",
-        isMobile ? "ml-0" : "ml-64"
-      )} />
     </>
   );
 }

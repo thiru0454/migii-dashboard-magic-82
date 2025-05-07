@@ -104,15 +104,23 @@ export function AssignWorkersTab() {
       
       setAssigningWorkers(prev => ({ ...prev, [requestId]: true }));
 
+      // Ensure all worker IDs are strings before sending them to Supabase
+      const workersToAssign = selectedWorkers[requestId].map(id => String(id));
+      
+      console.log('Workers to assign:', workersToAssign);
+
       // Assign each worker to the business
-      const workerPromises = selectedWorkers[requestId].map(async (workerId) => {
+      const workerPromises = workersToAssign.map(async (workerId) => {
         try {
           console.log(`Attempting to assign worker ${workerId} to business ${request.id}`);
           const result = await assignWorkerToBusiness(workerId, request.id);
+          
           if (result.error) {
             console.error(`Error assigning worker ${workerId}:`, result.error);
             return false;
           }
+          
+          console.log(`Successfully assigned worker ${workerId} to business ${request.id}`);
           return true;
         } catch (err) {
           console.error(`Exception assigning worker ${workerId}:`, err);
