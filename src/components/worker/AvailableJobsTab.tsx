@@ -88,8 +88,8 @@ export function AvailableJobsTab() {
     try {
       const { error } = await submitJobApplication({
         job_id: selectedJob.id,
-        worker_id: currentUser.id || currentUser.uid,
-        worker_name: currentUser.name || currentUser.displayName,
+        worker_id: currentUser.id, // Use currentUser.id instead of uid
+        worker_name: currentUser.name, // Use currentUser.name instead of displayName
         status: "pending",
         notes: applicationNote
       });
