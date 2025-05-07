@@ -17,7 +17,7 @@ import {
   Languages, 
   MessageSquare,
   Smartphone,
-  News
+  Newspaper // Replaced 'News' with 'Newspaper' which is available in lucide-react
 } from 'lucide-react';
 
 const Index = () => {
@@ -66,7 +66,7 @@ const Index = () => {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <News size={16} />
+          <Newspaper size={16} /> {/* Using Newspaper instead of News */}
           <CardTitle>News Title</CardTitle>
         </div>
         <CardDescription>April 5, 2025</CardDescription>
