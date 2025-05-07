@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailableJobsTab } from "@/components/worker/AvailableJobsTab";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const ADMIN_CREDENTIALS = {
   username: "admin@migii.com",
@@ -104,104 +105,127 @@ export default function Login() {
               </TabsList>
               
               <TabsContent value="login" className="animate-fade-in">
-                <div className="space-y-6 bg-card shadow-lg p-8 rounded-lg max-w-sm mx-auto">
-                  <h2 className="text-2xl font-bold mb-6 text-center">MIGII Login Portal</h2>
-                  {mode === "none" && (
-                    <div className="space-y-4">
-                      <Button className="w-full" variant="outline" onClick={() => { setMode("admin"); resetForm(); }}>
-                        Admin Login
-                      </Button>
-                      <Button className="w-full" variant="outline" onClick={() => { setMode("business"); resetForm(); }}>
-                        Business Login
-                      </Button>
-                      <Button className="w-full" variant="outline" onClick={goToWorkerLogin}>
-                        Worker Login
-                      </Button>
-                    </div>
-                  )}
+                <Card className="w-full max-w-sm mx-auto shadow-lg border-border bg-gradient-to-br from-card to-background/80">
+                  <CardHeader className="text-center space-y-2 pb-6">
+                    <CardTitle className="text-2xl font-bold text-gradient-primary">MIGII Login Portal</CardTitle>
+                    <CardDescription className="text-muted-foreground">
+                      Welcome back! Please log in to continue
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4 md:px-6 pb-8">
+                    {mode === "none" && (
+                      <div className="space-y-4">
+                        <Button className="w-full transition-all hover:translate-y-[-2px]" variant="outline" onClick={() => { setMode("admin"); resetForm(); }}>
+                          Admin Login
+                        </Button>
+                        <Button className="w-full transition-all hover:translate-y-[-2px]" variant="outline" onClick={() => { setMode("business"); resetForm(); }}>
+                          Business Login
+                        </Button>
+                        <Button className="w-full transition-all hover:translate-y-[-2px] bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90" onClick={goToWorkerLogin}>
+                          Worker Login
+                        </Button>
+                      </div>
+                    )}
 
-                  {mode === "admin" && (
-                    <form
-                      className="space-y-6"
-                      onSubmit={handleAdminLogin}
-                    >
-                      <h3 className="text-xl font-semibold text-center">Admin Login</h3>
-                      <Input
-                        type="text"
-                        placeholder="Enter admin email"
-                        autoComplete="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                        disabled={isSubmitting}
-                      />
-                      <Input
-                        type="password"
-                        placeholder="Enter password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        disabled={isSubmitting}
-                      />
-                      <Button type="submit" className="w-full" disabled={isSubmitting}>
-                        {isSubmitting ? "Signing in..." : "Sign In as Admin"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="w-full"
-                        onClick={() => setMode("none")}
-                        disabled={isSubmitting}
+                    {mode === "admin" && (
+                      <form
+                        className="space-y-6"
+                        onSubmit={handleAdminLogin}
                       >
-                        Back to Login Options
-                      </Button>
-                    </form>
-                  )}
+                        <h3 className="text-xl font-semibold text-center">Admin Login</h3>
+                        <Input
+                          type="text"
+                          placeholder="Enter admin email"
+                          autoComplete="username"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                        />
+                        <Input
+                          type="password"
+                          placeholder="Enter password"
+                          autoComplete="current-password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                        />
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-all hover:translate-y-[-2px]" 
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? "Signing in..." : "Sign In as Admin"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="w-full"
+                          onClick={() => setMode("none")}
+                          disabled={isSubmitting}
+                        >
+                          Back to Login Options
+                        </Button>
+                      </form>
+                    )}
 
-                  {mode === "business" && (
-                    <form
-                      className="space-y-6"
-                      onSubmit={handleBusinessLogin}
-                    >
-                      <h3 className="text-xl font-semibold text-center">Business Login</h3>
-                      <Input
-                        type="text"
-                        placeholder="Enter business email"
-                        autoComplete="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                        disabled={isSubmitting}
-                      />
-                      <Input
-                        type="password"
-                        placeholder="Enter password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        disabled={isSubmitting}
-                      />
-                      <Button type="submit" className="w-full" disabled={isSubmitting}>
-                        {isSubmitting ? "Signing in..." : "Sign In as Business"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="w-full"
-                        onClick={() => setMode("none")}
-                        disabled={isSubmitting}
+                    {mode === "business" && (
+                      <form
+                        className="space-y-6"
+                        onSubmit={handleBusinessLogin}
                       >
-                        Back to Login Options
-                      </Button>
-                    </form>
-                  )}
-                </div>
+                        <h3 className="text-xl font-semibold text-center">Business Login</h3>
+                        <Input
+                          type="text"
+                          placeholder="Enter business email"
+                          autoComplete="username"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                        />
+                        <Input
+                          type="password"
+                          placeholder="Enter password"
+                          autoComplete="current-password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                        />
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-all hover:translate-y-[-2px]" 
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? "Signing in..." : "Sign In as Business"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="w-full"
+                          onClick={() => setMode("none")}
+                          disabled={isSubmitting}
+                        >
+                          Back to Login Options
+                        </Button>
+                      </form>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
               
               <TabsContent value="jobs" className="animate-fade-in">
-                <AvailableJobsTab />
+                <Card className="bg-gradient-to-br from-card to-background/80 border border-border/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xl md:text-2xl text-gradient-primary">Available Job Opportunities</CardTitle>
+                    <CardDescription>Browse and apply for available jobs near you</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AvailableJobsTab />
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>

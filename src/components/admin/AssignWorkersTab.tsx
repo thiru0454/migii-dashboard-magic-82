@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, UserMinus } from "lucide-react";
+import { UserPlus, UserMinus, Loader2 } from "lucide-react";
 import { MigrantWorker, Worker } from "@/types/worker";
 import { useWorkers } from "@/hooks/useWorkers";
+import { assignWorkerToBusiness } from "@/utils/supabaseClient";
 
 interface WorkerRequest {
   id: string;
@@ -28,6 +29,7 @@ export function AssignWorkersTab() {
   const [loading, setLoading] = useState(true);
   const [selectedWorkers, setSelectedWorkers] = useState<{ [key: string]: string[] }>({});
   const { workers, isLoadingWorkers } = useWorkers();
+  const [assigningWorkers, setAssigningWorkers] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     loadData();
@@ -90,7 +92,7 @@ export function AssignWorkersTab() {
     });
   };
 
-  const assignWorkers = (requestId: string) => {
+  const assignWorkers = async (requestId: string) => {
     try {
       const request = requests.find(r => r.id === requestId);
       if (!request) return;
@@ -99,23 +101,50 @@ export function AssignWorkersTab() {
         toast.error(`Cannot assign more than ${request.numberOfWorkers} workers`);
         return;
       }
+      
+      setAssigningWorkers(prev => ({ ...prev, [requestId]: true }));
 
-      const updatedRequests = requests.map(request => {
-        if (request.id === requestId) {
-          return {
-            ...request,
-            assignedWorkers: selectedWorkers[requestId]
-          };
+      // Assign each worker to the business
+      const workerPromises = selectedWorkers[requestId].map(async (workerId) => {
+        try {
+          console.log(`Attempting to assign worker ${workerId} to business ${request.id}`);
+          const result = await assignWorkerToBusiness(workerId, request.id);
+          if (result.error) {
+            console.error(`Error assigning worker ${workerId}:`, result.error);
+            return false;
+          }
+          return true;
+        } catch (err) {
+          console.error(`Exception assigning worker ${workerId}:`, err);
+          return false;
         }
-        return request;
       });
 
-      localStorage.setItem('workerRequests', JSON.stringify(updatedRequests));
-      setRequests(updatedRequests);
-      toast.success("Workers assigned successfully!");
+      const results = await Promise.all(workerPromises);
+      
+      // Check if all workers were assigned successfully
+      if (results.every(r => r === true)) {
+        const updatedRequests = requests.map(r => {
+          if (r.id === requestId) {
+            return {
+              ...r,
+              assignedWorkers: selectedWorkers[requestId]
+            };
+          }
+          return r;
+        });
+
+        localStorage.setItem('workerRequests', JSON.stringify(updatedRequests));
+        setRequests(updatedRequests);
+        toast.success("Workers assigned successfully!");
+      } else {
+        toast.error("Failed to assign one or more workers. Please try again.");
+      }
     } catch (error) {
       console.error("Error assigning workers:", error);
       toast.error("Failed to assign workers. Please try again.");
+    } finally {
+      setAssigningWorkers(prev => ({ ...prev, [requestId]: false }));
     }
   };
 
@@ -126,24 +155,29 @@ export function AssignWorkersTab() {
   };
 
   if (loading || isLoadingWorkers) {
-    return <div>Loading data...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="loader text-primary text-xl"></div>
+        <span className="ml-3 text-muted-foreground">Loading data...</span>
+      </div>
+    );
   }
 
   const availableWorkers = getAvailableWorkers();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Assign Workers to Approved Requests</CardTitle>
+    <Card className="bg-gradient-to-br from-card to-background border border-border/50">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl md:text-2xl text-gradient-primary">Assign Workers to Approved Requests</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto max-w-full">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Business Name</TableHead>
-                <TableHead>Required Skills</TableHead>
-                <TableHead>Workers Needed</TableHead>
+                <TableHead className="hidden sm:table-cell">Required Skills</TableHead>
+                <TableHead className="hidden sm:table-cell">Workers Needed</TableHead>
                 <TableHead>Available Workers</TableHead>
                 <TableHead>Assigned Workers</TableHead>
                 <TableHead>Actions</TableHead>
@@ -159,14 +193,14 @@ export function AssignWorkersTab() {
               ) : (
                 requests.map((request) => (
                   <TableRow key={request.id}>
-                    <TableCell>{request.businessName}</TableCell>
-                    <TableCell>{request.requiredSkills}</TableCell>
-                    <TableCell>{request.numberOfWorkers}</TableCell>
+                    <TableCell className="font-medium">{request.businessName}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{request.requiredSkills}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{request.numberOfWorkers}</TableCell>
                     <TableCell>
                       <Select
                         onValueChange={(value) => handleWorkerSelection(request.id, value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[200px]">
                           <SelectValue placeholder="Select worker" />
                         </SelectTrigger>
                         <SelectContent>
@@ -180,18 +214,29 @@ export function AssignWorkersTab() {
                                 {worker.name} ({worker.skill})
                               </SelectItem>
                             ))}
+                          {availableWorkers
+                            .filter(worker => 
+                              !worker.skill.toLowerCase().includes(request.requiredSkills.toLowerCase()) &&
+                              !selectedWorkers[request.id]?.includes(worker.id)
+                            )
+                            .map(worker => (
+                              <SelectItem key={worker.id} value={worker.id}>
+                                {worker.name} ({worker.skill}) - Skills don't match
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
                         {selectedWorkers[request.id]?.map(workerId => (
                           <div key={workerId} className="flex items-center justify-between">
-                            <span>{getWorkerName(workerId)}</span>
+                            <span className="text-sm truncate max-w-[120px] sm:max-w-[180px]">{getWorkerName(workerId)}</span>
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => handleWorkerSelection(request.id, workerId)}
+                              className="ml-2"
                             >
                               <UserMinus className="h-4 w-4" />
                             </Button>
@@ -202,11 +247,20 @@ export function AssignWorkersTab() {
                     <TableCell>
                       <Button
                         onClick={() => assignWorkers(request.id)}
-                        disabled={!selectedWorkers[request.id]?.length}
-                        className="bg-primary text-white hover:bg-primary/90"
+                        disabled={!selectedWorkers[request.id]?.length || assigningWorkers[request.id]}
+                        className="bg-primary text-white hover:bg-primary/90 w-full sm:w-auto"
                       >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Assign Workers
+                        {assigningWorkers[request.id] ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Assigning...
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Assign Workers
+                          </>
+                        )}
                       </Button>
                     </TableCell>
                   </TableRow>

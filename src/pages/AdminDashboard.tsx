@@ -30,36 +30,36 @@ export default function AdminDashboard() {
       <div className="mb-6">
         <AdminDashboardHeader onLogout={logout} workers={workers} />
       </div>
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="overflow-x-auto">
-          <TabsTrigger value="workers">Workers</TabsTrigger>
-          <TabsTrigger value="businesses">Businesses</TabsTrigger>
-          <TabsTrigger value="help">Help Requests</TabsTrigger>
-          <TabsTrigger value="locations">Live Map</TabsTrigger>
-          <TabsTrigger value="requests">Worker Requests</TabsTrigger>
-          <TabsTrigger value="jobs" className="animate-pulse">Post Jobs</TabsTrigger>
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+        <TabsList className="overflow-x-auto w-full flex flex-nowrap lg:justify-start">
+          <TabsTrigger value="workers" className="flex-shrink-0">Workers</TabsTrigger>
+          <TabsTrigger value="businesses" className="flex-shrink-0">Businesses</TabsTrigger>
+          <TabsTrigger value="help" className="flex-shrink-0">Help Requests</TabsTrigger>
+          <TabsTrigger value="locations" className="flex-shrink-0">Live Map</TabsTrigger>
+          <TabsTrigger value="requests" className="flex-shrink-0">Worker Requests</TabsTrigger>
+          <TabsTrigger value="jobs" className="flex-shrink-0 animate-pulse">Post Jobs</TabsTrigger>
         </TabsList>
-        <TabsContent value="workers">
+        <TabsContent value="workers" className="animate-fade-in">
           <div className="mt-4">
             <WorkersTab />
           </div>
         </TabsContent>
-        <TabsContent value="businesses">
+        <TabsContent value="businesses" className="animate-fade-in">
           <div className="mt-4">
             <BusinessesTab />
           </div>
         </TabsContent>
-        <TabsContent value="help">
+        <TabsContent value="help" className="animate-fade-in">
           <div className="mt-4">
             <HelpRequestsTab />
           </div>
         </TabsContent>
-        <TabsContent value="locations">
+        <TabsContent value="locations" className="animate-fade-in">
           <div className="mt-6">
             <WorkersMap />
           </div>
         </TabsContent>
-        <TabsContent value="requests">
+        <TabsContent value="requests" className="animate-fade-in">
           <div className="mt-4">
             <WorkerRequestsTab />
           </div>

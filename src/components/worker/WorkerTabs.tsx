@@ -31,19 +31,19 @@ export function WorkerTabs({ workerData, onSignOut }: WorkerTabsProps) {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid grid-cols-5 mb-8">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="id-card">ID Card</TabsTrigger>
-          <TabsTrigger value="requests">Assigned Work</TabsTrigger>
-          <TabsTrigger value="jobs" className="animate-pulse">Available Jobs</TabsTrigger>
-          <TabsTrigger value="support">Support</TabsTrigger>
+        <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-8 gap-1 overflow-x-auto">
+          <TabsTrigger value="dashboard" className="text-sm md:text-base">Dashboard</TabsTrigger>
+          <TabsTrigger value="id-card" className="text-sm md:text-base">ID Card</TabsTrigger>
+          <TabsTrigger value="requests" className="text-sm md:text-base">Assigned Work</TabsTrigger>
+          <TabsTrigger value="jobs" className="text-sm md:text-base animate-pulse">Available Jobs</TabsTrigger>
+          <TabsTrigger value="support" className="text-sm md:text-base">Support</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="dashboard">
+        <TabsContent value="dashboard" className="animate-fade-in">
           <WorkerDashboardTab workerData={workerData} />
         </TabsContent>
         
-        <TabsContent value="id-card" className="pt-6 flex justify-center">
+        <TabsContent value="id-card" className="pt-6 flex justify-center animate-fade-in">
           <WorkerIDCard
             workerId={workerData.workerId}
             name={workerData.name}
@@ -53,7 +53,7 @@ export function WorkerTabs({ workerData, onSignOut }: WorkerTabsProps) {
           />
         </TabsContent>
         
-        <TabsContent value="requests">
+        <TabsContent value="requests" className="animate-fade-in">
           <WorkerRequestsList />
         </TabsContent>
         
@@ -61,13 +61,17 @@ export function WorkerTabs({ workerData, onSignOut }: WorkerTabsProps) {
           <AvailableJobsTab />
         </TabsContent>
         
-        <TabsContent value="support">
+        <TabsContent value="support" className="animate-fade-in">
           <WorkerSupportTab supportHistory={workerData.supportHistory} />
         </TabsContent>
       </Tabs>
       
       <div className="flex justify-center">
-        <Button variant="outline" onClick={onSignOut}>
+        <Button 
+          variant="outline" 
+          onClick={onSignOut}
+          className="hover:bg-primary/10 transition-all duration-300"
+        >
           Sign Out
         </Button>
       </div>
