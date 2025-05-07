@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,7 +6,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWorkers } from "@/hooks/useWorkers";
 import { MigrantWorker } from "@/types/worker";
@@ -147,7 +146,7 @@ export function WorkerRequestsTab() {
     setSelectedWorkerId("");
   };
 
-  // Assign worker to request
+  // Assign worker to request - Fixed the worker ID format issue
   const handleConfirmAssign = async () => {
     if (!selectedRequest || !selectedWorkerId) {
       toast.error("Please select a worker");
@@ -161,16 +160,31 @@ export function WorkerRequestsTab() {
         throw new Error("Selected worker not found");
       }
       
+      console.log("Assigning worker:", worker);
+      console.log("Worker ID type:", typeof worker.id, "Value:", worker.id);
+      
+      // Format the worker ID as UUID if needed
+      // This is a simple check - in a real application, you'd want to ensure proper UUID format
+      let formattedWorkerId = String(worker.id);
+      
+      // If it's a numeric ID, we need to convert it to a valid UUID format for Supabase
+      if (/^\d+$/.test(formattedWorkerId)) {
+        // Generate a UUID v4 based on the worker ID
+        formattedWorkerId = `00000000-0000-4000-A000-${formattedWorkerId.padStart(12, '0')}`;
+        console.log("Formatted worker ID:", formattedWorkerId);
+      }
+      
       const { error } = await supabase
         .from("worker_requests")
         .update({
-          assigned_worker_id: String(worker.id),
+          assigned_worker_id: formattedWorkerId,
           assigned_worker_name: worker.name,
           status: "assigned"
         })
         .eq("id", selectedRequest.id);
         
       if (error) {
+        console.error("Error in assignment:", error);
         throw error;
       }
       
@@ -183,7 +197,7 @@ export function WorkerRequestsTab() {
             ? { 
                 ...req, 
                 status: "assigned",
-                assigned_worker_id: String(worker.id),
+                assigned_worker_id: formattedWorkerId,
                 assigned_worker_name: worker.name
               } 
             : req
@@ -294,6 +308,9 @@ export function WorkerRequestsTab() {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Worker Request Details</DialogTitle>
+              <DialogDescription>
+                View and manage request details
+              </DialogDescription>
             </DialogHeader>
             {selectedRequest && (
               <div className="space-y-4">
@@ -367,6 +384,9 @@ export function WorkerRequestsTab() {
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Confirm Action</DialogTitle>
+              <DialogDescription>
+                Please confirm your action
+              </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               Are you sure you want to <span className="font-semibold">{confirmAction}</span> this request?
@@ -390,6 +410,9 @@ export function WorkerRequestsTab() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Assign Worker</DialogTitle>
+              <DialogDescription>
+                Select a worker to assign to this request
+              </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               {isLoadingWorkers ? (

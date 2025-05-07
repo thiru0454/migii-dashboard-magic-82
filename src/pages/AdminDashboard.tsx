@@ -6,6 +6,7 @@ import { BusinessesTab } from "@/components/admin/BusinessesTab";
 import { HelpRequestsTab } from "@/components/admin/HelpRequestsTab";
 import { WorkersMap } from "@/components/admin/WorkersMap";
 import { WorkerRequestsTab } from "@/components/admin/WorkerRequestsTab";
+import { JobsTab } from "@/components/admin/JobsTab";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
@@ -30,12 +31,13 @@ export default function AdminDashboard() {
         <AdminDashboardHeader onLogout={logout} workers={workers} />
       </div>
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="overflow-x-auto">
           <TabsTrigger value="workers">Workers</TabsTrigger>
           <TabsTrigger value="businesses">Businesses</TabsTrigger>
           <TabsTrigger value="help">Help Requests</TabsTrigger>
           <TabsTrigger value="locations">Live Map</TabsTrigger>
           <TabsTrigger value="requests">Worker Requests</TabsTrigger>
+          <TabsTrigger value="jobs" className="animate-pulse">Post Jobs</TabsTrigger>
         </TabsList>
         <TabsContent value="workers">
           <div className="mt-4">
@@ -59,8 +61,12 @@ export default function AdminDashboard() {
         </TabsContent>
         <TabsContent value="requests">
           <div className="mt-4">
-            {/* Remove the props as they're not needed - WorkerRequestsTab manages its own state */}
             <WorkerRequestsTab />
+          </div>
+        </TabsContent>
+        <TabsContent value="jobs" className="animate-fade-in">
+          <div className="mt-4">
+            <JobsTab />
           </div>
         </TabsContent>
       </Tabs>
