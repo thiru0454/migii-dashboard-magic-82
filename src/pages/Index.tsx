@@ -1,619 +1,485 @@
-
-import { useState, useEffect } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { useQuery } from "@tanstack/react-query";
+import React from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { T } from '@/components/T';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { 
   Users, 
-  MapPin,
+  Home, 
+  Briefcase, 
+  Search, 
+  Shield, 
+  MapPin, 
+  Languages, 
   MessageSquare,
-  BarChart2,
-  Languages,
-  Search,
-  Award,
-  Download,
-  Calendar,
-  NewsP,
-  HelpCircle,
-  CheckCircle,
-  Star
-} from "lucide-react";
-import { T } from "@/components/T";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious
-} from "@/components/ui/carousel";
-import { useLanguage } from "@/contexts/LanguageContext";
-
-// Mock data for the dashboard
-const fetchDashboardData = async () => {
-  // In a real app, this would be an API call
-  return {
-    workers: {
-      total: 12587,
-      active: 10234,
-      registered: 342
-    },
-    jobs: {
-      posted: 845,
-      filled: 623,
-      pending: 222
-    },
-    regions: {
-      covered: 28,
-      topRegions: ['Maharashtra', 'Gujarat', 'Karnataka', 'Tamil Nadu', 'Delhi']
-    },
-    languages: {
-      supported: 12,
-      list: ['Hindi', 'Tamil', 'Bengali', 'Telugu', 'Marathi', 'Gujarati', 'Kannada', 'Malayalam', 'Odia', 'Punjabi', 'Urdu', 'English']
-    },
-    grievances: {
-      resolved: 327,
-      pending: 45
-    },
-    successStories: [
-      {
-        id: 1,
-        name: "Rajesh Kumar",
-        description: "Found a construction job within 3 days of registration",
-        image: "https://images.unsplash.com/photo-1483381719261-6620dfa2d3ba?q=80&w=300&h=300&auto=format&fit=crop"
-      },
-      {
-        id: 2,
-        name: "Priya Shah",
-        description: "Connected with an employer who provided free accommodation",
-        image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=300&h=300&auto=format&fit=crop"
-      },
-      {
-        id: 3,
-        name: "Mohammed Ali",
-        description: "Resolved payment dispute through Migii's intervention",
-        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&h=300&auto=format&fit=crop"
-      }
-    ],
-    news: [
-      {
-        id: 1,
-        title: "New Worker Safety Guidelines Released",
-        date: "May 2, 2025"
-      },
-      {
-        id: 2,
-        title: "E-Shram Registration Drive in Rural Areas",
-        date: "April 28, 2025"
-      },
-      {
-        id: 3,
-        title: "Government Extends Healthcare Benefits for Migrant Workers",
-        date: "April 21, 2025"
-      },
-      {
-        id: 4,
-        title: "Upcoming Job Fair in Delhi Region - May 15",
-        date: "April 18, 2025"
-      }
-    ],
-    faq: [
-      {
-        id: 1,
-        question: "How do I register as a worker?",
-        answer: "Visit the 'Register as a Worker' section on our website or download our mobile app. You'll need to provide basic personal information, work experience, and skill details."
-      },
-      {
-        id: 2,
-        question: "How can employers verify worker identities?",
-        answer: "Use the 'Verify Worker' feature and enter the worker's Migii ID or scan their QR code for instant verification of identity and skills."
-      },
-      {
-        id: 3,
-        question: "What support does Migii offer for grievances?",
-        answer: "We provide a 24/7 helpline, in-app chat support, and a formal grievance filing system that ensures resolution within 48 hours for urgent matters."
-      }
-    ]
-  };
-};
+  Smartphone,
+  News
+} from 'lucide-react';
 
 const Index = () => {
   const { t } = useLanguage();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
-  const [searchQuery, setSearchQuery] = useState("");
   
-  const { data, isLoading } = useQuery({
-    queryKey: ['dashboardData'],
-    queryFn: fetchDashboardData
-  });
+  // Helper components
+  const StatCard = ({ title, value }: { title: string; value: string }) => (
+    <div className="bg-white p-4 rounded-lg shadow text-center">
+      <p className="text-xl md:text-3xl font-bold text-primary mb-2">{value}</p>
+      <p className="text-sm">{title}</p>
+    </div>
+  );
 
-  const handleRoleSelection = (role: string) => {
-    switch (role) {
-      case "worker":
-        navigate("/worker-login");
-        break;
-      case "business":
-        navigate("/login?tab=business");
-        break;
-      case "admin":
-        navigate("/login?tab=admin");
-        break;
-    }
-  };
+  const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="mb-4">{icon}</div>
+      <h3 className="text-xl font-semibold mb-2">{title}</h3>
+      <p className="text-gray-600">{description}</p>
+    </div>
+  );
 
-  if (isLoading || !data) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-[80vh]">
-          <div className="loader"></div>
+  const ServiceCard = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
+    <div className="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow">
+      <div className="flex justify-center mb-3">{icon}</div>
+      <h3 className="text-lg font-semibold mb-1">{title}</h3>
+      <p className="text-xs text-gray-500">{description}</p>
+    </div>
+  );
+
+  const StoryCard = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Success Story</CardTitle>
+        <CardDescription>Worker found job in 3 days</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-gray-600">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum.</p>
+      </CardContent>
+      <CardFooter>
+        <Button variant="link" className="ml-auto">Read Full Story</Button>
+      </CardFooter>
+    </Card>
+  );
+
+  const NewsCard = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <News size={16} />
+          <CardTitle>News Title</CardTitle>
         </div>
-      </DashboardLayout>
-    );
-  }
+        <CardDescription>April 5, 2025</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-gray-600">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum.</p>
+      </CardContent>
+      <CardFooter>
+        <Button variant="link" className="ml-auto">Read More</Button>
+      </CardFooter>
+    </Card>
+  );
 
+  const FAQItem = () => (
+    <div className="border-b border-gray-200 pb-4">
+      <h4 className="text-lg font-medium mb-2">Frequently asked question?</h4>
+      <p className="text-gray-600">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum.</p>
+    </div>
+  );
+  
   return (
-    <DashboardLayout>
-      <div className="space-y-8 pb-10">
-        {/* 1. Hero Banner */}
-        <section className="relative rounded-lg overflow-hidden bg-gradient-to-r from-indigo-600 to-primary h-80 mb-8">
-          <div className="absolute inset-0 bg-black/20 z-10"></div>
-          <div className="relative z-20 h-full flex flex-col justify-center items-center text-center px-4 md:px-8">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
-              <T keyName="heroBannerTitle" />
-            </h1>
-            <p className="text-white/90 text-lg md:text-xl max-w-2xl mb-6">
-              <T keyName="heroBannerSubtitle" />
-            </p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <Button size="lg" className="font-medium">
-                <T keyName="joinNow" />
-              </Button>
-              <Button size="lg" variant="outline" className="bg-white/10 backdrop-blur text-white border-white/20 hover:bg-white/20">
-                <T keyName="postJob" />
-              </Button>
-              <Button size="lg" variant="outline" className="bg-white/10 backdrop-blur text-white border-white/20 hover:bg-white/20">
-                <T keyName="trackStatus" />
-              </Button>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Banner */}
+      <section className="bg-primary text-white py-16 px-4 md:px-8 lg:px-16">
+        <div className="container mx-auto max-w-7xl">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">{t('heroBannerTitle')}</h1>
+          <p className="text-lg md:text-xl mb-8 max-w-2xl">{t('heroBannerSubtitle')}</p>
+          
+          <div className="flex flex-wrap gap-4">
+            <Button size="lg" variant="secondary">{t('joinNow')}</Button>
+            <Button size="lg" variant="outline">{t('postJob')}</Button>
+            <Button size="lg" variant="outline">{t('trackStatus')}</Button>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* 2. Quick Access Role Selector */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-4"><T keyName="selectYourRole" /></h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card onClick={() => handleRoleSelection("worker")} className="cursor-pointer hover:shadow-md transition-all hover:border-primary">
-              <CardContent className="p-6 flex flex-col items-center text-center">
-                <div className="bg-primary/10 p-4 rounded-full mb-4">
-                  <Users className="h-8 w-8 text-primary" />
+      {/* Role Selector */}
+      <section className="py-12 px-4 md:px-8 lg:px-16">
+        <div className="container mx-auto max-w-7xl">
+          <h2 className="text-2xl md:text-3xl font-semibold text-center mb-8">{t('selectYourRole')}</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  <Users size={48} className="text-primary" />
                 </div>
-                <h3 className="font-semibold text-lg mb-2"><T keyName="worker" /></h3>
-                <p className="text-sm text-muted-foreground"><T keyName="workerDescription" /></p>
-              </CardContent>
-            </Card>
-            
-            <Card onClick={() => handleRoleSelection("business")} className="cursor-pointer hover:shadow-md transition-all hover:border-primary">
-              <CardContent className="p-6 flex flex-col items-center text-center">
-                <div className="bg-primary/10 p-4 rounded-full mb-4">
-                  <Award className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg mb-2"><T keyName="employer" /></h3>
-                <p className="text-sm text-muted-foreground"><T keyName="employerDescription" /></p>
-              </CardContent>
-            </Card>
-            
-            <Card onClick={() => handleRoleSelection("admin")} className="cursor-pointer hover:shadow-md transition-all hover:border-primary">
-              <CardContent className="p-6 flex flex-col items-center text-center">
-                <div className="bg-primary/10 p-4 rounded-full mb-4">
-                  <BarChart2 className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg mb-2"><T keyName="admin" /></h3>
-                <p className="text-sm text-muted-foreground"><T keyName="adminDescription" /></p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* 3. Live Dashboard Counters */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-4"><T keyName="liveStatistics" /></h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <Card className="hover-glow hover-scale">
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <Users className="h-5 w-5 text-primary mb-1" />
-                <p className="text-sm text-muted-foreground"><T keyName="registeredWorkers" /></p>
-                <p className="text-xl font-bold">{data.workers.total.toLocaleString()}</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover-glow hover-scale">
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <Calendar className="h-5 w-5 text-primary mb-1" />
-                <p className="text-sm text-muted-foreground"><T keyName="jobsPosted" /></p>
-                <p className="text-xl font-bold">{data.jobs.posted.toLocaleString()}</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover-glow hover-scale">
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <CheckCircle className="h-5 w-5 text-primary mb-1" />
-                <p className="text-sm text-muted-foreground"><T keyName="jobsFilled" /></p>
-                <p className="text-xl font-bold">{data.jobs.filled.toLocaleString()}</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover-glow hover-scale">
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <MapPin className="h-5 w-5 text-primary mb-1" />
-                <p className="text-sm text-muted-foreground"><T keyName="regionsCovered" /></p>
-                <p className="text-xl font-bold">{data.regions.covered}</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover-glow hover-scale">
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <Languages className="h-5 w-5 text-primary mb-1" />
-                <p className="text-sm text-muted-foreground"><T keyName="languagesSupported" /></p>
-                <p className="text-xl font-bold">{data.languages.supported}</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover-glow hover-scale">
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <MessageSquare className="h-5 w-5 text-primary mb-1" />
-                <p className="text-sm text-muted-foreground"><T keyName="grievancesResolved" /></p>
-                <p className="text-xl font-bold">{data.grievances.resolved.toLocaleString()}</p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* 4. Smart Search Panel */}
-        <section className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle><T keyName="searchTitle" /></CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input 
-                    placeholder={t("searchPlaceholder")} 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <Tabs defaultValue="jobs" className="w-full md:w-auto">
-                  <TabsList>
-                    <TabsTrigger value="jobs"><T keyName="jobs" /></TabsTrigger>
-                    <TabsTrigger value="workers"><T keyName="workers" /></TabsTrigger>
-                    <TabsTrigger value="status"><T keyName="status" /></TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                <Button><T keyName="search" /></Button>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4">
-                <Button variant="outline" size="sm"><T keyName="filterLanguage" /></Button>
-                <Button variant="outline" size="sm"><T keyName="filterSkills" /></Button>
-                <Button variant="outline" size="sm"><T keyName="filterLocation" /></Button>
-                <Button variant="outline" size="sm"><T keyName="filterExperience" /></Button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* 5. Highlighted Features */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-4"><T keyName="keyFeatures" /></h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {[
-              { icon: CheckCircle, title: "featureDigitalID", desc: "featureDigitalIDDesc" },
-              { icon: MapPin, title: "featureTracking", desc: "featureTrackingDesc" },
-              { icon: Languages, title: "featureMultilingual", desc: "featureMultilingualDesc" },
-              { icon: Award, title: "featureMobile", desc: "featureMobileDesc" },
-              { icon: HelpCircle, title: "featureGrievance", desc: "featureGrievanceDesc" }
-            ].map((feature, idx) => (
-              <Card key={idx} className="hover:shadow-md transition-all cursor-pointer hover:border-primary">
-                <CardContent className="p-4 flex flex-col items-center text-center pt-6">
-                  <div className="bg-primary/10 p-3 rounded-full mb-3">
-                    <feature.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <h3 className="font-semibold text-base mb-2"><T keyName={feature.title} /></h3>
-                  <p className="text-xs text-muted-foreground"><T keyName={feature.desc} /></p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {/* 6. Migrant Services */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-4"><T keyName="migrantServices" /></h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="flex items-center p-4 bg-card rounded-lg border hover:shadow-md transition-all cursor-pointer hover:border-primary">
-              <div className="mr-4 bg-primary/10 p-3 rounded-full">
-                <Search className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold"><T keyName="serviceFindJobs" /></h3>
-                <p className="text-sm text-muted-foreground"><T keyName="serviceFindJobsDesc" /></p>
-              </div>
-            </div>
-            
-            <div className="flex items-center p-4 bg-card rounded-lg border hover:shadow-md transition-all cursor-pointer hover:border-primary">
-              <div className="mr-4 bg-primary/10 p-3 rounded-full">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold"><T keyName="serviceRegister" /></h3>
-                <p className="text-sm text-muted-foreground"><T keyName="serviceRegisterDesc" /></p>
-              </div>
-            </div>
-            
-            <div className="flex items-center p-4 bg-card rounded-lg border hover:shadow-md transition-all cursor-pointer hover:border-primary">
-              <div className="mr-4 bg-primary/10 p-3 rounded-full">
-                <CheckCircle className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold"><T keyName="serviceVerify" /></h3>
-                <p className="text-sm text-muted-foreground"><T keyName="serviceVerifyDesc" /></p>
-              </div>
-            </div>
-            
-            <div className="flex items-center p-4 bg-card rounded-lg border hover:shadow-md transition-all cursor-pointer hover:border-primary">
-              <div className="mr-4 bg-primary/10 p-3 rounded-full">
-                <MapPin className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold"><T keyName="serviceLocate" /></h3>
-                <p className="text-sm text-muted-foreground"><T keyName="serviceLocateDesc" /></p>
-              </div>
-            </div>
-            
-            <div className="flex items-center p-4 bg-card rounded-lg border hover:shadow-md transition-all cursor-pointer hover:border-primary">
-              <div className="mr-4 bg-primary/10 p-3 rounded-full">
-                <HelpCircle className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold"><T keyName="serviceRights" /></h3>
-                <p className="text-sm text-muted-foreground"><T keyName="serviceRightsDesc" /></p>
-              </div>
-            </div>
-            
-            <div className="flex items-center p-4 bg-card rounded-lg border hover:shadow-md transition-all cursor-pointer hover:border-primary">
-              <div className="mr-4 bg-primary/10 p-3 rounded-full">
-                <MessageSquare className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold"><T keyName="serviceSupport" /></h3>
-                <p className="text-sm text-muted-foreground"><T keyName="serviceSupportDesc" /></p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 7. Success Stories & 8. News Feed - Combined in tabs */}
-        <section className="mb-8">
-          <Tabs defaultValue="stories">
-            <TabsList className="mb-4">
-              <TabsTrigger value="stories"><T keyName="successStories" /></TabsTrigger>
-              <TabsTrigger value="news"><T keyName="newsUpdates" /></TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="stories">
-              <Carousel className="w-full">
-                <CarouselContent>
-                  {data.successStories.map((story) => (
-                    <CarouselItem key={story.id} className="md:basis-1/2 lg:basis-1/3">
-                      <Card className="h-full">
-                        <CardContent className="p-4 flex flex-col h-full">
-                          <div className="flex items-center mb-4">
-                            <img src={story.image} alt={story.name} className="w-12 h-12 object-cover rounded-full mr-4" />
-                            <div>
-                              <h4 className="font-semibold">{story.name}</h4>
-                              <div className="flex">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                          <p className="text-sm flex-1">{story.description}</p>
-                          <Button variant="link" className="mt-2 p-0 h-auto justify-start">
-                            <T keyName="readMore" />
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <div className="flex justify-end mt-4 gap-2">
-                  <CarouselPrevious className="position-static" />
-                  <CarouselNext className="position-static" />
-                </div>
-              </Carousel>
-            </TabsContent>
-            
-            <TabsContent value="news">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {data.news.map((item) => (
-                      <div key={item.id} className="flex items-start border-b pb-4 last:border-0 last:pb-0">
-                        <div className="mr-4 bg-primary/10 p-2 rounded-full mt-1">
-                          <HelpCircle className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{item.title}</h4>
-                          <p className="text-xs text-muted-foreground">{item.date}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </section>
-        
-        {/* 9. Mobile App Promotion */}
-        <section className="mb-8">
-          <Card className="bg-gradient-to-r from-indigo-600 to-primary text-white overflow-hidden">
-            <CardContent className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between">
-              <div className="mb-6 md:mb-0 md:mr-6">
-                <h3 className="text-xl font-bold mb-2"><T keyName="appPromoTitle" /></h3>
-                <p className="text-white/80 mb-4"><T keyName="appPromoDesc" /></p>
-                <div className="flex gap-4">
-                  <Button variant="outline" className="bg-white text-primary hover:bg-white/90">
-                    <Download className="mr-2 h-4 w-4" />
-                    <T keyName="androidApp" />
-                  </Button>
-                  <Button variant="outline" className="bg-white text-primary hover:bg-white/90">
-                    <Download className="mr-2 h-4 w-4" />
-                    <T keyName="iOSApp" />
-                  </Button>
-                </div>
-              </div>
-              <div className="bg-white/20 backdrop-blur rounded-lg p-4 flex flex-col items-center">
-                <div className="mb-2 text-sm font-medium"><T keyName="scanQRCode" /></div>
-                <div className="bg-white p-2 rounded">
-                  {/* Mock QR Code - In real app use a QR code library */}
-                  <div className="w-24 h-24 bg-black/90 grid grid-cols-3 grid-rows-3 gap-1 p-1">
-                    <div className="bg-white"></div>
-                    <div></div>
-                    <div className="bg-white"></div>
-                    <div></div>
-                    <div className="bg-white"></div>
-                    <div></div>
-                    <div className="bg-white"></div>
-                    <div className="bg-white"></div>
-                    <div className="bg-white"></div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-        
-        {/* 10. Help & Support Center */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-4"><T keyName="helpSupport" /></h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle><T keyName="frequentlyAsked" /></CardTitle>
+                <CardTitle>{t('worker')}</CardTitle>
+                <CardDescription>{t('workerDescription')}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {data.faq.map((item) => (
-                    <div key={item.id} className="space-y-2">
-                      <h4 className="font-medium">{item.question}</h4>
-                      <p className="text-sm text-muted-foreground">{item.answer}</p>
+              <CardFooter className="justify-center pt-0">
+                <Button variant="outline" asChild>
+                  <Link to="/worker-login">{t('joinNow')}</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+            
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  <Briefcase size={48} className="text-primary" />
+                </div>
+                <CardTitle>{t('employer')}</CardTitle>
+                <CardDescription>{t('employerDescription')}</CardDescription>
+              </CardHeader>
+              <CardFooter className="justify-center pt-0">
+                <Button variant="outline" asChild>
+                  <Link to="/login?tab=business">{t('joinNow')}</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+            
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  <Shield size={48} className="text-primary" />
+                </div>
+                <CardTitle>{t('admin')}</CardTitle>
+                <CardDescription>{t('adminDescription')}</CardDescription>
+              </CardHeader>
+              <CardFooter className="justify-center pt-0">
+                <Button variant="outline" asChild>
+                  <Link to="/login?tab=admin">{t('joinNow')}</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Live Statistics */}
+      <section className="py-12 px-4 md:px-8 lg:px-16 bg-gray-100">
+        <div className="container mx-auto max-w-7xl">
+          <h2 className="text-2xl md:text-3xl font-semibold text-center mb-12">{t('liveStatistics')}</h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            <StatCard title={t('registeredWorkers')} value="1.2M+" />
+            <StatCard title={t('jobsPosted')} value="45K+" />
+            <StatCard title={t('jobsFilled')} value="38K+" />
+            <StatCard title={t('regionsCovered')} value="28" />
+            <StatCard title={t('languagesSupported')} value="12" />
+            <StatCard title={t('grievancesResolved')} value="9.5K+" />
+          </div>
+        </div>
+      </section>
+
+      {/* Smart Search */}
+      <section className="py-12 px-4 md:px-8 lg:px-16">
+        <div className="container mx-auto max-w-7xl">
+          <h2 className="text-2xl md:text-3xl font-semibold text-center mb-8">{t('searchTitle')}</h2>
+          
+          <div className="max-w-3xl mx-auto">
+            <Tabs defaultValue="all">
+              <div className="flex justify-center mb-6">
+                <TabsList>
+                  <TabsTrigger value="all">
+                    <div className="flex items-center gap-2">
+                      <Search size={16} />
+                      <span>{t('search')}</span>
                     </div>
-                  ))}
-                  <Button variant="link" className="p-0">
-                    <T keyName="viewAllFAQs" />
-                  </Button>
+                  </TabsTrigger>
+                  <TabsTrigger value="jobs">
+                    <div className="flex items-center gap-2">
+                      <Briefcase size={16} />
+                      <span>{t('jobs')}</span>
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger value="status">
+                    <div className="flex items-center gap-2">
+                      <Home size={16} />
+                      <span>{t('status')}</span>
+                    </div>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              
+              <TabsContent value="all">
+                <div className="flex flex-col gap-4">
+                  <Input placeholder={t('searchPlaceholder')} />
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm">{t('filterLanguage')}</Button>
+                    <Button variant="outline" size="sm">{t('filterSkills')}</Button>
+                    <Button variant="outline" size="sm">{t('filterLocation')}</Button>
+                    <Button variant="outline" size="sm">{t('filterExperience')}</Button>
+                  </div>
+                  <Button>{t('search')}</Button>
                 </div>
-              </CardContent>
-            </Card>
+              </TabsContent>
+              
+              <TabsContent value="jobs">
+                <div className="flex flex-col gap-4">
+                  <Input placeholder={t('searchPlaceholder')} />
+                  <Button>{t('search')}</Button>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="status">
+                <div className="flex flex-col gap-4">
+                  <Input placeholder={t('searchPlaceholder')} />
+                  <Button>{t('search')}</Button>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </section>
+
+      {/* Key Features */}
+      <section className="py-12 px-4 md:px-8 lg:px-16 bg-gray-100">
+        <div className="container mx-auto max-w-7xl">
+          <h2 className="text-2xl md:text-3xl font-semibold text-center mb-12">{t('keyFeatures')}</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <FeatureCard 
+              icon={<Shield size={32} className="text-primary" />}
+              title={t('featureDigitalID')}
+              description={t('featureDigitalIDDesc')}
+            />
             
-            <Card>
-              <CardHeader>
-                <CardTitle><T keyName="contactUs" /></CardTitle>
-              </CardHeader>
-              <CardContent>
+            <FeatureCard 
+              icon={<MapPin size={32} className="text-primary" />}
+              title={t('featureTracking')}
+              description={t('featureTrackingDesc')}
+            />
+            
+            <FeatureCard 
+              icon={<Languages size={32} className="text-primary" />}
+              title={t('featureMultilingual')}
+              description={t('featureMultilingualDesc')}
+            />
+            
+            <FeatureCard 
+              icon={<Smartphone size={32} className="text-primary" />}
+              title={t('featureMobile')}
+              description={t('featureMobileDesc')}
+            />
+            
+            <FeatureCard 
+              icon={<MessageSquare size={32} className="text-primary" />}
+              title={t('featureGrievance')}
+              description={t('featureGrievanceDesc')}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Migrant Services */}
+      <section className="py-12 px-4 md:px-8 lg:px-16">
+        <div className="container mx-auto max-w-7xl">
+          <h2 className="text-2xl md:text-3xl font-semibold text-center mb-12">{t('migrantServices')}</h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            <ServiceCard 
+              icon={<Briefcase size={24} className="text-primary" />}
+              title={t('serviceFindJobs')}
+              description={t('serviceFindJobsDesc')}
+            />
+            
+            <ServiceCard 
+              icon={<Users size={24} className="text-primary" />}
+              title={t('serviceRegister')}
+              description={t('serviceRegisterDesc')}
+            />
+            
+            <ServiceCard 
+              icon={<Shield size={24} className="text-primary" />}
+              title={t('serviceVerify')}
+              description={t('serviceVerifyDesc')}
+            />
+            
+            <ServiceCard 
+              icon={<MapPin size={24} className="text-primary" />}
+              title={t('serviceLocate')}
+              description={t('serviceLocateDesc')}
+            />
+            
+            <ServiceCard 
+              icon={<Home size={24} className="text-primary" />}
+              title={t('serviceRights')}
+              description={t('serviceRightsDesc')}
+            />
+            
+            <ServiceCard 
+              icon={<MessageSquare size={24} className="text-primary" />}
+              title={t('serviceSupport')}
+              description={t('serviceSupportDesc')}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Success Stories and News */}
+      <section className="py-12 px-4 md:px-8 lg:px-16 bg-gray-100">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-semibold mb-8">{t('successStories')}</h2>
+              
+              <div className="space-y-6">
+                <StoryCard />
+                <StoryCard />
+              </div>
+            </div>
+            
+            <div>
+              <h2 className="text-2xl md:text-3xl font-semibold mb-8">{t('newsUpdates')}</h2>
+              
+              <div className="space-y-6">
+                <NewsCard />
+                <NewsCard />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* App Promotion */}
+      <section className="py-12 px-4 md:px-8 lg:px-16 bg-primary text-white">
+        <div className="container mx-auto max-w-7xl">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="max-w-xl">
+              <h2 className="text-2xl md:text-3xl font-semibold mb-4">{t('appPromoTitle')}</h2>
+              <p className="text-lg mb-6">{t('appPromoDesc')}</p>
+              
+              <div className="flex flex-wrap gap-4">
+                <Button variant="secondary" size="lg">{t('androidApp')}</Button>
+                <Button variant="outline" size="lg">{t('iOSApp')}</Button>
+                <Button variant="outline" size="lg">{t('scanQRCode')}</Button>
+              </div>
+            </div>
+            
+            <div className="w-full md:w-auto">
+              <img 
+                src="https://via.placeholder.com/300x600" 
+                alt="Migii Mobile App" 
+                className="w-full max-w-[300px] mx-auto rounded-xl shadow-lg"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Help & Support */}
+      <section className="py-12 px-4 md:px-8 lg:px-16">
+        <div className="container mx-auto max-w-7xl">
+          <h2 className="text-2xl md:text-3xl font-semibold text-center mb-12">{t('helpSupport')}</h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div>
+              <h3 className="text-xl font-semibold mb-6">{t('frequentlyAsked')}</h3>
+              
+              <div className="space-y-4">
+                <FAQItem />
+                <FAQItem />
+                <FAQItem />
+              </div>
+              
+              <div className="mt-6">
+                <Button variant="outline">{t('viewAllFAQs')}</Button>
+              </div>
+            </div>
+            
+            <div>
+              <div className="bg-gray-100 p-6 rounded-lg">
+                <h3 className="text-xl font-semibold mb-6">{t('contactUs')}</h3>
+                
+                <div className="flex items-center mb-6 text-primary">
+                  <MessageSquare className="mr-2" />
+                  <span className="text-lg font-medium">{t('emergencyHelpline')}: 1800-XXX-XXXX</span>
+                </div>
+                
                 <div className="space-y-4">
-                  <div className="flex items-center">
-                    <HelpCircle className="h-4 w-4 mr-2 text-primary" />
-                    <span><T keyName="emergencyHelpline" />: 1800-XXX-XXXX</span>
-                  </div>
-                  <div className="space-y-2">
-                    <Input placeholder={t("yourName")} />
-                    <Input placeholder={t("yourEmail")} />
-                    <Input placeholder={t("yourQuery")} />
-                    <Button className="w-full"><T keyName="submit" /></Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center">
-                    <T keyName="responseTime" />
-                  </p>
+                  <Input placeholder={t('yourName')} />
+                  <Input placeholder={t('yourEmail')} />
+                  <Input placeholder={t('yourQuery')} />
+                  
+                  <Button>{t('submit')}</Button>
+                  
+                  <p className="text-sm text-gray-500 mt-2">{t('responseTime')}</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
-        </section>
-        
-        {/* 11. Footer */}
-        <section>
-          <div className="border-t pt-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-              <div>
-                <h3 className="font-semibold mb-3"><T keyName="aboutUs" /></h3>
-                <ul className="space-y-2 text-sm">
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="ourMission" /></a></li>
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="howItWorks" /></a></li>
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="team" /></a></li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-3"><T keyName="partners" /></h3>
-                <ul className="space-y-2 text-sm">
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="governmentAgencies" /></a></li>
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="NGOs" /></a></li>
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="corporates" /></a></li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-3"><T keyName="resources" /></h3>
-                <ul className="space-y-2 text-sm">
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="blog" /></a></li>
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="pressReleases" /></a></li>
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="reports" /></a></li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-3"><T keyName="legal" /></h3>
-                <ul className="space-y-2 text-sm">
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="privacyPolicy" /></a></li>
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="termsOfUse" /></a></li>
-                  <li><a href="#" className="text-muted-foreground hover:text-foreground"><T keyName="disclaimer" /></a></li>
-                </ul>
-              </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white py-16 px-4 md:px-8 lg:px-16">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">{t('aboutUs')}</h3>
+              <ul className="space-y-2">
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('ourMission')}</Link></li>
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('howItWorks')}</Link></li>
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('team')}</Link></li>
+              </ul>
             </div>
             
-            <div className="border-t pt-6 pb-8 flex flex-col md:flex-row justify-between items-center">
-              <p className="text-sm text-muted-foreground mb-4 md:mb-0">
-                &copy; 2025 Migii. <T keyName="allRightsReserved" />
-              </p>
-              <div className="flex space-x-4">
-                <a href="#" className="text-muted-foreground hover:text-foreground">
-                  <span className="sr-only">Facebook</span>
-                  Facebook
-                </a>
-                <a href="#" className="text-muted-foreground hover:text-foreground">
-                  <span className="sr-only">Twitter</span>
-                  Twitter
-                </a>
-                <a href="#" className="text-muted-foreground hover:text-foreground">
-                  <span className="sr-only">Instagram</span>
-                  Instagram
-                </a>
-              </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">{t('partners')}</h3>
+              <ul className="space-y-2">
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('governmentAgencies')}</Link></li>
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('NGOs')}</Link></li>
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('corporates')}</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-4">{t('resources')}</h3>
+              <ul className="space-y-2">
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('blog')}</Link></li>
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('pressReleases')}</Link></li>
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('reports')}</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-4">{t('legal')}</h3>
+              <ul className="space-y-2">
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('privacyPolicy')}</Link></li>
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('termsOfUse')}</Link></li>
+                <li><Link to="#" className="text-gray-300 hover:text-white">{t('disclaimer')}</Link></li>
+              </ul>
             </div>
           </div>
-        </section>
-      </div>
-    </DashboardLayout>
+          
+          <Separator className="my-8 bg-gray-600" />
+          
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="mb-4 md:mb-0">
+              <p>© 2025 Migii. {t('allRightsReserved')}</p>
+            </div>
+            
+            <div className="flex gap-4">
+              {/* Social Media Icons */}
+              <Link to="#" className="text-gray-300 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+              </Link>
+              <Link to="#" className="text-gray-300 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-twitter"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg>
+              </Link>
+              <Link to="#" className="text-gray-300 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-linkedin"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect width="4" height="12" x="2" y="9"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+              </Link>
+              <Link to="#" className="text-gray-300 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-instagram"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 };
 
