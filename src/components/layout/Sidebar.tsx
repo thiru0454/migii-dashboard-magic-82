@@ -19,7 +19,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 
-const sidebarLinks = [
+// Define interface for menu items
+interface SidebarLinkItem {
+  title: string;
+  href: string;
+  icon: React.ForwardRefExoticComponent<any>;
+  public?: boolean;
+  isHighlighted?: boolean;
+}
+
+const sidebarLinks: SidebarLinkItem[] = [
   {
     title: "Home",
     href: "/",
@@ -29,7 +38,7 @@ const sidebarLinks = [
 ];
 
 // Admin-only links
-const adminLinks = [
+const adminLinks: SidebarLinkItem[] = [
   {
     title: "Admin Dashboard",
     href: "/admin-dashboard",
@@ -49,12 +58,12 @@ const adminLinks = [
     title: "Post Jobs",
     href: "/admin-dashboard/jobs",
     icon: Briefcase,
-    highlight: true
+    isHighlighted: true
   }
 ];
 
 // Business-only links
-const businessLinks = [
+const businessLinks: SidebarLinkItem[] = [
   {
     title: "Business Dashboard",
     href: "/business-dashboard",
@@ -73,7 +82,7 @@ const businessLinks = [
 ];
 
 // Worker-only links
-const workerLinks = [
+const workerLinks: SidebarLinkItem[] = [
   {
     title: "Worker Portal",
     href: "/worker-dashboard",
@@ -83,7 +92,7 @@ const workerLinks = [
     title: "Available Jobs",
     href: "/worker-dashboard/jobs",
     icon: Briefcase,
-    highlight: true
+    isHighlighted: true
   }
 ];
 
@@ -129,7 +138,7 @@ export function Sidebar() {
           href: "/jobs",
           icon: Briefcase,
           public: true,
-          highlight: true
+          isHighlighted: true
         }
       );
       return links;
@@ -231,15 +240,15 @@ export function Sidebar() {
                   "text-sidebar-foreground",
                   "transition-colors hover:bg-accent/50 hover:text-accent-foreground",
                   active && "bg-accent text-accent-foreground font-medium",
-                  link.highlight && !active && "bg-primary/10 border border-primary/30"
+                  link.isHighlighted && !active && "bg-primary/10 border border-primary/30"
                 )}
               >
                 <link.icon size={20} className={cn(
                   "shrink-0", 
-                  link.highlight && "text-primary"
+                  link.isHighlighted && "text-primary"
                 )} />
                 <span className="opacity-100">{link.title}</span>
-                {link.highlight && !active && (
+                {link.isHighlighted && !active && (
                   <span className="ml-auto text-xs font-medium bg-primary/20 text-primary px-1.5 py-0.5 rounded">New</span>
                 )}
               </Link>

@@ -9,8 +9,8 @@ import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import { LoadingSpinner } from './components/ui/loading-spinner';
-import { LanguageProvider } from '../../src/contexts/LanguageContext'; // Import the provider
-import { Jobs } from './pages/Jobs'; // Import new Jobs page
+import { LanguageProvider } from '../../src/contexts/LanguageContext';
+import { Jobs } from './pages/Jobs'; // Import Jobs page
 
 // Lazy-loaded components
 const WorkerDetails = lazy(() => import('./pages/WorkerDetails'));
@@ -18,7 +18,7 @@ const AssignWorkers = lazy(() => import('./pages/AssignWorkers'));
 
 function App() {
   // Check if user is authenticated
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Replace with actual auth check
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // Default to false to show login screen first
   
   useEffect(() => {
     // Check for authentication
@@ -41,6 +41,7 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/jobs" element={<Jobs />} />
+          <Route path="/worker-registration" element={<Navigate to="/worker-registration" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       ) : (
