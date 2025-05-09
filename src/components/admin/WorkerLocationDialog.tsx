@@ -139,26 +139,33 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
           <>
             <div className="w-full h-96">
               <MapContainer 
+                className="h-full w-full" 
                 style={{ height: '100%', width: '100%' }}
-                zoom={13} 
-                scrollWheelZoom={true}
-                ref={setMapRef}
-                whenCreated={(map) => {
-                  setMapRef(map);
-                  map.setView(position, 13);
-                }}
               >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <Marker position={position}>
-                  <Popup>
-                    <div>
-                      <strong>{worker?.name}</strong><br />
-                      Lat: {position[0].toFixed(6)}, Lng: {position[1].toFixed(6)}
-                    </div>
-                  </Popup>
-                </Marker>
+                {/* Initialize map view after component is mounted */}
+                {(() => {
+                  // This IIFE will run once when the component mounts
+                  if (typeof window !== 'undefined') {
+                    // Safety check for SSR
+                    setTimeout(() => {
+                      // Use setTimeout to ensure the map element is available
+                      const container = document.querySelector('.leaflet-container');
+                      if (container && !mapRef) {
+                        const map = L.map(container as HTMLElement).setView(position, 13);
+                        setMapRef(map);
+                        
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                          attribution: '&copy; OpenStreetMap contributors'
+                        }).addTo(map);
+                        
+                        L.marker(position)
+                          .addTo(map)
+                          .bindPopup(`<strong>${worker?.name}</strong><br />Lat: ${position[0].toFixed(6)}, Lng: ${position[1].toFixed(6)}`);
+                      }
+                    }, 100);
+                  }
+                  return null;
+                })()}
               </MapContainer>
             </div>
             <div className="flex items-center justify-between mt-4">
