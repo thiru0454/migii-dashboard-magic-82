@@ -1,3 +1,4 @@
+
 import { 
   Dialog, 
   DialogContent, 
@@ -15,6 +16,20 @@ import { MigrantWorker, WorkerLocation } from "@/types/worker";
 import { supabase } from "@/utils/supabaseClient";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
+
+// Fix Leaflet icon issue
+// This is needed because Leaflet's assets are not properly loaded in React
+const defaultIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  shadowSize: [41, 41]
+});
+
+// Set default icon for all markers
+L.Marker.prototype.options.icon = defaultIcon;
 
 interface WorkerLocationDialogProps {
   worker: MigrantWorker | null;
@@ -95,7 +110,9 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
     fetchWorkerLocation();
   }, [open, worker]);
 
-  const position = location ? [location.latitude, location.longitude] : [13.0827, 80.2707];
+  const position: [number, number] = location ? 
+    [location.latitude, location.longitude] : 
+    [13.0827, 80.2707];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -113,12 +130,20 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
         ) : (
           <>
             <div className="w-full h-96">
-              <MapContainer center={position} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+              {/* Fixed MapContainer props */}
+              <MapContainer 
+                center={position} 
+                zoom={13} 
+                scrollWheelZoom={true} 
+                style={{ height: '100%', width: '100%' }}
+              >
+                {/* Fixed TileLayer props */}
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <Marker position={position} icon={L.icon({ iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png', iconSize: [25, 41], iconAnchor: [12, 41] })}>
+                {/* Fixed Marker props */}
+                <Marker position={position}>
                   <Popup>
                     <div>
                       <strong>{worker?.name}</strong><br />

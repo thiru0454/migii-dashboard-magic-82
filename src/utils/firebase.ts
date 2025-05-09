@@ -1,3 +1,4 @@
+
 // This is a compatibility layer between Firebase and Supabase
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
@@ -100,20 +101,30 @@ export const registerWorkerInStorage = async (worker: {
   try {
     const workerId = generateWorkerId();
     
+    // Create worker object with all required fields for MigrantWorker type
     const newWorker: MigrantWorker = {
       id: workerId,
       name: worker.name,
+      "Full Name": worker.name,
       age: worker.age,
+      "Age": worker.age,
       phone: worker.phone,
-      email: worker.email,
+      "Phone Number": worker.phone,
+      email: worker.email || "",
+      "Email Address": worker.email || "",
       skill: worker.skill,
+      primarySkill: worker.skill,
+      "Primary Skill": worker.skill,
       originState: worker.originState,
+      "Origin State": worker.originState,
       status: "active",
       registrationDate: new Date().toISOString(),
       photoUrl: worker.photoUrl,
+      "Photo URL": worker.photoUrl,
       latitude: worker.latitude,
       longitude: worker.longitude,
-      aadhaar: worker.aadhaar
+      aadhaar: worker.aadhaar,
+      "Aadhaar Number": worker.aadhaar
     };
 
     // First save to localStorage in case Supabase fails

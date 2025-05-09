@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserPlus, UserMinus, Loader2 } from "lucide-react";
 import { MigrantWorker, Worker } from "@/types/worker";
 import { useWorkers } from "@/hooks/useWorkers";
-import { assignWorkerToBusiness } from "@/utils/supabaseClient";
+import { assignWorkerToBusiness, supabase } from "@/utils/supabaseClient"; // Fixed: Added supabase import
 import { SKILLS } from "@/constants/skills";
 
 interface WorkerRequest {
@@ -20,7 +20,7 @@ interface WorkerRequest {
   requiredSkills: string;
   numberOfWorkers: number;
   description: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "assigned"; // Fixed: Added "assigned" to allowed status types
   createdAt: string;
   assignedWorkers?: string[];
   business_id?: string;
@@ -198,14 +198,15 @@ export function AssignWorkersTab() {
             return {
               ...r,
               assignedWorkers: selectedWorkers[requestId],
-              status: "assigned"
+              status: "assigned" as const // Fixed: Type assertion to solve status type issue
             };
           }
           return r;
         });
 
+        // Fixed: Type assertion to ensure updatedRequests is of type WorkerRequest[]
+        setRequests(updatedRequests as WorkerRequest[]);
         localStorage.setItem('workerRequests', JSON.stringify(updatedRequests));
-        setRequests(updatedRequests);
         toast.success("Workers assigned successfully!");
       } else {
         toast.error("Failed to assign one or more workers. Please try again.");

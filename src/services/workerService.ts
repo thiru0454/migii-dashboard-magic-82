@@ -35,37 +35,38 @@ export async function registerNewWorker(workerData: Omit<{
       throw new Error('Missing required fields');
     }
 
-    // Map fields to match Supabase table columns (with spaces and casing)
-    const {
-      originState,
-      photoUrl,
-      name,
-      age,
-      phone,
-      email,
-      aadhaar,
-      skill,
-      ...rest
-    } = workerData;
-
-    // Build the worker object with defaults and correct types
-    const newWorker = {
-      name: name || "",
+    // Map fields to match MigrantWorker type structure
+    // We need to match both camelCase properties and those with spaces
+    const workerPayload = {
+      // Standard fields
+      name: workerData.name,
       age: parsedAge,
-      phone: phone || "",
-      email: email || "",
-      aadhaar: aadhaar || "",
-      primary_skill: skill || "",
-      origin_state: originState || "",
-      photo_url: photoUrl || null,
-      status: "active",
+      phone: workerData.phone,
+      email: workerData.email || "",
+      aadhaar: workerData.aadhaar,
+      skill: workerData.skill,
+      originState: workerData.originState,
+      photoUrl: workerData.photoUrl || null,
+      status: "active" as const,
+      // Fields with spaces (needed for MigrantWorker type)
+      "Full Name": workerData.name,
+      "Age": parsedAge,
+      "Phone Number": workerData.phone,
+      "Email Address": workerData.email || "",
+      "Primary Skill": workerData.skill,
+      "Origin State": workerData.originState,
+      "Photo URL": workerData.photoUrl || null,
+      "Aadhaar Number": workerData.aadhaar,
+      // Required fields from MigrantWorker type
+      registrationDate: new Date().toISOString(),
+      // Geographic data
       latitude: typeof workerData.latitude === 'number' ? workerData.latitude : null,
       longitude: typeof workerData.longitude === 'number' ? workerData.longitude : null
-      // id is intentionally omitted
     };
-    console.log('Worker data being sent:', newWorker);
 
-    const { data, error } = await registerWorker(newWorker);
+    console.log('Worker data being sent:', workerPayload);
+    
+    const { data, error } = await registerWorker(workerPayload);
     
     if (error) {
       // User-friendly error handling
