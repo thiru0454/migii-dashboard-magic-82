@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserPlus, UserMinus, Loader2 } from "lucide-react";
 import { MigrantWorker, Worker } from "@/types/worker";
 import { useWorkers } from "@/hooks/useWorkers";
-import { assignWorkerToBusiness, supabase } from "@/utils/supabaseClient"; // Fixed: Added supabase import
+import { assignWorkerToBusiness } from "@/services/workerService"; 
+import { supabase } from "@/lib/supabase";
 import { SKILLS } from "@/constants/skills";
 
 interface WorkerRequest {
@@ -20,7 +21,7 @@ interface WorkerRequest {
   requiredSkills: string;
   numberOfWorkers: number;
   description: string;
-  status: "pending" | "approved" | "rejected" | "assigned"; // Fixed: Added "assigned" to allowed status types
+  status: "pending" | "approved" | "rejected" | "assigned";
   createdAt: string;
   assignedWorkers?: string[];
   business_id?: string;
@@ -56,26 +57,30 @@ export function AssignWorkersTab() {
       }
       
       // Combine both sources of requests and format them consistently
-      const approvedStoredRequests = storedRequests.filter((request: WorkerRequest) => 
+      const approvedStoredRequests = storedRequests.filter((request: any) => 
         request.status === "approved"
       );
       
-      // Format Supabase requests to match local format
+      // Format Supabase requests to match local format with required WorkerRequest fields
       const formattedSupabaseRequests = (supabaseRequests || []).map((req: any) => ({
         id: req.id,
         businessName: req.business_name,
         business_id: req.business_id,
         requiredSkills: req.skill,
         numberOfWorkers: req.workers_needed,
-        status: req.status,
+        status: req.status as WorkerRequest["status"],
         createdAt: req.created_at,
         description: req.description,
         skill: req.skill,
-        assignedWorkers: req.assigned_workers || []
+        assignedWorkers: req.assigned_workers || [],
+        // Add required fields from WorkerRequest interface with default values
+        contactPerson: req.contact_person || "",
+        phone: req.phone || "",
+        email: req.email || ""
       }));
       
       // Combine and deduplicate by ID
-      const combinedRequests = [...approvedStoredRequests];
+      const combinedRequests: WorkerRequest[] = [...approvedStoredRequests];
       formattedSupabaseRequests.forEach((req: WorkerRequest) => {
         if (!combinedRequests.find(r => r.id === req.id)) {
           combinedRequests.push(req);
@@ -101,19 +106,24 @@ export function AssignWorkersTab() {
 
   // Convert MigrantWorker array to Worker array with consistent types
   const getAvailableWorkers = () => {
+    // Log worker data for debugging
+    console.log("All workers:", workers);
+    
+    // Filter only active workers
     return workers.filter((worker: MigrantWorker) => 
       worker.status === "active"
     ).map((worker: MigrantWorker): Worker => ({
       id: String(worker.id),
       name: worker.name,
       phone: worker.phone,
-      skill: worker.skill || worker.primarySkill || worker["Primary Skill"] || "",
+      // Fix the skill extraction logic to properly consider all field variations
+      skill: worker.skill || worker.primarySkill || worker["Primary Skill"] || worker.primary_skill || "",
       status: worker.status,
-      originState: worker.originState,
+      originState: worker.originState || worker.origin_state || "",
       age: worker.age,
       email: worker.email,
-      photoUrl: worker.photoUrl,
-      aadhaar: worker.aadhaar
+      photoUrl: worker.photoUrl || worker.photo_url || "",
+      aadhaar: worker.aadhaar || worker["Aadhaar Number"] || ""
     }));
   };
 
@@ -162,7 +172,7 @@ export function AssignWorkersTab() {
           console.log(`Attempting to assign worker ${workerId} to business ${businessId}`);
           const result = await assignWorkerToBusiness(workerId, businessId);
           
-          if (result.error) {
+          if (result && result.error) {
             console.error(`Error assigning worker ${workerId}:`, result.error);
             return false;
           }
@@ -198,14 +208,13 @@ export function AssignWorkersTab() {
             return {
               ...r,
               assignedWorkers: selectedWorkers[requestId],
-              status: "assigned" as const // Fixed: Type assertion to solve status type issue
+              status: "assigned" as const
             };
           }
           return r;
         });
 
-        // Fixed: Type assertion to ensure updatedRequests is of type WorkerRequest[]
-        setRequests(updatedRequests as WorkerRequest[]);
+        setRequests(updatedRequests);
         localStorage.setItem('workerRequests', JSON.stringify(updatedRequests));
         toast.success("Workers assigned successfully!");
       } else {
@@ -225,6 +234,19 @@ export function AssignWorkersTab() {
     return worker ? `${worker.name} (${worker.skill})` : "Unknown Worker";
   };
 
+  // Function to determine if a worker's skills match the required skills
+  const workerMatchesSkill = (worker: Worker, requiredSkill: string) => {
+    // For empty required skill, show all workers
+    if (!requiredSkill) return true;
+    
+    // Handle case where worker skill or required skill is undefined
+    const workerSkill = (worker.skill || '').toLowerCase();
+    const required = requiredSkill.toLowerCase();
+    
+    // Look for partial matches too
+    return workerSkill.includes(required) || required.includes(workerSkill);
+  };
+
   if (loading || isLoadingWorkers) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -235,8 +257,6 @@ export function AssignWorkersTab() {
   }
 
   const availableWorkers = getAvailableWorkers();
-
-  console.log("Available workers:", availableWorkers);
 
   return (
     <Card className="bg-gradient-to-br from-card to-background border border-border/50">
@@ -269,6 +289,13 @@ export function AssignWorkersTab() {
                   const requiredSkill = request.requiredSkills || request.skill || "";
                   const workersNeeded = request.numberOfWorkers || request.workers_needed || 1;
                   
+                  // Filter workers based on the required skill
+                  const matchingWorkers = availableWorkers.filter(worker => 
+                    worker.status === "active" && 
+                    !selectedWorkers[request.id]?.includes(worker.id) &&
+                    workerMatchesSkill(worker, requiredSkill)
+                  );
+                  
                   return (
                     <TableRow key={request.id}>
                       <TableCell className="font-medium">{request.businessName || request.business_name}</TableCell>
@@ -282,18 +309,13 @@ export function AssignWorkersTab() {
                             <SelectValue placeholder="Select worker" />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableWorkers.length > 0 ? 
-                              availableWorkers
-                                .filter(worker => 
-                                  worker.status === "active" &&
-                                  !selectedWorkers[request.id]?.includes(worker.id)
-                                )
-                                .map(worker => (
-                                  <SelectItem key={worker.id} value={worker.id}>
-                                    {worker.name} ({worker.skill})
-                                  </SelectItem>
-                                )) : (
-                                <div className="px-4 py-2 text-muted-foreground">No workers available</div>
+                            {matchingWorkers.length > 0 ? 
+                              matchingWorkers.map(worker => (
+                                <SelectItem key={worker.id} value={worker.id}>
+                                  {worker.name} ({worker.skill})
+                                </SelectItem>
+                              )) : (
+                                <div className="px-4 py-2 text-muted-foreground">No matching workers available</div>
                               )
                             }
                           </SelectContent>
