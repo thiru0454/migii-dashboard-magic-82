@@ -1,8 +1,14 @@
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { MigrantWorker } from '@/types/worker';
 
-// Re-export the supabase client
-export { supabase };
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Worker registration
 export async function registerWorker(workerData: Omit<MigrantWorker, 'id'>) {
