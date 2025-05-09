@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { UserPlus, UserMinus, Loader2 } from "lucide-react";
 import { MigrantWorker, Worker } from "@/types/worker";
 import { useWorkers } from "@/hooks/useWorkers";
 import { assignWorkerToBusiness } from "@/utils/supabaseClient";
+import { SKILLS } from "@/constants/skills";
 
 interface WorkerRequest {
   id: string;
@@ -21,6 +23,10 @@ interface WorkerRequest {
   status: "pending" | "approved" | "rejected";
   createdAt: string;
   assignedWorkers?: string[];
+  business_id?: string;
+  business_name?: string;
+  workers_needed?: number;
+  skill?: string;
 }
 
 export function AssignWorkersTab() {
@@ -34,23 +40,60 @@ export function AssignWorkersTab() {
     loadData();
   }, []);
 
-  const loadData = () => {
+  const loadData = async () => {
     try {
-      // Load approved requests
+      // Load approved requests from localStorage and supabase
       const storedRequests = JSON.parse(localStorage.getItem('workerRequests') || '[]');
-      const approvedRequests = storedRequests.filter((request: WorkerRequest) => 
+      
+      // Also load from Supabase
+      const { data: supabaseRequests, error } = await supabase.from("worker_requests")
+        .select("*")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false });
+      
+      if (error) {
+        console.error("Error loading requests from Supabase:", error);
+      }
+      
+      // Combine both sources of requests and format them consistently
+      const approvedStoredRequests = storedRequests.filter((request: WorkerRequest) => 
         request.status === "approved"
       );
-      setRequests(approvedRequests);
+      
+      // Format Supabase requests to match local format
+      const formattedSupabaseRequests = (supabaseRequests || []).map((req: any) => ({
+        id: req.id,
+        businessName: req.business_name,
+        business_id: req.business_id,
+        requiredSkills: req.skill,
+        numberOfWorkers: req.workers_needed,
+        status: req.status,
+        createdAt: req.created_at,
+        description: req.description,
+        skill: req.skill,
+        assignedWorkers: req.assigned_workers || []
+      }));
+      
+      // Combine and deduplicate by ID
+      const combinedRequests = [...approvedStoredRequests];
+      formattedSupabaseRequests.forEach((req: WorkerRequest) => {
+        if (!combinedRequests.find(r => r.id === req.id)) {
+          combinedRequests.push(req);
+        }
+      });
+      
+      console.log("Combined requests:", combinedRequests);
+      setRequests(combinedRequests);
 
       // Initialize selected workers for each request
       const initialSelectedWorkers: { [key: string]: string[] } = {};
-      approvedRequests.forEach((request: WorkerRequest) => {
+      combinedRequests.forEach((request: WorkerRequest) => {
         initialSelectedWorkers[request.id] = request.assignedWorkers || [];
       });
       setSelectedWorkers(initialSelectedWorkers);
     } catch (error) {
       console.error("Error loading data:", error);
+      toast.error("Failed to load worker requests");
     } finally {
       setLoading(false);
     }
@@ -96,8 +139,9 @@ export function AssignWorkersTab() {
       const request = requests.find(r => r.id === requestId);
       if (!request) return;
 
-      if (selectedWorkers[requestId].length > request.numberOfWorkers) {
-        toast.error(`Cannot assign more than ${request.numberOfWorkers} workers`);
+      const maxWorkers = request.numberOfWorkers || request.workers_needed || 1;
+      if (selectedWorkers[requestId].length > maxWorkers) {
+        toast.error(`Cannot assign more than ${maxWorkers} workers`);
         return;
       }
       
@@ -107,19 +151,37 @@ export function AssignWorkersTab() {
       const workersToAssign = selectedWorkers[requestId].map(id => String(id));
       
       console.log('Workers to assign:', workersToAssign);
+      console.log('Request details:', request);
+
+      // Get business ID (may be in different fields based on source)
+      const businessId = request.business_id || request.id;
 
       // Assign each worker to the business
       const workerPromises = workersToAssign.map(async (workerId) => {
         try {
-          console.log(`Attempting to assign worker ${workerId} to business ${request.id}`);
-          const result = await assignWorkerToBusiness(workerId, request.id);
+          console.log(`Attempting to assign worker ${workerId} to business ${businessId}`);
+          const result = await assignWorkerToBusiness(workerId, businessId);
           
           if (result.error) {
             console.error(`Error assigning worker ${workerId}:`, result.error);
             return false;
           }
           
-          console.log(`Successfully assigned worker ${workerId} to business ${request.id}`);
+          // Also update the worker_requests table with the assigned worker
+          const { error: updateError } = await supabase
+            .from("worker_requests")
+            .update({ 
+              assigned_worker_id: workerId,
+              assigned_worker_name: getWorkerName(workerId).split(' (')[0],
+              status: "assigned" 
+            })
+            .eq("id", requestId);
+            
+          if (updateError) {
+            console.error("Error updating request:", updateError);
+          }
+          
+          console.log(`Successfully assigned worker ${workerId} to business ${businessId}`);
           return true;
         } catch (err) {
           console.error(`Exception assigning worker ${workerId}:`, err);
@@ -135,7 +197,8 @@ export function AssignWorkersTab() {
           if (r.id === requestId) {
             return {
               ...r,
-              assignedWorkers: selectedWorkers[requestId]
+              assignedWorkers: selectedWorkers[requestId],
+              status: "assigned"
             };
           }
           return r;
@@ -173,7 +236,6 @@ export function AssignWorkersTab() {
   const availableWorkers = getAvailableWorkers();
 
   console.log("Available workers:", availableWorkers);
-  console.log("Request requiredSkills:", request.requiredSkills);
 
   return (
     <Card className="bg-gradient-to-br from-card to-background border border-border/50">
@@ -201,76 +263,80 @@ export function AssignWorkersTab() {
                   </TableCell>
                 </TableRow>
               ) : (
-                requests.map((request) => (
-                  <TableRow key={request.id}>
-                    <TableCell className="font-medium">{request.businessName}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{request.requiredSkills}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{request.numberOfWorkers}</TableCell>
-                    <TableCell>
-                      <Select
-                        onValueChange={(value) => handleWorkerSelection(request.id, value)}
-                      >
-                        <SelectTrigger className="w-full sm:w-[200px]">
-                          <SelectValue placeholder="Select worker" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableWorkers
-                            .filter(worker => 
-                              worker.status === "active" &&
-                              !selectedWorkers[request.id]?.includes(worker.id)
-                            )
-                            .map(worker => (
-                              <SelectItem key={worker.id} value={worker.id}>
-                                {worker.name} ({worker.skill})
-                              </SelectItem>
-                            ))}
-                          {availableWorkers.filter(worker =>
-                            worker.status === "active" &&
-                            !selectedWorkers[request.id]?.includes(worker.id)
-                          ).length === 0 && (
-                            <div className="px-4 py-2 text-muted-foreground">No matching workers available</div>
+                requests.map((request) => {
+                  // Get skill from appropriate field depending on data source
+                  const requiredSkill = request.requiredSkills || request.skill || "";
+                  const workersNeeded = request.numberOfWorkers || request.workers_needed || 1;
+                  
+                  return (
+                    <TableRow key={request.id}>
+                      <TableCell className="font-medium">{request.businessName || request.business_name}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{requiredSkill}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{workersNeeded}</TableCell>
+                      <TableCell>
+                        <Select
+                          onValueChange={(value) => handleWorkerSelection(request.id, value)}
+                        >
+                          <SelectTrigger className="w-full sm:w-[200px]">
+                            <SelectValue placeholder="Select worker" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableWorkers.length > 0 ? 
+                              availableWorkers
+                                .filter(worker => 
+                                  worker.status === "active" &&
+                                  !selectedWorkers[request.id]?.includes(worker.id)
+                                )
+                                .map(worker => (
+                                  <SelectItem key={worker.id} value={worker.id}>
+                                    {worker.name} ({worker.skill})
+                                  </SelectItem>
+                                )) : (
+                                <div className="px-4 py-2 text-muted-foreground">No workers available</div>
+                              )
+                            }
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {selectedWorkers[request.id]?.map(workerId => (
+                            <div key={workerId} className="flex items-center justify-between">
+                              <span className="text-sm truncate max-w-[120px] sm:max-w-[180px]">{getWorkerName(workerId)}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleWorkerSelection(request.id, workerId)}
+                                className="ml-2"
+                              >
+                                <UserMinus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          onClick={() => assignWorkers(request.id)}
+                          disabled={!selectedWorkers[request.id]?.length || assigningWorkers[request.id]}
+                          className="bg-primary text-white hover:bg-primary/90 w-full sm:w-auto"
+                        >
+                          {assigningWorkers[request.id] ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Assigning...
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              Assign Workers
+                            </>
                           )}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {selectedWorkers[request.id]?.map(workerId => (
-                          <div key={workerId} className="flex items-center justify-between">
-                            <span className="text-sm truncate max-w-[120px] sm:max-w-[180px]">{getWorkerName(workerId)}</span>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleWorkerSelection(request.id, workerId)}
-                              className="ml-2"
-                            >
-                              <UserMinus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        onClick={() => assignWorkers(request.id)}
-                        disabled={!selectedWorkers[request.id]?.length || assigningWorkers[request.id]}
-                        className="bg-primary text-white hover:bg-primary/90 w-full sm:w-auto"
-                      >
-                        {assigningWorkers[request.id] ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Assigning...
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Assign Workers
-                          </>
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

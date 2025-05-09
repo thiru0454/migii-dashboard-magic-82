@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -55,13 +56,33 @@ export function BusinessRequestsTab() {
           schema: 'public',
           table: 'worker_requests',
         },
-        () => {
+        (payload) => {
+          console.log('Real-time update received:', payload);
           loadRequests();
         }
       )
       .subscribe();
+
+    // Also subscribe to worker_assignments table
+    const assignmentsChannel = supabase
+      .channel('worker_assignments_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'worker_assignments',
+        },
+        () => {
+          console.log('Worker assignment updated');
+          loadRequests();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(assignmentsChannel);
     };
   }, []);
 
@@ -79,6 +100,7 @@ export function BusinessRequestsTab() {
         throw error;
       }
       
+      console.log("Business requests loaded:", data);
       setRequests(data || []);
     } catch (error) {
       console.error("Error loading requests:", error);
@@ -91,10 +113,31 @@ export function BusinessRequestsTab() {
   
   const loadWorkers = async () => {
     try {
-      const workersData = await getAllWorkersFromStorage();
-      setWorkers(workersData || []);
+      // Try to load from Supabase first
+      const { data: supabaseWorkers, error } = await supabase
+        .from("workers")
+        .select("*");
+        
+      if (error) {
+        console.error("Error loading workers from Supabase:", error);
+        // Fall back to localStorage
+        const workersData = await getAllWorkersFromStorage();
+        setWorkers(workersData || []);
+      } else {
+        // Format workers from Supabase
+        const formattedWorkers = supabaseWorkers.map(w => ({
+          id: w.id,
+          name: w.name,
+          phone: w.phone,
+          skill: w.primary_skill || w.skill || "",
+          status: w.status
+        }));
+        setWorkers(formattedWorkers);
+      }
     } catch (error) {
       console.error("Error loading workers:", error);
+      const workersData = await getAllWorkersFromStorage();
+      setWorkers(workersData || []);
     }
   };
 
@@ -119,6 +162,27 @@ export function BusinessRequestsTab() {
           <Badge variant="destructive" className="flex items-center gap-1">
             <XCircle className="h-3 w-3" />
             Rejected
+          </Badge>
+        );
+      case "assigned":
+        return (
+          <Badge className="bg-blue-500 text-white flex items-center gap-1">
+            <User className="h-3 w-3" />
+            Worker Assigned
+          </Badge>
+        );
+      case "accepted":
+        return (
+          <Badge className="bg-green-600 text-white flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            Worker Accepted
+          </Badge>
+        );
+      case "declined":
+        return (
+          <Badge className="bg-red-600 text-white flex items-center gap-1">
+            <XCircle className="h-3 w-3" />
+            Worker Declined
           </Badge>
         );
       default:
@@ -168,21 +232,28 @@ export function BusinessRequestsTab() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row justify-between items-center">
         <CardTitle>Your Worker Requests</CardTitle>
+        <Button 
+          variant="outline" 
+          onClick={loadRequests} 
+          className="bg-primary/10 hover:bg-primary/20"
+        >
+          Refresh
+        </Button>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Request Date</TableHead>
                 <TableHead>Required Skills</TableHead>
-                <TableHead>Workers Needed</TableHead>
+                <TableHead className="hidden sm:table-cell">Workers Needed</TableHead>
                 <TableHead>Assigned Worker</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Selected Workers</TableHead>
-                <TableHead>Description</TableHead>
+                <TableHead className="hidden md:table-cell">Description</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -194,10 +265,14 @@ export function BusinessRequestsTab() {
                 </TableRow>
               ) : (
                 requests.map((request) => (
-                  <TableRow key={request.id}>
+                  <TableRow key={request.id} className="hover:bg-accent/30">
                     <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>{request.skill}</TableCell>
-                    <TableCell>{request.workers_needed}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-primary/10">
+                        {request.skill}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{request.workers_needed}</TableCell>
                     <TableCell>
                       {request.assigned_worker_name ? (
                         <span className="font-medium text-blue-700">{request.assigned_worker_name}</span>
@@ -206,74 +281,54 @@ export function BusinessRequestsTab() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {request.status === "pending" && getStatusBadge(request.status)}
-                      {request.status === "approved" && (
-                        <div className="text-green-600 text-xs">Worker request approved by admin</div>
-                      )}
-                      {request.status === "rejected" && (
-                        <div className="text-red-600 text-xs">Worker request rejected by admin</div>
-                      )}
-                      {request.status === "assigned" && (
-                        <div className="text-blue-600 text-xs">Worker assigned, awaiting response</div>
-                      )}
-                      {request.status === "accepted" && (
-                        <div className="text-green-700 text-xs">Worker accepted assignment</div>
-                      )}
-                      {request.status === "declined" && (
-                        <div className="text-red-700 text-xs">Worker declined assignment</div>
-                      )}
+                      {getStatusBadge(request.status)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell max-w-[200px]">
+                      <div className="truncate">{request.description || "No description"}</div>
                     </TableCell>
                     <TableCell>
-                      {request.status === "approved" && request.selectedWorkers && request.selectedWorkers.length > 0 ? (
-                        <div className="space-y-2">
-                          {request.selectedWorkers.map(workerId => {
-                            const worker = getWorkerDetails(workerId);
-                            return worker ? (
-                              <div key={workerId} className="flex items-center justify-between p-2 border rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4" />
-                                  <div>
-                                    <div className="font-medium">{worker.name}</div>
-                                    <div className="text-sm text-muted-foreground">
-                                      {worker.skill} • {worker.phone}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleCallWorker(worker.phone)}
-                                    disabled={actionLoading === "calling"}
-                                  >
-                                    {actionLoading === "calling" ? (
-                                      <LoadingSpinner size="sm" />
-                                    ) : (
-                                      <Phone className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleMessageWorker(worker.phone)}
-                                    disabled={actionLoading === "messaging"}
-                                  >
-                                    {actionLoading === "messaging" ? (
-                                      <LoadingSpinner size="sm" />
-                                    ) : (
-                                      <MessageSquare className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : null;
-                          })}
-                        </div>
+                      {request.status === "assigned" || request.status === "accepted" ? (
+                        request.assigned_worker_id && getWorkerDetails(request.assigned_worker_id) ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCallWorker(getWorkerDetails(request.assigned_worker_id!)!.phone)}
+                              disabled={actionLoading === "calling"}
+                              className="bg-green-100 hover:bg-green-200 text-green-800"
+                            >
+                              {actionLoading === "calling" ? (
+                                <LoadingSpinner size="sm" />
+                              ) : (
+                                <Phone className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleMessageWorker(getWorkerDetails(request.assigned_worker_id!)!.phone)}
+                              disabled={actionLoading === "messaging"}
+                              className="bg-blue-100 hover:bg-blue-200 text-blue-800"
+                            >
+                              {actionLoading === "messaging" ? (
+                                <LoadingSpinner size="sm" />
+                              ) : (
+                                <MessageSquare className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Contact info loading...</span>
+                        )
                       ) : (
-                        <span className="text-muted-foreground">No workers selected</span>
+                        <span className="text-muted-foreground text-sm">
+                          {request.status === "pending" ? "Awaiting review" : 
+                           request.status === "approved" ? "Awaiting assignment" : 
+                           request.status === "rejected" ? "Request rejected" : 
+                           request.status === "declined" ? "Worker declined" : ""}
+                        </span>
                       )}
                     </TableCell>
-                    <TableCell>{request.description}</TableCell>
                   </TableRow>
                 ))
               )}

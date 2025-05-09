@@ -1,10 +1,10 @@
+
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { WorkerRequestForm } from "@/components/worker/WorkerRequestForm";
 import { BusinessRequestsTab } from "@/components/business/BusinessRequestsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BusinessUserDetails } from "@/components/business/BusinessUserDetails";
-import { getBusinessUserById } from "@/utils/businessDatabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +13,19 @@ import { useState, useEffect } from "react";
 import { supabase, getAllWorkers } from "@/utils/supabaseClient";
 import { JobsTab } from "@/components/business/JobsTab";
 import { JobNotificationsTab } from "@/components/business/JobNotificationsTab";
+import { AssignWorkersTab } from "@/components/business/AssignWorkersTab";
+import { SKILLS } from "@/constants/skills";
+import { AlertCircle, BookOpen } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export default function BusinessDashboard() {
   const [activeTab, setActiveTab] = useState("business-details");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [pendingRequestsCount, setpendingRequestsCount] = useState(0);
   const [form, setForm] = useState({
     workersNeeded: 1,
     skill: "",
@@ -40,7 +48,60 @@ export default function BusinessDashboard() {
       setBusiness(data);
     };
     fetchBusiness();
+    
+    // Get count of pending requests
+    fetchRequestCounts();
+    
+    // Set up real-time subscription for worker requests
+    const channel = supabase
+      .channel('business_dashboard_requests')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'worker_requests',
+        },
+        () => {
+          fetchRequestCounts();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+  
+  const fetchRequestCounts = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      
+      // Count requests with assigned workers
+      const { data: assignedData, error: assignedError } = await supabase
+        .from("worker_requests")
+        .select("id", { count: 'exact' })
+        .eq("business_id", currentUser.id)
+        .eq("status", "assigned");
+        
+      if (!assignedError && assignedData) {
+        setNotificationCount(assignedData.length);
+      }
+      
+      // Count pending requests
+      const { data: pendingData, error: pendingError } = await supabase
+        .from("worker_requests")
+        .select("id", { count: 'exact' })
+        .eq("business_id", currentUser.id)
+        .eq("status", "pending");
+        
+      if (!pendingError && pendingData) {
+        setpendingRequestsCount(pendingData.length);
+      }
+    } catch (error) {
+      console.error("Error fetching request counts:", error);
+    }
+  };
 
   const handleChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -57,7 +118,7 @@ export default function BusinessDashboard() {
 
   const handleConfirm = async () => {
     if (!business || !business.id) {
-      alert("Business not loaded. Please wait and try again.");
+      toast.error("Business not loaded. Please wait and try again.");
       return;
     }
     setConfirmOpen(false);
@@ -77,37 +138,81 @@ export default function BusinessDashboard() {
       },
     ]).select().single();
     if (error) {
-      alert("Failed to submit request: " + error.message);
+      toast.error("Failed to submit request: " + error.message);
       return;
     }
-    // Fetch top 3 available workers with the required skill
-    const { data: workers, error: workerError } = await supabase
-      .from("workers")
-      .select("id, name, skill, status")
-      .eq("skill", form.skill)
-      .eq("status", "Available")
-      .limit(3);
-    if (workerError) {
-      alert("Request submitted, but failed to suggest workers: " + workerError.message);
-      return;
-    }
-    const names = workers && workers.length > 0 ? workers.map((w: any) => w.name).join(", ") : "No available workers found.";
-    alert(`Request submitted! Top matches: ${names}`);
-    // TODO: Real-time update for admin dashboard
+    
+    toast.success("Worker request submitted successfully!");
+    
+    // Reset the form
+    setForm({
+      workersNeeded: 1,
+      skill: "",
+      priority: "Normal",
+      duration: "",
+      description: ""
+    });
+    
+    // Refresh counts
+    fetchRequestCounts();
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Business Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gradient-primary">Business Dashboard</h1>
+        
+        {notificationCount > 0 && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <AlertCircle className="h-5 w-5 text-blue-600" />
+            <AlertTitle className="text-blue-800">New Worker Assignment</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              You have {notificationCount} new worker{notificationCount !== 1 && 's'} assigned to your request{notificationCount !== 1 && 's'}.
+              <Button 
+                variant="link" 
+                onClick={() => setActiveTab("view-requests")}
+                className="text-blue-600 p-0 h-auto font-semibold"
+              >
+                View details
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {pendingRequestsCount > 0 && (
+          <Alert className="bg-yellow-50 border-yellow-200">
+            <BookOpen className="h-5 w-5 text-yellow-600" />
+            <AlertTitle className="text-yellow-800">Pending Worker Requests</AlertTitle>
+            <AlertDescription className="text-yellow-700">
+              You have {pendingRequestsCount} pending worker request{pendingRequestsCount !== 1 && 's'} awaiting review.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="business-details">Business Details</TabsTrigger>
-            <TabsTrigger value="worker-request">Worker Request</TabsTrigger>
-            <TabsTrigger value="view-requests">View Requests</TabsTrigger>
-            <TabsTrigger value="jobs">Post Jobs</TabsTrigger>
-            <TabsTrigger value="job-notifications">Job Notifications</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-1">
+            <TabsList className="w-full grid-cols-5 sm:grid-cols-5 md:w-auto inline-flex">
+              <TabsTrigger value="business-details">Business Details</TabsTrigger>
+              <TabsTrigger value="worker-request" className="relative">
+                Worker Request
+                {pendingRequestsCount > 0 && (
+                  <Badge className="ml-1 bg-yellow-500 text-white h-5 w-5 p-0 flex items-center justify-center rounded-full absolute -top-1 -right-1">
+                    {pendingRequestsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="view-requests" className="relative">
+                View Requests
+                {notificationCount > 0 && (
+                  <Badge className="ml-1 bg-blue-500 text-white h-5 w-5 p-0 flex items-center justify-center rounded-full absolute -top-1 -right-1">
+                    {notificationCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="jobs">Post Jobs</TabsTrigger>
+              <TabsTrigger value="job-notifications">Job Notifications</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="business-details">
             <DashboardCard title="Business Details">
@@ -121,7 +226,7 @@ export default function BusinessDashboard() {
 
           <TabsContent value="worker-request">
             <DashboardCard title="Worker Request">
-              <Button onClick={() => setDialogOpen(true)} className="mb-4" disabled={!business}>
+              <Button onClick={() => setDialogOpen(true)} className="mb-4 bg-primary hover:bg-primary/90" disabled={!business}>
                 Request Worker
               </Button>
               <Dialog open={dialogOpen && !!business} onOpenChange={setDialogOpen}>
@@ -130,7 +235,7 @@ export default function BusinessDashboard() {
                     <DialogTitle>Request Worker</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium mb-1">Number of Workers Needed</label>
                         <Input type="number" name="workersNeeded" min={1} value={form.workersNeeded} onChange={handleChange} required />
@@ -142,11 +247,9 @@ export default function BusinessDashboard() {
                             <SelectValue placeholder="Select skill" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Carpenter">Carpenter</SelectItem>
-                            <SelectItem value="Plumber">Plumber</SelectItem>
-                            <SelectItem value="Cook">Cook</SelectItem>
-                            <SelectItem value="Electrician">Electrician</SelectItem>
-                            <SelectItem value="Cleaner">Cleaner</SelectItem>
+                            {SKILLS.map(skill => (
+                              <SelectItem key={skill} value={skill}>{skill}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -172,7 +275,7 @@ export default function BusinessDashboard() {
                       <Input type="text" name="description" value={form.description} onChange={handleChange} />
                     </div>
                     <DialogFooter>
-                      <Button type="submit">Submit Request</Button>
+                      <Button type="submit" className="bg-primary hover:bg-primary/90">Submit Request</Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -185,7 +288,7 @@ export default function BusinessDashboard() {
                   </DialogHeader>
                   <div>Do you want to submit this request?</div>
                   <DialogFooter>
-                    <Button onClick={handleConfirm}>OK</Button>
+                    <Button onClick={handleConfirm} className="bg-primary hover:bg-primary/90">OK</Button>
                     <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
                   </DialogFooter>
                 </DialogContent>
@@ -214,4 +317,4 @@ export default function BusinessDashboard() {
       </div>
     </DashboardLayout>
   );
-} 
+}
