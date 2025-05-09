@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { MigrantWorker } from "@/types/worker";
 import { getAllWorkers, subscribeToWorkers } from "@/utils/supabaseClient";
@@ -35,7 +34,9 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
           // Ensure all worker IDs are strings
           const formattedWorkers = data?.map(worker => ({
             ...worker,
-            id: String(worker.id)
+            id: String(worker.id),
+            skill: worker.primary_skill || worker.skill,
+            originState: worker.origin_state || worker.originState
           })) || [];
           setWorkers(formattedWorkers);
         }

@@ -1,4 +1,3 @@
-
 export interface BusinessUser {
   id: string;
   businessId: string;
@@ -15,7 +14,7 @@ export const initBusinessDatabase = () => {
   if (!localStorage.getItem("businessUsers")) {
     const initialBusinessUsers: BusinessUser[] = [
       {
-        id: "b1",
+        id: "40c8a7e5-765d-4512-9399-a823af8fad2f",
         businessId: "BUS-001",
         name: "Acme Construction",
         email: "business@example.com",

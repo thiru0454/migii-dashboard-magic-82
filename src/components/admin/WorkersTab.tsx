@@ -76,10 +76,10 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
       header: "Phone",
     },
     {
-      accessorKey: "Primary Skill",
+      accessorKey: "skill",
       header: "Skill",
       cell: ({ row }) => {
-        const skill = row.original["Primary Skill"];
+        const skill = row.original.skill;
         return (
           <div className="flex flex-wrap gap-1">
             <span className="px-2 py-1 bg-primary/10 rounded-full text-sm">
@@ -90,7 +90,7 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
       },
     },
     {
-      accessorKey: "Origin State",
+      accessorKey: "originState",
       header: "Origin State",
     },
     {

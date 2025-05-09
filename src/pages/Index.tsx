@@ -21,6 +21,7 @@ import {
   UserPlus,
   LogIn
 } from 'lucide-react';
+import { Sidebar } from '@/components/layout/Sidebar';
 
 const Index = () => {
   const { t } = useLanguage();
@@ -89,59 +90,20 @@ const Index = () => {
     </div>
   );
   
-  // Custom sidebar based on the image
-  const CustomSidebar = () => (
-    <div className="fixed inset-y-0 left-0 w-64 bg-gray-900 text-white flex flex-col z-50">
-      {/* Logo Section */}
-      <div className="p-4 flex items-center">
-        <div className="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center mr-2">
-          <span className="font-bold text-white">M</span>
-        </div>
-        <span className="text-xl font-bold">MIGII</span>
-      </div>
-      
-      {/* Navigation Links */}
-      <nav className="flex-1 px-2 py-4 space-y-1">
-        <Link to="/" className="block rounded-lg bg-purple-600 px-4 py-2 text-white flex items-center">
-          <Home className="mr-3 h-5 w-5" />
-          <span>Home</span>
-        </Link>
-        
-        <Link to="/worker-registration" className="block rounded-lg px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white flex items-center">
-          <UserPlus className="mr-3 h-5 w-5" />
-          <span>Worker Registration</span>
-        </Link>
-        
-        <Link to="/login" className="block rounded-lg px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white flex items-center">
-          <LogIn className="mr-3 h-5 w-5" />
-          <span>Migii Login</span>
-        </Link>
-      </nav>
-      
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-800">
-        <p className="text-xs text-gray-500">Worker Management System</p>
-        <p className="text-xs font-medium text-gray-400">migii v1.0.0</p>
-      </div>
-    </div>
-  );
-  
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Custom Sidebar */}
-      <CustomSidebar />
-      
+      {/* Use shared Sidebar for consistent color */}
+      <Sidebar />
       <div className="md:ml-64">
         {/* Hero Banner */}
-        <section className="bg-primary text-white py-16 px-4 md:px-8 lg:px-16">
+        <section className="bg-primary text-white py-12 px-4 sm:py-16 sm:px-6 md:px-8 lg:px-16">
           <div className="container mx-auto max-w-7xl">
-            <h1 className="text-3xl md:text-5xl font-bold mb-4">{t('heroBannerTitle')}</h1>
-            <p className="text-lg md:text-xl mb-8 max-w-2xl">{t('heroBannerSubtitle')}</p>
-            
-            <div className="flex flex-wrap gap-4">
-              <Button size="lg" variant="secondary">{t('joinNow')}</Button>
-              <Button size="lg" variant="outline">{t('postJob')}</Button>
-              <Button size="lg" variant="outline">{t('trackStatus')}</Button>
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-4 text-center md:text-left">{t('heroBannerTitle')}</h1>
+            <p className="text-base sm:text-lg md:text-xl mb-8 max-w-2xl mx-auto md:mx-0 text-center md:text-left">{t('heroBannerSubtitle')}</p>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center md:justify-start">
+              <Button size="lg" variant="secondary" className="w-full sm:w-auto">{t('joinNow')}</Button>
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">{t('postJob')}</Button>
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">{t('trackStatus')}</Button>
             </div>
           </div>
         </section>
@@ -250,7 +212,7 @@ const Index = () => {
                   <div className="flex flex-col gap-4">
                     <Input placeholder={t('searchPlaceholder')} />
                     <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" size="sm">{t('filterLanguage')}</Button>
+                      {/* <Button variant="outline" size="sm">{t('filterLanguage')}</Button> */}
                       <Button variant="outline" size="sm">{t('filterSkills')}</Button>
                       <Button variant="outline" size="sm">{t('filterLocation')}</Button>
                       <Button variant="outline" size="sm">{t('filterExperience')}</Button>

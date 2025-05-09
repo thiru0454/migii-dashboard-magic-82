@@ -1,10 +1,10 @@
-
 // This is a compatibility layer between Firebase and Supabase
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { MigrantWorker, Worker } from '@/types/worker';
 import { toast } from 'sonner';
 import { generateWorkerId } from "./workerUtils";
+import { getAllWorkers } from './supabaseClient';
 
 // Firebase auth compatibility types
 export const auth = {
@@ -43,7 +43,7 @@ export const findWorkerByEmail = async (email: string): Promise<MigrantWorker | 
     const { data, error } = await supabase
       .from('workers')
       .select('*')
-      .eq('email', email)
+      .eq('Email Address', email)
       .single();
     
     if (error || !data) {
@@ -67,7 +67,7 @@ export const findWorkerByPhone = async (phone: string): Promise<MigrantWorker | 
     const { data, error } = await supabase
       .from('workers')
       .select('*')
-      .eq('phone', phone)
+      .eq('Phone Number', phone)
       .single();
     
     if (error || !data) {
@@ -103,25 +103,17 @@ export const registerWorkerInStorage = async (worker: {
     const newWorker: MigrantWorker = {
       id: workerId,
       name: worker.name,
-      "Full Name": worker.name,
       age: worker.age,
-      "Age": worker.age,
       phone: worker.phone,
-      "Phone Number": worker.phone,
       email: worker.email,
-      "Email Address": worker.email,
       skill: worker.skill,
-      "Primary Skill": worker.skill,
       originState: worker.originState,
-      "Origin State": worker.originState,
       status: "active",
       registrationDate: new Date().toISOString(),
       photoUrl: worker.photoUrl,
-      "Photo URL": worker.photoUrl,
       latitude: worker.latitude,
       longitude: worker.longitude,
-      aadhaar: worker.aadhaar,
-      "Aadhaar Number": worker.aadhaar
+      aadhaar: worker.aadhaar
     };
 
     // First save to localStorage in case Supabase fails
@@ -266,5 +258,53 @@ export const confirmOtp = async (verificationId: string, otp: string) => {
   } catch (error) {
     console.error("Error in confirmOtp:", error);
     throw error;
+  }
+};
+
+// Fetch a worker by phone or email from Supabase using correct field names
+export const getWorkerByContact = async (contact: string): Promise<MigrantWorker | null> => {
+  try {
+    const { data, error } = await getAllWorkers();
+    if (error || !data) return null;
+    const trimmedContact = contact.trim();
+    return (
+      data.find(
+        (w: any) =>
+          w["Phone Number"] === trimmedContact ||
+          w["Email Address"] === trimmedContact
+      ) || null
+    );
+  } catch (error) {
+    console.error("Error in getWorkerByContact:", error);
+    return null;
+  }
+};
+
+// Fetch a single worker directly from Supabase by phone or email
+export const getWorkerDirectFromSupabase = async (contact: string): Promise<MigrantWorker | null> => {
+  try {
+    const trimmedContact = contact.trim();
+    console.log('[Worker Fetch] Searching for contact:', trimmedContact);
+    // Try by phone number first
+    let { data, error } = await supabase
+      .from('workers')
+      .select('*')
+      .eq('Phone Number', trimmedContact)
+      .single();
+    console.log('[Worker Fetch] By Phone Number:', { data, error });
+    if (error || !data) {
+      // Try by email if not found by phone
+      ({ data, error } = await supabase
+        .from('workers')
+        .select('*')
+        .eq('Email Address', trimmedContact)
+        .single());
+      console.log('[Worker Fetch] By Email Address:', { data, error });
+      if (error || !data) return null;
+    }
+    return data as MigrantWorker;
+  } catch (error) {
+    console.error('Error in getWorkerDirectFromSupabase:', error);
+    return null;
   }
 };

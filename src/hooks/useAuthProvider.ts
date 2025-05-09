@@ -67,50 +67,28 @@ export const useAuthProvider = () => {
         setIsLoading(false);
         return false;
       } else if (userType === "business") {
+        // Use local storage for business login
         const businessUsers = getAllBusinessUsers();
-        const businessUser = businessUsers.find(
-          (user: any) => user.email === email && user.password === password
+        const business = businessUsers.find(
+          (user) => user.email.trim().toLowerCase() === email.trim().toLowerCase() && user.password === password
         );
-        
-        if (businessUser) {
-          // Try to sign in with Supabase
-          const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          
-          // If user doesn't exist in Supabase, create them
-          if (error && error.message.includes('Invalid login credentials')) {
-            await supabase.auth.signUp({
-              email,
-              password,
-              options: {
-                data: {
-                  name: businessUser.name,
-                  userType: "business",
-                }
-              }
-            });
-          }
-          
-          const user: User = {
-            id: businessUser.id,
-            email,
-            name: businessUser.name,
-            userType: "business",
-            businessId: businessUser.id,
-          };
-          setCurrentUser(user);
-          localStorage.setItem("currentUser", JSON.stringify(user));
+        if (!business) {
+          toast.error("Invalid business credentials");
           setIsLoading(false);
-          return true;
+          return false;
         }
-        
-        toast.error("Invalid business credentials");
+        const user: User = {
+          id: business.id,
+          email: business.email,
+          name: business.name,
+          userType: "business",
+          businessId: business.businessId,
+        };
+        setCurrentUser(user);
+        localStorage.setItem("currentUser", JSON.stringify(user));
         setIsLoading(false);
-        return false;
+        return true;
       }
-      
       setIsLoading(false);
       return false;
     } catch (error) {

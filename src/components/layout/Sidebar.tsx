@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -14,7 +13,8 @@ import {
   X,
   LogOut,
   Building,
-  Briefcase
+  Briefcase,
+  Settings as SettingsIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +34,13 @@ const sidebarLinks: SidebarLinkItem[] = [
     href: "/",
     icon: Home,
     public: true
+  },
+  {
+    title: "Available Jobs",
+    href: "/jobs",
+    icon: Briefcase,
+    public: true,
+    isHighlighted: true
   }
 ];
 
@@ -55,11 +62,10 @@ const adminLinks: SidebarLinkItem[] = [
     icon: Building,
   },
   {
-    title: "Post Jobs",
-    href: "/admin-dashboard/jobs",
-    icon: Briefcase,
-    isHighlighted: true
-  }
+    title: "Support Requests",
+    href: "/admin-dashboard/support-requests",
+    icon: MessageSquare,
+  },
 ];
 
 // Business-only links
@@ -78,6 +84,12 @@ const businessLinks: SidebarLinkItem[] = [
     title: "Projects",
     href: "/business-dashboard/projects",
     icon: Briefcase,
+  },
+  {
+    title: "Post Jobs",
+    href: "/business-dashboard/jobs",
+    icon: Briefcase,
+    isHighlighted: true
   }
 ];
 
@@ -90,7 +102,7 @@ const workerLinks: SidebarLinkItem[] = [
   },
   {
     title: "Available Jobs",
-    href: "/worker-dashboard/jobs",
+    href: "/jobs",
     icon: Briefcase,
     isHighlighted: true
   }
@@ -122,9 +134,16 @@ export function Sidebar() {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
+  const isWorkerRegistrationOrLoginOrHome = location.pathname === "/worker-registration" || location.pathname === "/login" || location.pathname === "/";
+
   const getRelevantLinks = () => {
-    const links = [...sidebarLinks];
-    
+    let links = [...sidebarLinks];
+
+    // Remove 'Available Jobs' if on worker registration, login, or home page
+    if (isWorkerRegistrationOrLoginOrHome) {
+      links = links.filter(link => link.title !== "Available Jobs");
+    }
+
     if (!currentUser) {
       links.push(
         {
@@ -132,13 +151,6 @@ export function Sidebar() {
           href: "/worker-registration",
           icon: UserPlus,
           public: true
-        },
-        {
-          title: "Available Jobs",
-          href: "/jobs",
-          icon: Briefcase,
-          public: true,
-          isHighlighted: true
         }
       );
       return links;
@@ -197,19 +209,20 @@ export function Sidebar() {
       </button>
 
       {/* Mobile Menu Overlay */}
-      {isMobile && mobileMenuOpen && (
+      {/* Overlay removed for visibility troubleshooting */}
+      {/* {isMobile && mobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
           onClick={() => setMobileMenuOpen(false)}
         />
-      )}
+      )} */}
 
       {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-45",
           "flex h-full flex-col",
-          "bg-sidebar border-r",
+          "bg-black text-white border-r",
           "transition-transform duration-300 ease-in-out",
           "w-64",
           isMobile && !mobileMenuOpen && "-translate-x-full",
@@ -219,7 +232,7 @@ export function Sidebar() {
         <div className="flex items-center justify-between p-4">
           <Link
             to="/"
-            className="flex items-center gap-2 font-semibold text-xl text-sidebar-foreground"
+            className="flex items-center gap-2 font-semibold text-xl text-white"
             onClick={() => setMobileMenuOpen(false)}
           >
             <img src="/migii-icon.svg" alt="Migii Logo" className="h-8 w-8" />
@@ -236,18 +249,14 @@ export function Sidebar() {
                 to={link.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm",
-                  "text-sidebar-foreground",
-                  "transition-colors hover:bg-accent/50 hover:text-accent-foreground",
-                  active && "bg-accent text-accent-foreground font-medium",
-                  link.isHighlighted && !active && "bg-primary/10 border border-primary/30"
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold drop-shadow !text-white !opacity-100",
+                  "hover:bg-gray-800",
+                  active && "bg-primary !text-white font-bold !opacity-100"
                 )}
+                style={{ color: '#fff', opacity: 1 }}
               >
-                <link.icon size={20} className={cn(
-                  "shrink-0", 
-                  link.isHighlighted && "text-primary"
-                )} />
-                <span className="opacity-100">{link.title}</span>
+                <link.icon size={20} className="shrink-0 !text-white !opacity-100 drop-shadow" style={{ color: '#fff', opacity: 1 }} />
+                <span className="!opacity-100 !text-white drop-shadow" style={{ color: '#fff', opacity: 1 }}>{link.title}</span>
                 {link.isHighlighted && !active && (
                   <span className="ml-auto text-xs font-medium bg-primary/20 text-primary px-1.5 py-0.5 rounded">New</span>
                 )}
@@ -255,10 +264,25 @@ export function Sidebar() {
             );
           })}
 
+          {/* Settings Link */}
+          <Link
+            to="/settings"
+            onClick={() => setMobileMenuOpen(false)}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm mt-2 font-bold drop-shadow !text-white !opacity-100",
+              "hover:bg-gray-800",
+              isLinkActive("/settings") && "bg-primary !text-white font-bold !opacity-100"
+            )}
+            style={{ color: '#fff', opacity: 1 }}
+          >
+            <SettingsIcon size={20} className="shrink-0 !text-white !opacity-100 drop-shadow" style={{ color: '#fff', opacity: 1 }} />
+            <span className="!opacity-100 !text-white drop-shadow" style={{ color: '#fff', opacity: 1 }}>Settings</span>
+          </Link>
+
           {currentUser ? (
             <div className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm mt-4",
-              "text-sidebar-foreground"
+              "text-white"
             )}>
               <div className="flex w-full justify-between items-center">
                 <div className="flex items-center gap-2">
@@ -282,9 +306,9 @@ export function Sidebar() {
               onClick={() => setMobileMenuOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm mt-4",
-                "text-sidebar-foreground",
-                "transition-colors hover:bg-accent/50 hover:text-accent-foreground",
-                isLoginPath && "bg-accent text-accent-foreground font-medium"
+                "text-white",
+                "hover:bg-gray-800",
+                isLoginPath && "bg-primary text-white font-medium"
               )}
             >
               <LogIn size={20} className="shrink-0" />
@@ -295,10 +319,10 @@ export function Sidebar() {
 
         <div className="p-4 border-t border-border/50">
           <div className="flex flex-col gap-1">
-            <p className="text-xs text-sidebar-foreground/60">
+            <p className="text-xs font-bold drop-shadow !text-white !opacity-100" style={{ color: '#fff', opacity: 1 }}>
               Worker Management System
             </p>
-            <p className="text-xs font-medium text-sidebar-foreground">
+            <p className="text-xs font-bold drop-shadow !text-white !opacity-100" style={{ color: '#fff', opacity: 1 }}>
               migii v1.0.0
             </p>
           </div>

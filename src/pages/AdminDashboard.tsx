@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { AdminDashboardHeader } from "@/components/admin/AdminDashboardHeader";
 import { WorkersTab } from "@/components/admin/WorkersTab";
@@ -6,7 +5,7 @@ import { BusinessesTab } from "@/components/admin/BusinessesTab";
 import { HelpRequestsTab } from "@/components/admin/HelpRequestsTab";
 import { WorkersMap } from "@/components/admin/WorkersMap";
 import { WorkerRequestsTab } from "@/components/admin/WorkerRequestsTab";
-import { JobsTab } from "@/components/admin/JobsTab";
+import { JobNotificationsTab } from "@/components/admin/JobNotificationsTab";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
@@ -37,7 +36,7 @@ export default function AdminDashboard() {
           <TabsTrigger value="help" className="flex-shrink-0">Help Requests</TabsTrigger>
           <TabsTrigger value="locations" className="flex-shrink-0">Live Map</TabsTrigger>
           <TabsTrigger value="requests" className="flex-shrink-0">Worker Requests</TabsTrigger>
-          <TabsTrigger value="jobs" className="flex-shrink-0 animate-pulse">Post Jobs</TabsTrigger>
+          <TabsTrigger value="job-notifications" className="flex-shrink-0">Job Notifications</TabsTrigger>
         </TabsList>
         <TabsContent value="workers" className="animate-fade-in">
           <div className="mt-4">
@@ -64,9 +63,9 @@ export default function AdminDashboard() {
             <WorkerRequestsTab />
           </div>
         </TabsContent>
-        <TabsContent value="jobs" className="animate-fade-in">
+        <TabsContent value="job-notifications" className="animate-fade-in">
           <div className="mt-4">
-            <JobsTab />
+            <JobNotificationsTab />
           </div>
         </TabsContent>
       </Tabs>

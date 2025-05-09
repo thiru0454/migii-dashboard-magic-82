@@ -15,8 +15,8 @@ import { registerWorkerInStorage } from "@/utils/firebase";
 import { sendRegistrationEmail } from "@/utils/emailService";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { registerNewWorker } from '@/services/workerService';
+import { SKILLS } from "@/constants/skills";
 
-const SKILLS = ["Construction Worker", "Plumber", "Electrician", "Carpenter", "Painter", "Gardener", "Driver", "Cleaner", "Cook", "Other"];
 const STATES = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"];
 
 const formSchema = z.object({
@@ -206,10 +206,16 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
               <FormLabel>Primary Skill</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger><SelectValue placeholder="Select your primary skill" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your primary skill" />
+                  </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {SKILLS.map((skill) => (<SelectItem key={skill} value={skill}>{skill}</SelectItem>))}
+                  {SKILLS.map((skill) => (
+                    <SelectItem key={skill} value={skill}>
+                      {skill}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />

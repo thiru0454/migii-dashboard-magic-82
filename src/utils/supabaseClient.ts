@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { MigrantWorker } from '@/types/worker';
 
@@ -15,12 +14,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export async function registerWorker(workerData: Omit<MigrantWorker, 'id'>) {
   return await supabase
     .from('workers')
-    .insert([{
-      ...workerData,
-      // Generate a random ID as string
-      id: Math.floor(Math.random() * 1000000).toString()
-    }])
-    .select()
+    .insert([
+      {
+        ...workerData
+        // id is omitted; Supabase will auto-generate it
+      }
+    ])
+    .select('*')
     .single();
 }
 
@@ -121,6 +121,21 @@ export async function assignWorkerToBusiness(workerId: string, businessId: strin
     if (error) {
       console.error('Error assigning worker:', error);
       throw error;
+    }
+    // Insert assignment notification for the worker
+    const { error: insertError } = await supabase.from('worker_assignments').insert([
+      {
+        worker_id: formattedWorkerId,
+        business_id: businessId,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ]);
+    if (insertError) {
+      console.error('Error inserting into worker_assignments:', insertError);
+    } else {
+      console.log('Inserted into worker_assignments:', formattedWorkerId, businessId);
     }
     
     console.log('Worker successfully assigned:', data);
@@ -251,6 +266,39 @@ export async function updateApplicationStatus(id: string, status: string, notes?
       notes,
       updated_at: new Date().toISOString()
     })
+    .eq('id', id)
+    .select()
+    .single();
+}
+
+// Submit a new support request
+type SupportRequest = {
+  name: string;
+  email: string;
+  message: string;
+};
+
+export async function submitSupportRequest(request: SupportRequest) {
+  return await supabase
+    .from('support_requests')
+    .insert([{ ...request }])
+    .select()
+    .single();
+}
+
+// Fetch all support requests
+export async function getSupportRequests() {
+  return await supabase
+    .from('support_requests')
+    .select('*')
+    .order('created_at', { ascending: false });
+}
+
+// Update support request status
+export async function updateSupportRequestStatus(id: string, status: string) {
+  return await supabase
+    .from('support_requests')
+    .update({ status })
     .eq('id', id)
     .select()
     .single();

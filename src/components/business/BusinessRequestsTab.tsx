@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabaseClient";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { SKILLS } from "@/constants/skills";
 
 interface WorkerRequest {
   id: string;

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,6 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AvailableJobsTab } from "@/components/worker/AvailableJobsTab";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const ADMIN_CREDENTIALS = {
@@ -16,8 +14,8 @@ const ADMIN_CREDENTIALS = {
 };
 
 const BUSINESS_CREDENTIALS = {
-  username: "business@migii.com",
-  password: "business0454",
+  username: "business@example.com",
+  password: "business123",
 };
 
 type LoginMode = "none" | "admin" | "business";
@@ -95,17 +93,12 @@ export default function Login() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4">
-        <div className="flex flex-col items-center justify-center py-10">
-          <div className="w-full max-w-4xl">
+      <div className="container mx-auto px-4 sm:px-6 md:px-8">
+        <div className="flex flex-col items-center justify-center py-8 sm:py-10">
+          <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-4xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-2 w-full max-w-md mx-auto mb-8">
-                <TabsTrigger value="login" className="text-lg py-3">Login</TabsTrigger>
-                <TabsTrigger value="jobs" className="text-lg py-3">Available Jobs</TabsTrigger>
-              </TabsList>
-              
               <TabsContent value="login" className="animate-fade-in">
-                <Card className="w-full max-w-sm mx-auto shadow-lg border-border bg-gradient-to-br from-card to-background/80">
+                <Card className="w-full max-w-sm sm:max-w-md md:max-w-lg mx-auto shadow-lg border-border bg-gradient-to-br from-card to-background/80">
                   <CardHeader className="text-center space-y-2 pb-6">
                     <CardTitle className="text-2xl font-bold text-gradient-primary">MIGII Login Portal</CardTitle>
                     <CardDescription className="text-muted-foreground">
@@ -121,7 +114,7 @@ export default function Login() {
                         <Button className="w-full transition-all hover:translate-y-[-2px]" variant="outline" onClick={() => { setMode("business"); resetForm(); }}>
                           Business Login
                         </Button>
-                        <Button className="w-full transition-all hover:translate-y-[-2px] bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90" onClick={goToWorkerLogin}>
+                        <Button className="w-full transition-all hover:translate-y-[-2px]" variant="outline" onClick={goToWorkerLogin}>
                           Worker Login
                         </Button>
                       </div>
@@ -212,18 +205,6 @@ export default function Login() {
                         </Button>
                       </form>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="jobs" className="animate-fade-in">
-                <Card className="bg-gradient-to-br from-card to-background/80 border border-border/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xl md:text-2xl text-gradient-primary">Available Job Opportunities</CardTitle>
-                    <CardDescription>Browse and apply for available jobs near you</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <AvailableJobsTab />
                   </CardContent>
                 </Card>
               </TabsContent>

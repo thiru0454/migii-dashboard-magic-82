@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -8,85 +7,76 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { LogIn } from "lucide-react";
 import { WorkerLoginForm } from "@/components/forms/WorkerLoginForm";
-import { getAllWorkersFromStorage } from "@/utils/firebase";
+import { getAllWorkers } from "@/utils/supabaseClient";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const WorkerLogin = () => {
   const { currentUser, logout } = useAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [workerData, setWorkerData] = useState({
-    workerId: "",
-    name: "Worker User",
-    phone: "",
-    skill: "Construction Worker",
-    originState: "Bihar",
-    status: "Active",
-    supportHistory: [
-      {
-        id: "REQ-001",
-        date: "2024-04-01",
-        issue: "Accommodation request",
-        status: "Pending",
-      },
-      {
-        id: "REQ-002",
-        date: "2024-03-15",
-        issue: "Payment discrepancy",
-        status: "Resolved",
-      },
-    ],
-  });
-  
+  const [workerData, setWorkerData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   
-  // Check if already logged in and fetch worker data
   useEffect(() => {
-    if (currentUser && currentUser.userType === "worker") {
-      setIsLoggedIn(true);
-      
-      // Fetch worker details from storage based on currentUser info
-      const workers = getAllWorkersFromStorage();
-      const worker = workers.find(w => w.id === currentUser.id || w.phone === currentUser.phone);
-      
-      if (worker) {
-        setWorkerData({
-          workerId: worker.id,
-          name: worker.name,
-          phone: worker.phone,
-          skill: worker.skill || "Construction Worker",
-          originState: worker.originState,
-          status: worker.status || "Active",
-          supportHistory: workerData.supportHistory, // Keep existing support history
-        });
+    const fetchWorkerData = async () => {
+      if (currentUser && currentUser.userType === "worker" && !workerData) {
+        setIsLoading(true);
+        try {
+          const { data: workers, error } = await getAllWorkers();
+          if (error) {
+            console.error("Error fetching workers:", error);
+            return;
+          }
+          const worker = workers.find(
+            (w: any) =>
+              (w.phone && w.phone.trim() === currentUser.phone.trim()) ||
+              (w.email && w.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()) ||
+              (w["Phone Number"] && w["Phone Number"].trim() === currentUser.phone.trim()) ||
+              (w["Email Address"] && w["Email Address"].trim().toLowerCase() === currentUser.email.trim().toLowerCase())
+          );
+          if (worker) {
+            setWorkerData(worker);
+            setIsLoggedIn(true);
+          }
+        } catch (err) {
+          console.error("Error in fetchWorkerData:", err);
+        } finally {
+          setIsLoading(false);
+        }
       }
-    } else {
-      setIsLoggedIn(false);
-    }
-  }, [currentUser]);
+    };
+
+    fetchWorkerData();
+  }, [currentUser, workerData]);
+
+  const handleLoginSuccess = (worker: any) => {
+    setWorkerData(worker);
+    setIsLoggedIn(true);
+  };
 
   const handleSignOut = () => {
     logout();
     setIsLoggedIn(false);
-  };
-
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
+    setWorkerData(null);
+    navigate("/worker-login");
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6 my-6">
-        <div className="text-center sm:text-left">
-          <h1 className="text-3xl font-bold tracking-tight">Worker Login</h1>
-          <p className="text-muted-foreground mt-2">
-            Access your Migii worker dashboard
-          </p>
-        </div>
-
         {isLoggedIn ? (
-          <WorkerTabs 
-            workerData={workerData} 
-            onSignOut={handleSignOut} 
-          />
+          isLoading ? (
+            <div className="flex justify-center items-center min-h-[300px]">
+              <LoadingSpinner />
+            </div>
+          ) : workerData ? (
+            <WorkerTabs 
+              workerData={workerData} 
+              onSignOut={handleSignOut} 
+            />
+          ) : (
+            <div className="text-center text-lg text-red-500 py-12">No worker data found.</div>
+          )
         ) : (
           <div className="flex items-center justify-center w-full min-h-[calc(100vh-200px)] py-8">
             <Card className="w-full max-w-md mx-auto shadow-lg border-border">
@@ -116,4 +106,4 @@ const WorkerLogin = () => {
   );
 };
 
-export default WorkerLogin;
+export default WorkerLogin; 

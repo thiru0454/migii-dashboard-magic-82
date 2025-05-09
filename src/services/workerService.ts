@@ -1,4 +1,3 @@
-
 import { MigrantWorker } from '@/types/worker';
 import { 
   registerWorker, 
@@ -23,14 +22,15 @@ export async function registerNewWorker(workerData: Omit<{
   longitude?: number;
 }, "id">) {
   try {
-    // Validate required fields (match form and DB schema)
+    // Improved validation for required fields
+    const parsedAge = Number(workerData.age);
     if (
-      !workerData.name ||
-      !workerData.age ||
-      !workerData.phone ||
-      !workerData.aadhaar ||
-      !workerData.originState ||
-      !workerData.skill
+      !workerData.name?.trim() ||
+      isNaN(parsedAge) || parsedAge <= 0 ||
+      !workerData.phone?.trim() ||
+      !workerData.aadhaar?.trim() ||
+      !workerData.originState?.trim() ||
+      !workerData.skill?.trim() || workerData.skill === "Select your primary skill"
     ) {
       throw new Error('Missing required fields');
     }
@@ -48,25 +48,22 @@ export async function registerNewWorker(workerData: Omit<{
       ...rest
     } = workerData;
 
+    // Build the worker object with defaults and correct types
     const newWorker = {
-      name,
-      "Full Name": name,
-      phone,
-      "Phone Number": phone,
-      age,
-      "Age": age,
-      "Email Address": email,
-      email,
-      "Aadhaar Number": aadhaar,
-      aadhaar,
-      "Origin State": originState,
-      originState,
-      "Primary Skill": skill,
-      skill,
-      status: 'active' as const,
-      registrationDate: new Date().toISOString(),
-      ...rest
+      name: name || "",
+      age: parsedAge,
+      phone: phone || "",
+      email: email || "",
+      aadhaar: aadhaar || "",
+      primary_skill: skill || "",
+      origin_state: originState || "",
+      photo_url: photoUrl || null,
+      status: "active",
+      latitude: typeof workerData.latitude === 'number' ? workerData.latitude : null,
+      longitude: typeof workerData.longitude === 'number' ? workerData.longitude : null
+      // id is intentionally omitted
     };
+    console.log('Worker data being sent:', newWorker);
 
     const { data, error } = await registerWorker(newWorker);
     

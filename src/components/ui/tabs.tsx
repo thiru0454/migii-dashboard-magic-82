@@ -15,6 +15,7 @@ const TabsList = React.forwardRef<
       "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
       className
     )}
+    style={{ transition: 'all 0.3s ease' }}
     {...props}
   />
 ))
@@ -31,6 +32,13 @@ const TabsTrigger = React.forwardRef<
       className
     )}
     {...props}
+    style={{ transition: 'all 0.3s ease' }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.transform = 'scale(1.05)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = 'scale(1)';
+    }}
   />
 ))
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
@@ -46,7 +54,12 @@ const TabsContent = React.forwardRef<
       className
     )}
     {...props}
-  />
+    style={{ transition: 'all 0.3s ease' }}
+  >
+    <div className="loading-animation" style={{ animation: 'fadeIn 0.5s ease-in-out' }}>
+      {props.children}
+    </div>
+  </TabsPrimitive.Content>
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName
 

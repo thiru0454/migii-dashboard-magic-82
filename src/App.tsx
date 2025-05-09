@@ -19,6 +19,9 @@ import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./components/theme-provider";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { TestSupabaseConnection } from "@/components/TestSupabaseConnection";
+import Settings from "./pages/Settings";
+import WorkerDashboard from "./pages/worker/Dashboard";
+import { RequireWorker } from "@/components/auth/ProtectedRoutes";
 
 const queryClient = new QueryClient();
 
@@ -34,9 +37,9 @@ const App = () => (
                   <Toaster position="top-right" />
                   
                   {/* Add language selector to all routes */}
-                  <div className="fixed top-4 right-4 z-50">
+                  {/* <div className="fixed top-4 right-4 z-50">
                     <LanguageSelector />
-                  </div>
+                  </div> */}
                   
                   <Routes>
                     <Route path="/" element={<Index />} />
@@ -65,6 +68,11 @@ const App = () => (
                     {/* Worker Routes */}
                     <Route path="/worker-registration" element={<WorkerRegistration />} />
                     <Route path="/worker-login" element={<WorkerLogin />} />
+                    <Route path="/worker/dashboard" element={
+                      <RequireWorker>
+                        <WorkerDashboard />
+                      </RequireWorker>
+                    } />
                     
                     {/* Test Routes */}
                     <Route path="/test-supabase" element={
@@ -75,6 +83,7 @@ const App = () => (
                     
                     {/* Utility Routes */}
                     <Route path="/unauthorized" element={<Unauthorized />} />
+                    <Route path="/settings" element={<Settings />} />
                     
                     {/* Redirects */}
                     <Route path="/admin" element={<Navigate to="/login?tab=admin" replace />} />

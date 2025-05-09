@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -173,6 +172,9 @@ export function AssignWorkersTab() {
 
   const availableWorkers = getAvailableWorkers();
 
+  console.log("Available workers:", availableWorkers);
+  console.log("Request requiredSkills:", request.requiredSkills);
+
   return (
     <Card className="bg-gradient-to-br from-card to-background border border-border/50">
       <CardHeader className="pb-2">
@@ -214,7 +216,7 @@ export function AssignWorkersTab() {
                         <SelectContent>
                           {availableWorkers
                             .filter(worker => 
-                              worker.skill.toLowerCase().includes(request.requiredSkills.toLowerCase()) &&
+                              worker.status === "active" &&
                               !selectedWorkers[request.id]?.includes(worker.id)
                             )
                             .map(worker => (
@@ -222,16 +224,12 @@ export function AssignWorkersTab() {
                                 {worker.name} ({worker.skill})
                               </SelectItem>
                             ))}
-                          {availableWorkers
-                            .filter(worker => 
-                              !worker.skill.toLowerCase().includes(request.requiredSkills.toLowerCase()) &&
-                              !selectedWorkers[request.id]?.includes(worker.id)
-                            )
-                            .map(worker => (
-                              <SelectItem key={worker.id} value={worker.id}>
-                                {worker.name} ({worker.skill}) - Skills don't match
-                              </SelectItem>
-                            ))}
+                          {availableWorkers.filter(worker =>
+                            worker.status === "active" &&
+                            !selectedWorkers[request.id]?.includes(worker.id)
+                          ).length === 0 && (
+                            <div className="px-4 py-2 text-muted-foreground">No matching workers available</div>
+                          )}
                         </SelectContent>
                       </Select>
                     </TableCell>

@@ -9,8 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase, getAllWorkers } from "@/utils/supabaseClient";
+import { JobsTab } from "@/components/business/JobsTab";
+import { JobNotificationsTab } from "@/components/business/JobNotificationsTab";
 
 export default function BusinessDashboard() {
   const [activeTab, setActiveTab] = useState("business-details");
@@ -23,9 +25,22 @@ export default function BusinessDashboard() {
     duration: "",
     description: ""
   });
-  // Get current user from localStorage
-  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-  const business = getBusinessUserById(currentUser.id);
+  const [business, setBusiness] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchBusiness = async () => {
+      // Get current user from localStorage
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      // Fetch from Supabase using email
+      const { data, error } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("email", currentUser.email)
+        .single();
+      setBusiness(data);
+    };
+    fetchBusiness();
+  }, []);
 
   const handleChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -41,13 +56,17 @@ export default function BusinessDashboard() {
   };
 
   const handleConfirm = async () => {
+    if (!business || !business.id) {
+      alert("Business not loaded. Please wait and try again.");
+      return;
+    }
     setConfirmOpen(false);
     setDialogOpen(false);
     // Save to Supabase
     const { data: request, error } = await supabase.from("worker_requests").insert([
       {
-        business_id: business?.id,
-        business_name: business?.name,
+        business_id: business.id,
+        business_name: business.name,
         workers_needed: form.workersNeeded,
         skill: form.skill,
         priority: form.priority,
@@ -82,10 +101,12 @@ export default function BusinessDashboard() {
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Business Dashboard</h1>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="business-details">Business Details</TabsTrigger>
             <TabsTrigger value="worker-request">Worker Request</TabsTrigger>
             <TabsTrigger value="view-requests">View Requests</TabsTrigger>
+            <TabsTrigger value="jobs">Post Jobs</TabsTrigger>
+            <TabsTrigger value="job-notifications">Job Notifications</TabsTrigger>
           </TabsList>
 
           <TabsContent value="business-details">
@@ -100,8 +121,10 @@ export default function BusinessDashboard() {
 
           <TabsContent value="worker-request">
             <DashboardCard title="Worker Request">
-              <Button onClick={() => setDialogOpen(true)} className="mb-4">Request Worker</Button>
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <Button onClick={() => setDialogOpen(true)} className="mb-4" disabled={!business}>
+                Request Worker
+              </Button>
+              <Dialog open={dialogOpen && !!business} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
                     <DialogTitle>Request Worker</DialogTitle>
@@ -173,6 +196,18 @@ export default function BusinessDashboard() {
           <TabsContent value="view-requests">
             <DashboardCard title="Your Requests">
               <BusinessRequestsTab />
+            </DashboardCard>
+          </TabsContent>
+
+          <TabsContent value="jobs">
+            <DashboardCard title="Post Jobs">
+              <JobsTab />
+            </DashboardCard>
+          </TabsContent>
+
+          <TabsContent value="job-notifications">
+            <DashboardCard title="Job Notifications">
+              <JobNotificationsTab />
             </DashboardCard>
           </TabsContent>
         </Tabs>

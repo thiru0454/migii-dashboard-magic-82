@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 
 interface LanguageContextType {
@@ -261,7 +260,7 @@ const translations = {
     employer: 'வணிகம்/முதலாளி',
     admin: 'நிர்வாகி',
     workerDescription: 'அருகிலுள்ள வேலையைக் கண்டறியவும்',
-    employerDescription: 'சரிபார்க்கப்பட்ட தொழிலாளர்களை பணியமர்த்தவும்',
+    employerDescription: 'சரிபார்க்கப்பட்ட தொழிலாளர்களை நியமித்தவும்',
     adminDescription: 'பகுதி தரவைக் கண்காணிக்கவும்',
     
     liveStatistics: 'நேரடி டாஷ்போர்டு எண்ணிக்கைகள்',
@@ -331,7 +330,7 @@ const translations = {
     
     aboutUs: 'எங்களைப் பற்றி',
     partners: 'பங்காளர்கள்',
-    resources: 'வளங்கள்',
+    resources: 'ஸம்ப஦',
     legal: 'சட்ட',
     ourMission: 'எங்கள் நோக்கம்',
     howItWorks: 'இது எப்படி வேலை செய்கிறது',
@@ -340,7 +339,7 @@ const translations = {
     NGOs: 'தன்னார்வ நிறுவனங்கள்',
     corporates: 'கார்ப்பரேட்கள்',
     blog: 'வலைப்பதிவு',
-    pressReleases: 'பத்திரிகை வெளியீடுகள்',
+    pressReleases: 'ப்ரேஸ் ரிலிஜ்',
     reports: 'அறிக்கைகள்',
     privacyPolicy: 'தனியுரிமைக் கொள்கை',
     termsOfUse: 'பயன்பாட்டு விதிமுறைகள்',
@@ -361,14 +360,14 @@ const translations = {
     
     // New Home Page
     heroBannerTitle: 'এক দেশ, এক পরিচয় - প্রতিটি অভিবাসী শ্রমিকের জন্য মিগি',
-    heroBannerSubtitle: 'শ্রমিকদের চাকরির সাথে সংযোগ করা, নিরাপত্তা নিশ্চিত করা এবং ভারত জুড়ে সমর্থন প্রদান করা',
+    heroBannerSubtitle: 'শ্রমিকদের চাকরির সাথে সংযোগ করা, সুরক্ষা নিশ্চিত করা এবং ভারত জুড়ে সমর্থন প্রদান করা',
     joinNow: 'এখনই যোগ দিন',
     postJob: 'চাকরি পোস্ট করুন',
     trackStatus: 'আমার অবস্থা ট্র্যাক করুন',
     
     selectYourRole: 'দ্রুত অ্যাক্সেস রোল সিলেক্টর',
     worker: 'শ্রমিক',
-    employer: 'ব্যবসায়/নিয়োগকর্তা',
+    employer: '঵্যবসায়/নিয়োগকর্তা',
     admin: 'অ্যাডমিন',
     workerDescription: 'কাছাকাছি কাজ খুঁজুন',
     employerDescription: 'যাচাই করা শ্রমিক নিয়োগ করুন',
@@ -376,7 +375,7 @@ const translations = {
     
     liveStatistics: 'লাইভ ড্যাশবোর্ড কাউন্টার',
     registeredWorkers: 'মোট নিবন্ধিত শ্রমিক',
-    jobsPosted: 'এই মাসে পোস্ট করা চাকরি',
+    jobsPosted: 'ইস মাসে পোস্ট করা চাকরি',
     jobsFilled: 'পূরণ করা চাকরি',
     regionsCovered: 'কভার করা অঞ্চল',
     languagesSupported: 'সমর্থিত ভাষা',
@@ -437,7 +436,7 @@ const translations = {
     yourEmail: 'আপনার ইমেইল',
     yourQuery: 'আপনার প্রশ্ন',
     submit: 'জমা দিন',
-    responseTime: 'আমরা সাধারণত 24 ঘণ্টার মধ্যে প্রতিক্রিয়া জানাই',
+    responseTime: 'আমরা সাধারণত 24 ঘণ্টার মধ্যে প্রতিস్পంদিস్তামు',
     
     aboutUs: 'আমাদের সম্পর্কে',
     partners: 'অংশীদার',
@@ -449,7 +448,7 @@ const translations = {
     governmentAgencies: 'সরকারি সংস্থা',
     NGOs: 'এনজিও',
     corporates: 'কর্পোরেট',
-    blog: 'ব্লগ',
+    blog: 'ব্লাগ',
     pressReleases: 'প্রেস রিলিজ',
     reports: 'প্রতিবেদন',
     privacyPolicy: 'গোপনীয়তা নীতি',

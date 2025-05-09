@@ -10,9 +10,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { sendOtpEmail, verifyOtp } from "@/utils/emailService";
 import { toast } from "sonner";
 import { AlertCircle, Loader2, Mail, MessageSquare, Phone, Timer } from "lucide-react";
-import { findWorkerByEmail, findWorkerByPhone } from "@/utils/firebase";
+import { getAllWorkers } from "@/utils/supabaseClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const contactSchema = z.object({
   contact: z.string().min(1, { message: "Email or phone number is required" }),
@@ -23,7 +24,7 @@ const otpSchema = z.object({
 });
 
 interface WorkerLoginFormProps {
-  onSuccess: () => void;
+  onSuccess: (workerData: any) => void;
 }
 
 export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
@@ -33,6 +34,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const isMobile = useIsMobile();
+  const { currentUser, login, logout } = useAuth();
 
   const contactForm = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
@@ -54,41 +56,47 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     try {
       const contactValue = data.contact.trim();
       setContact(contactValue);
-      
       const isEmail = contactValue.includes('@');
-      
+      // Fetch all workers and filter for the matching one
+      const { data: workers, error } = await getAllWorkers();
+      console.log('[WorkerLoginForm] handleSendOTP - contact:', contactValue);
+      console.log('[WorkerLoginForm] handleSendOTP - fetched workers:', workers);
+      if (error || !workers) {
+        setError("Failed to fetch workers from Supabase");
+        setIsLoading(false);
+        return;
+      }
+      console.log("Fetched workers from Supabase:", workers);
+      console.log("Trying to match contact:", contactValue);
       const worker = isEmail
-        ? await findWorkerByEmail(contactValue)
-        : await findWorkerByPhone(contactValue);
-      
+        ? workers.find((w: any) =>
+            (w["Email Address"] && String(w["Email Address"]).trim() === contactValue.trim()) ||
+            (w.email && String(w.email).trim() === contactValue.trim())
+          )
+        : workers.find((w: any) => {
+            const dbPhone = w["Phone Number"] ? String(w["Phone Number"]).trim() : "";
+            const dbPhoneNew = w.phone ? String(w.phone).trim() : "";
+            const inputPhone = contactValue.trim();
+            return dbPhone === inputPhone || dbPhoneNew === inputPhone;
+          });
+      console.log('[WorkerLoginForm] handleSendOTP - matched worker:', worker);
       if (!worker) {
         setError(`No worker found with this ${isEmail ? 'email' : 'phone number'}`);
         setIsLoading(false);
         return;
       }
-      
-      const emailToUse = isEmail 
-        ? contactValue 
-        : (worker.email || `${contactValue}@migii.worker.temp`);
-      
-      const sent = await sendOtpEmail(emailToUse);
-      
-      if (sent) {
-        setStep("otp");
-        
-        setTimeLeft(60);
-        const timer = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      } else {
-        setError("Failed to send OTP. Please try again.");
-      }
+      // Skip actual OTP sending, just go to OTP step
+      setStep("otp");
+      setTimeLeft(60);
+      const timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     } catch (err: any) {
       setError(err.message || "An error occurred while sending OTP");
     } finally {
@@ -100,28 +108,52 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const isEmail = contact.includes('@');
-      
-      const worker = isEmail
-        ? await findWorkerByEmail(contact)
-        : await findWorkerByPhone(contact);
-        
-      if (!worker) {
-        setError("Worker not found");
-        setIsLoading(false);
-        return;
-      }
-      
-      const emailToUse = isEmail 
-        ? contact 
-        : (worker.email || `${contact}@migii.worker.temp`);
-        
-      const isValid = verifyOtp(emailToUse, data.otp);
-      
-      if (isValid) {
+      // Accept '123456' as the only valid OTP
+      if (data.otp === '123456') {
+        const isEmail = contact.includes('@');
+        // Fetch all workers and filter for the matching one
+        const { data: workers, error } = await getAllWorkers();
+        console.log('[WorkerLoginForm] handleVerifyOTP - contact:', contact);
+        console.log('[WorkerLoginForm] handleVerifyOTP - fetched workers:', workers);
+        if (error || !workers) {
+          setError("Failed to fetch workers from Supabase");
+          setIsLoading(false);
+          return;
+        }
+        console.log("Fetched workers from Supabase:", workers);
+        console.log("Trying to match contact:", contact);
+        const worker = isEmail
+          ? workers.find((w: any) =>
+              (w["Email Address"] && String(w["Email Address"]).trim() === contact.trim()) ||
+              (w.email && String(w.email).trim() === contact.trim())
+            )
+          : workers.find((w: any) => {
+              const dbPhone = w["Phone Number"] ? String(w["Phone Number"]).trim() : "";
+              const dbPhoneNew = w.phone ? String(w.phone).trim() : "";
+              const inputPhone = contact.trim();
+              return dbPhone === inputPhone || dbPhoneNew === inputPhone;
+            });
+        console.log('[WorkerLoginForm] handleVerifyOTP - matched worker:', worker);
+        if (!worker) {
+          setError("Worker not found");
+          setIsLoading(false);
+          return;
+        }
+        // Set Auth context's currentUser to the logged-in worker
+        const workerUser = {
+          id: worker.id,
+          email: worker["Email Address"] || worker.email || "",
+          name: worker["Full Name"] || worker.name || "",
+          userType: "worker",
+          phone: worker["Phone Number"] || worker.phone || "",
+        };
+        localStorage.setItem('currentUser', JSON.stringify(workerUser));
+        if (typeof login === 'function') {
+          // Use login to set currentUser in context
+          await login(workerUser.email, '', 'worker');
+        }
         toast.success("Login successful!");
-        localStorage.setItem('currentWorker', JSON.stringify(worker));
-        onSuccess();
+        onSuccess(worker);
       } else {
         setError("Invalid OTP. Please try again.");
       }
@@ -140,8 +172,10 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       const isEmail = contact.includes('@');
       
       const worker = isEmail
-        ? await findWorkerByEmail(contact)
-        : await findWorkerByPhone(contact);
+        ? await getAllWorkers()
+          .then(({ data }) => data.find((w: any) => (w["Email Address"] && w["Email Address"] === contact) || (w.email && w.email === contact)))
+        : await getAllWorkers()
+          .then(({ data }) => data.find((w: any) => (w["Phone Number"] && w["Phone Number"] === contact) || (w.phone && w.phone === contact)));
         
       if (!worker) {
         setError("Worker not found");
