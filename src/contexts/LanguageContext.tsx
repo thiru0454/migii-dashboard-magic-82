@@ -24,7 +24,6 @@ const translations: Record<string, Record<string, string>> = {
     jobs: 'Jobs',
     location: 'Location',
     analytics: 'Analytics',
-    settings: 'Settings',
     logout: 'Logout',
     assign: 'Assign',
     status: 'Status',
@@ -38,7 +37,8 @@ const translations: Record<string, Record<string, string>> = {
     cancel: 'Cancel',
     save: 'Save',
     register: 'Register',
-    login: 'Login'
+    login: 'Login',
+    selectLanguage: 'Select your preferred language'
   },
   ta: {
     welcome: 'MIGII-க்கு வரவேற்கிறோம்',
@@ -50,7 +50,6 @@ const translations: Record<string, Record<string, string>> = {
     jobs: 'வேலைகள்',
     location: 'இடம்',
     analytics: 'பகுப்பாய்வு',
-    settings: 'அமைப்புகள்',
     logout: 'வெளியேறு',
     assign: 'நியமி',
     status: 'நிலை',
@@ -64,7 +63,8 @@ const translations: Record<string, Record<string, string>> = {
     cancel: 'ரத்து செய்',
     save: 'சேமி',
     register: 'பதிவு செய்',
-    login: 'உள்நுழை'
+    login: 'உள்நுழை',
+    selectLanguage: 'உங்கள் விருப்பமான மொழியைத் தேர்ந்தெடுக்கவும்'
   },
   hi: {
     welcome: 'MIGII में आपका स्वागत है',
@@ -76,7 +76,6 @@ const translations: Record<string, Record<string, string>> = {
     jobs: 'नौकरियां',
     location: 'स्थान',
     analytics: 'विश्लेषण',
-    settings: 'समायोजन',
     logout: 'लॉग आउट',
     assign: 'असाइन करें',
     status: 'स्थिति',
@@ -90,7 +89,8 @@ const translations: Record<string, Record<string, string>> = {
     cancel: 'रद्द करें',
     save: 'सहेजें',
     register: 'पंजीकरण करें',
-    login: 'लॉगिन'
+    login: 'लॉगिन',
+    selectLanguage: 'अपनी पसंदीदा भाषा चुनें'
   },
   // Add other languages as needed
   te: {
@@ -103,7 +103,6 @@ const translations: Record<string, Record<string, string>> = {
     jobs: 'ఉద్యోగాలు',
     location: 'స్థానం',
     analytics: 'విశ్లేషణలు',
-    settings: 'సెట్టింగ్‌లు',
     logout: 'లాగ్ అవుట్',
     assign: 'కేటాయించు',
     status: 'స్థితి',
@@ -117,7 +116,8 @@ const translations: Record<string, Record<string, string>> = {
     cancel: 'రద్దు',
     save: 'సేవ్',
     register: 'నమోదు',
-    login: 'లాగిన్'
+    login: 'లాగిన్',
+    selectLanguage: 'మీ అభిమత భాషను ఎంచుకోండి'
   },
   kn: {
     welcome: 'MIGII ಗೆ ಸುಸ್ವಾಗತ',
@@ -129,7 +129,6 @@ const translations: Record<string, Record<string, string>> = {
     jobs: 'ಉದ್ಯೋಗಗಳು',
     location: 'ಸ್ಥಳ',
     analytics: 'ವಿಶ್ಲೇಷಣೆಗಳು',
-    settings: 'ಸೆಟ್ಟಿಂಗ್ಗಳು',
     logout: 'ಲಾಗ್ ಔಟ್',
     assign: 'ನಿಯೋಜಿಸಿ',
     status: 'ಸ್ಥಿತಿ',
@@ -143,7 +142,8 @@ const translations: Record<string, Record<string, string>> = {
     cancel: 'ರದ್ದುಮಾಡಿ',
     save: 'ಉಳಿಸಿ',
     register: 'ನೋಂದಣಿ',
-    login: 'ಲಾಗಿನ್'
+    login: 'ಲಾಗಿನ್',
+    selectLanguage: 'ನಿಮ್ಮ ಆದ್ಯತೆಯ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ'
   },
   ml: {
     welcome: 'MIGII ലേക്ക് സ്വാഗതം',
@@ -155,7 +155,6 @@ const translations: Record<string, Record<string, string>> = {
     jobs: 'ജോലികൾ',
     location: 'സ്ഥാനം',
     analytics: 'അനലിറ്റിക്സ്',
-    settings: 'ക്രമീകരണങ്ങൾ',
     logout: 'പുറത്തുകടക്കുക',
     assign: 'നിയോഗിക്കുക',
     status: 'നില',
@@ -169,7 +168,8 @@ const translations: Record<string, Record<string, string>> = {
     cancel: 'റദ്ദാക്കുക',
     save: 'സംരക്ഷിക്കുക',
     register: 'രജിസ്റ്റർ ചെയ്യുക',
-    login: 'ലോഗിൻ'
+    login: 'ലോഗിൻ',
+    selectLanguage: 'നിങ്ങളുടെ ഇഷ്ടപ്പെട്ട ഭാഷ തിരഞ്ഞെടുക്കുക'
   }
 };
 
