@@ -1,18 +1,24 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Languages } from 'lucide-react';
 import { toast } from 'sonner';
-import { useLanguage, availableLanguages } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function LanguageSelector() {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, availableLanguages } = useLanguage();
   
   const handleLanguageChange = (langCode: string) => {
     setLanguage(langCode);
     
     const selectedLang = availableLanguages.find(lang => lang.code === langCode);
     toast.success(t('changeLanguage'));
+    
+    // Force refresh components that might not be directly using the context
+    document.documentElement.setAttribute('lang', langCode);
+    
+    // Optionally dispatch a custom event that components can listen to
+    window.dispatchEvent(new CustomEvent('languageChange', { detail: langCode }));
   };
   
   return (
@@ -21,7 +27,7 @@ export function LanguageSelector() {
       
       <Select value={language} onValueChange={handleLanguageChange}>
         <SelectTrigger className="w-[140px] h-9">
-          <SelectValue placeholder="Select language" />
+          <SelectValue placeholder={t('language')} />
         </SelectTrigger>
         <SelectContent>
           {availableLanguages.map((lang) => (
