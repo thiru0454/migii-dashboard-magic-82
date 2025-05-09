@@ -116,13 +116,13 @@ export function AssignWorkersTab() {
       id: String(worker.id),
       name: worker.name,
       phone: worker.phone,
-      // Fix the skill extraction logic to properly consider all field variations
-      skill: worker.skill || worker.primarySkill || worker["Primary Skill"] || worker.primary_skill || "",
+      // Fix the skill extraction logic to use correct property names
+      skill: worker.skill || worker.primarySkill || worker["Primary Skill"] || "",
       status: worker.status,
-      originState: worker.originState || worker.origin_state || "",
+      originState: worker.originState || worker["Origin State"] || "",
       age: worker.age,
       email: worker.email,
-      photoUrl: worker.photoUrl || worker.photo_url || "",
+      photoUrl: worker.photoUrl || worker["Photo URL"] || "",
       aadhaar: worker.aadhaar || worker["Aadhaar Number"] || ""
     }));
   };

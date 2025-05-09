@@ -13,7 +13,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MigrantWorker, WorkerLocation } from "@/types/worker";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
 
@@ -40,6 +40,7 @@ interface WorkerLocationDialogProps {
 export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocationDialogProps) {
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<WorkerLocation | null>(null);
+  const [mapRef, setMapRef] = useState<L.Map | null>(null);
 
   const fetchWorkerLocation = async () => {
     if (!worker) return;
@@ -110,6 +111,13 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
     fetchWorkerLocation();
   }, [open, worker]);
 
+  // Update map center when location changes
+  useEffect(() => {
+    if (mapRef && location) {
+      mapRef.setView([location.latitude, location.longitude], 13);
+    }
+  }, [location, mapRef]);
+
   const position: [number, number] = location ? 
     [location.latitude, location.longitude] : 
     [13.0827, 80.2707];
@@ -130,19 +138,19 @@ export function WorkerLocationDialog({ worker, open, onOpenChange }: WorkerLocat
         ) : (
           <>
             <div className="w-full h-96">
-              {/* Fixed MapContainer props */}
               <MapContainer 
-                center={position} 
-                zoom={13} 
-                scrollWheelZoom={true} 
                 style={{ height: '100%', width: '100%' }}
+                zoom={13} 
+                scrollWheelZoom={true}
+                ref={setMapRef}
+                whenCreated={(map) => {
+                  setMapRef(map);
+                  map.setView(position, 13);
+                }}
               >
-                {/* Fixed TileLayer props */}
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                {/* Fixed Marker props */}
                 <Marker position={position}>
                   <Popup>
                     <div>
