@@ -8,14 +8,16 @@ import { WorkerAssignmentTab } from "@/components/worker/WorkerAssignmentTab";
 import { WorkerNotificationsTab } from "@/components/worker/WorkerNotificationsTab";
 import { JobNotificationsTab } from "@/components/worker/JobNotificationsTab";
 import { T } from "@/components/T";
-import { Briefcase, BellRing, ClipboardList, Bell } from "lucide-react";
+import { Briefcase, BellRing, ClipboardList, Bell, MapPin, Wrench, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 
 export default function WorkerDashboard() {
-  const [activeTab, setActiveTab] = useState<string>("assignments");
+  const [activeTab, setActiveTab] = useState<string>("profile");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadJobNotifications, setUnreadJobNotifications] = useState(0);
+  const [workerData, setWorkerData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     // Get current user from localStorage
@@ -23,6 +25,23 @@ export default function WorkerDashboard() {
     if (!currentUser || !currentUser.id) {
       return;
     }
+    
+    // Fetch worker data
+    const fetchWorkerData = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('workers')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+      
+      if (data && !error) {
+        setWorkerData(data);
+      }
+      setLoading(false);
+    };
+    
+    fetchWorkerData();
     
     // Check for unread notifications
     const fetchUnreadCounts = async () => {
@@ -93,6 +112,10 @@ export default function WorkerDashboard() {
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList>
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              <span>Profile</span>
+            </TabsTrigger>
             <TabsTrigger value="assignments" className="flex items-center gap-2">
               <Briefcase className="h-4 w-4" />
               <span>Assignments</span>
@@ -120,6 +143,78 @@ export default function WorkerDashboard() {
               )}
             </TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="profile" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Worker Profile</CardTitle>
+                <CardDescription>
+                  View your personal and employment information
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="py-8 text-center">Loading profile information...</div>
+                ) : workerData ? (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-lg font-medium mb-2">Personal Information</h3>
+                        <div className="space-y-3">
+                          <div className="flex items-center">
+                            <span className="font-medium w-32">Name:</span>
+                            <span>{workerData.name || workerData["Full Name"] || "Not specified"}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="font-medium w-32">Phone:</span>
+                            <span>{workerData.phone || workerData["Phone Number"] || "Not specified"}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="font-medium w-32">Email:</span>
+                            <span>{workerData.email || workerData["Email Address"] || "Not specified"}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="font-medium w-32">Age:</span>
+                            <span>{workerData.age || workerData["Age"] || "Not specified"}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <span className="font-medium w-28">Origin State:</span>
+                            <span>{workerData.originState || workerData["Origin State"] || "Not specified"}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-lg font-medium mb-2">Work Information</h3>
+                        <div className="space-y-3">
+                          <div className="flex items-center">
+                            <Wrench className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <span className="font-medium w-28">Skill:</span>
+                            <span>{workerData.skill || workerData["Primary Skill"] || "Not specified"}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="font-medium w-32">Status:</span>
+                            <Badge variant={workerData.status === "active" ? "success" : "secondary"}>
+                              {workerData.status || "Not specified"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="font-medium w-32">Aadhaar:</span>
+                            <span>{workerData.aadhaar || workerData["Aadhaar Number"] || "Not specified"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-red-500">
+                    Could not load worker profile. Please try logging in again.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
           
           <TabsContent value="assignments" className="mt-4">
             <Card>
