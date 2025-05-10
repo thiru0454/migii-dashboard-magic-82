@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -301,26 +300,44 @@ export function AssignWorkersTab() {
     return worker ? `${worker.name} (${worker.skill})` : "Unknown Worker";
   };
 
-  // Improved worker skill matching function
+  // Improved worker skill matching function with more flexible matching
   const workerMatchesSkill = (worker: Worker, requiredSkill: string) => {
     if (!requiredSkill || requiredSkill.trim() === "") return true;
+    if (!worker.skill) return false;
     
     // Get worker's skill and normalize it
-    const workerSkill = (worker.skill || '').toLowerCase().trim();
+    const workerSkill = worker.skill.toLowerCase().trim();
     // Get required skill and normalize it
     const required = requiredSkill.toLowerCase().trim();
     
-    // Look for partial matches or exact matches
-    return workerSkill.includes(required) || 
-           required.includes(workerSkill) ||
-           // Check for common variations
-           (workerSkill.includes('farm') && required.includes('agricult')) ||
-           (workerSkill.includes('agricult') && required.includes('farm')) ||
-           (workerSkill.includes('construct') && required.includes('build')) ||
-           (workerSkill.includes('build') && required.includes('construct')) ||
-           // Common skill categories
-           (workerSkill.includes('labor') && required.includes('manual')) ||
-           (workerSkill.includes('manual') && required.includes('labor'));
+    // Define common skill categories and their related terms
+    const skillCategories = {
+      agriculture: ['farm', 'agricult', 'crop', 'harvest', 'plant', 'garden'],
+      construction: ['build', 'construct', 'carpent', 'masonry', 'plumb', 'electr', 'paint'],
+      hospitality: ['hotel', 'accommod', 'host', 'restaurant', 'cater', 'food', 'cook', 'chef'],
+      cleaning: ['clean', 'janitor', 'housekeep', 'sanit'],
+      healthcare: ['care', 'health', 'nurse', 'medical', 'patient'],
+      manufacturing: ['factory', 'produc', 'assembl', 'manufactur'],
+      driving: ['drive', 'transport', 'deliver', 'logistics', 'truck', 'vehicle'],
+      retail: ['shop', 'store', 'retail', 'sales', 'cashier', 'customer'],
+      general: ['labor', 'manual', 'helper', 'assist', 'general']
+    };
+    
+    // Look for exact matches first
+    if (workerSkill === required) return true;
+    
+    // Look for partial matches
+    if (workerSkill.includes(required) || required.includes(workerSkill)) return true;
+    
+    // Look for matches within skill categories
+    for (const [category, terms] of Object.entries(skillCategories)) {
+      const workerHasCategory = terms.some(term => workerSkill.includes(term));
+      const jobRequiresCategory = terms.some(term => required.includes(term));
+      
+      if (workerHasCategory && jobRequiresCategory) return true;
+    }
+    
+    return false;
   };
 
   // Filter workers based on search term
@@ -331,7 +348,8 @@ export function AssignWorkersTab() {
       workerMatchesSkill(worker, requiredSkill) &&
       (searchTerm === "" || 
        worker.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       worker.skill.toLowerCase().includes(searchTerm.toLowerCase()))
+       (worker.skill && worker.skill.toLowerCase().includes(searchTerm.toLowerCase())) ||
+       (worker.phone && worker.phone.includes(searchTerm)))
     );
   };
 

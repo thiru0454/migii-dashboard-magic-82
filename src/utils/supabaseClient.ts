@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { MigrantWorker } from '@/types/worker';
 
@@ -124,36 +123,66 @@ export async function assignWorkerToBusiness(workerId: string, businessId: strin
       throw error;
     }
     
+    // Get the business name for notifications
+    const { data: businessData, error: businessError } = await supabase
+      .from('businesses')
+      .select('name')
+      .eq('id', businessId)
+      .single();
+      
+    const businessName = businessData?.name || 'Business';
+    
     // Insert assignment notification for the worker
-    const { error: insertError } = await supabase.from('worker_assignments').insert([
-      {
-        worker_id: formattedWorkerId,
-        business_id: businessId,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ]);
+    const { data: assignmentData, error: insertError } = await supabase
+      .from('worker_assignments')
+      .insert([
+        {
+          worker_id: formattedWorkerId,
+          business_id: businessId,
+          business_name: businessName,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ])
+      .select()
+      .single();
     
     if (insertError) {
       console.error('Error inserting into worker_assignments:', insertError);
     } else {
-      console.log('Inserted into worker_assignments:', formattedWorkerId, businessId);
+      console.log('Inserted into worker_assignments:', assignmentData);
+      
+      // Create a notification for the worker in worker_notifications table
+      await supabase.from('worker_notifications').insert([
+        {
+          worker_id: formattedWorkerId,
+          job_id: assignmentData.id, // Use the assignment ID as the job ID
+          type: 'assignment',
+          message: `You have been assigned to ${businessName}`,
+          status: 'unread',
+          created_at: new Date().toISOString(),
+          action_required: true,
+          action_type: 'accept_decline'
+        }
+      ]);
+      
+      // Also create a notification for the business
+      await supabase.from('business_notifications').insert([
+        {
+          business_id: businessId,
+          type: 'worker_assigned',
+          message: `A worker has been assigned to your business`,
+          worker_id: formattedWorkerId,
+          worker_name: workerData.name || 'Worker',
+          read: false,
+          created_at: new Date().toISOString()
+        }
+      ]);
     }
     
-    // Create a notification for the worker
-    await supabase.from('notifications').insert([
-      {
-        user_id: formattedWorkerId,
-        type: 'assignment',
-        message: `You have been assigned to a new business`,
-        read: false,
-        created_at: new Date().toISOString()
-      }
-    ]);
-    
     console.log('Worker successfully assigned:', data);
-    return { data, error: null };
+    return { data: assignmentData || data, error: null };
   } catch (error) {
     console.error('Exception during worker assignment:', error);
     return { data: null, error };
@@ -402,7 +431,26 @@ export async function ensureRequiredTables() {
         { name: 'business_id', type: 'uuid', isNullable: false },
         { name: 'status', type: 'text', defaultValue: "'pending'" },
         { name: 'created_at', type: 'timestamptz', defaultValue: 'now()' },
-        { name: 'updated_at', type: 'timestamptz', defaultValue: 'now()' }
+        { name: 'updated_at', type: 'timestamptz', defaultValue: 'now()' },
+        { name: 'job_description', type: 'text', isNullable: true },
+        { name: 'skill_required', type: 'text', isNullable: true },
+        { name: 'location', type: 'text', isNullable: true },
+        { name: 'duration', type: 'text', isNullable: true }
+      ]
+    },
+    {
+      name: 'worker_notifications',
+      columns: [
+        { name: 'id', type: 'uuid', isPrimary: true },
+        { name: 'worker_id', type: 'uuid', isNullable: false },
+        { name: 'job_id', type: 'uuid', isNullable: true },
+        { name: 'type', type: 'text', isNullable: false },
+        { name: 'message', type: 'text', isNullable: false },
+        { name: 'status', type: 'text', defaultValue: "'unread'" },
+        { name: 'created_at', type: 'timestamptz', defaultValue: 'now()' },
+        { name: 'action_required', type: 'boolean', defaultValue: 'false' },
+        { name: 'action_type', type: 'text', isNullable: true },
+        { name: 'title', type: 'text', isNullable: true }
       ]
     }
   ];

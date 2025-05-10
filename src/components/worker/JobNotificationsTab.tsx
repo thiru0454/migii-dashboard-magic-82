@@ -1,214 +1,264 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { supabase } from "@/utils/supabaseClient";
+import { Bell, CheckCircle, Clock, XCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { CheckCircle, XCircle } from "lucide-react";
 
 interface JobNotification {
   id: string;
   worker_id: string;
-  job_id: string;
+  job_id?: string;
   type: string;
-  status: string;
-  created_at: string;
-  title: string;
   message: string;
-  action_required: boolean;
-  action_type: string;
-  job?: any;
+  status: "read" | "unread";
+  created_at: string;
+  action_required?: boolean;
+  action_type?: string;
 }
 
 export function JobNotificationsTab() {
   const [notifications, setNotifications] = useState<JobNotification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchNotifications();
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (!currentUser || !currentUser.id) {
+      setLoading(false);
+      return;
+    }
+
+    loadNotifications(currentUser.id);
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('worker_notifications_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'worker_notifications',
+          filter: `worker_id=eq.${currentUser.id}`,
+        },
+        () => {
+          loadNotifications(currentUser.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  const fetchNotifications = async () => {
+  const loadNotifications = async (workerId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No user found");
-
+      setLoading(true);
+      
+      // Query worker_notifications table
       const { data, error } = await supabase
         .from('worker_notifications')
-        .select(`
-          *,
-          job:job_id (*)
-        `)
-        .eq('worker_id', user.id)
-        .eq('type', 'job_available')
+        .select('*')
+        .eq('worker_id', workerId)
         .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setNotifications(data || []);
-    } catch (error: any) {
-      toast.error("Failed to fetch notifications: " + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleJobResponse = async (jobId: string, response: 'accepted' | 'declined') => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No user found");
-
-      // Update notification status
-      const { error: notificationError } = await supabase
-        .from('worker_notifications')
-        .update({ status: 'read' })
-        .eq('job_id', jobId)
-        .eq('worker_id', user.id);
-
-      if (notificationError) throw notificationError;
-
-      if (response === 'accepted') {
-        // Check if job is still available
-        const { data: job, error: jobError } = await supabase
-          .from('jobs')
-          .select('*')
-          .eq('id', jobId)
-          .single();
-
-        if (jobError) throw jobError;
-
-        if (job.status !== 'approved') {
-          toast.error("This job is no longer available");
-          return;
-        }
-
-        // Create job application
-        const { error: applicationError } = await supabase
-          .from('job_applications')
-          .insert({
-            job_id: jobId,
-            worker_id: user.id,
-            status: 'pending',
-            created_at: new Date().toISOString()
-          });
-
-        if (applicationError) throw applicationError;
-
-        // Update worker status to 'busy'
-        const { error: workerError } = await supabase
-          .from('workers')
-          .update({ status: 'busy' })
-          .eq('id', user.id);
-
-        if (workerError) throw workerError;
-
-        // Notify business
-        const { error: businessNotificationError } = await supabase
-          .from('business_notifications')
-          .insert({
-            business_id: job.business_id,
-            type: 'job_application',
-            status: 'unread',
-            created_at: new Date().toISOString(),
-            title: 'New Job Application',
-            message: `A worker has applied for your ${job.title} position`,
-            job_id: jobId
-          });
-
-        if (businessNotificationError) {
-          console.error("Error creating business notification:", businessNotificationError);
-        }
+        
+      if (error) {
+        throw error;
       }
 
-      toast.success(`Job ${response} successfully`);
-      fetchNotifications();
-    } catch (error: any) {
-      toast.error("Failed to process job response: " + error.message);
+      setNotifications(data || []);
+    } catch (error) {
+      console.error("Error loading notifications:", error);
+      toast.error("Failed to load notifications");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (isLoading) {
+  const handleResponse = async (notificationId: string, response: 'accept' | 'decline') => {
+    try {
+      setProcessingId(notificationId);
+      
+      const notification = notifications.find(n => n.id === notificationId);
+      if (!notification) return;
+
+      // Mark notification as read
+      await supabase
+        .from('worker_notifications')
+        .update({ status: 'read' })
+        .eq('id', notificationId);
+
+      // Find the assignment in worker_assignments related to this notification
+      const { data: assignments, error: assignmentError } = await supabase
+        .from('worker_assignments')
+        .select('*')
+        .eq('job_id', notification.job_id);
+        
+      if (assignmentError) {
+        throw assignmentError;
+      }
+
+      if (assignments && assignments.length > 0) {
+        const assignment = assignments[0];
+        
+        // Update assignment status
+        await supabase
+          .from('worker_assignments')
+          .update({ 
+            status: response === 'accept' ? 'accepted' : 'rejected',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', assignment.id);
+
+        // Create notification for the business
+        await supabase
+          .from('business_notifications')
+          .insert({
+            business_id: assignment.business_id,
+            type: response === 'accept' ? 'assignment_accepted' : 'assignment_rejected',
+            message: `Worker ${response === 'accept' ? 'accepted' : 'rejected'} your assignment request`,
+            worker_id: assignment.worker_id,
+            worker_name: JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || "Worker",
+            read: false,
+            created_at: new Date().toISOString()
+          });
+      }
+
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notificationId 
+            ? { ...n, status: 'read' } 
+            : n
+        )
+      );
+      
+      toast.success(`Job ${response === 'accept' ? 'accepted' : 'declined'} successfully`);
+    } catch (error) {
+      console.error(`Error handling notification response:`, error);
+      toast.error(`Failed to ${response} job`);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      if (!currentUser || !currentUser.id) return;
+
+      await supabase
+        .from('worker_notifications')
+        .update({ status: 'read' })
+        .eq('worker_id', currentUser.id)
+        .eq('status', 'unread');
+
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => ({ ...n, status: 'read' }))
+      );
+      
+      toast.success(`All notifications marked as read`);
+    } catch (error) {
+      console.error(`Error marking all notifications as read:`, error);
+      toast.error("Failed to mark notifications as read");
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[300px]">
-        <LoadingSpinner />
+      <div className="flex justify-center items-center py-8">
+        <LoadingSpinner text="Loading notifications..." />
       </div>
     );
   }
 
+  const unreadCount = notifications.filter(n => n.status === 'unread').length;
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Job Notifications</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {notifications.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                No new job notifications
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Job Notifications</h2>
+          {unreadCount > 0 && (
+            <Badge className="bg-blue-500">{unreadCount} unread</Badge>
+          )}
+        </div>
+        {unreadCount > 0 && (
+          <Button variant="outline" onClick={markAllAsRead}>
+            Mark all as read
+          </Button>
+        )}
+      </div>
+
+      {notifications.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-xl font-medium mb-2">No notifications yet</p>
+            <p className="text-muted-foreground">
+              You don't have any job notifications yet. When you receive assignments or updates, they will appear here.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        notifications.map((notification) => (
+          <Card key={notification.id} className={`${notification.status === 'unread' ? 'border-blue-500' : ''}`}>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-base">
+                  {notification.type === 'job_available' ? 'New Job Available' : 
+                   notification.type === 'assignment' ? 'New Assignment' : 
+                   'Job Update'}
+                </CardTitle>
+                <Badge variant={notification.status === 'unread' ? 'default' : 'outline'}>
+                  {notification.status === 'unread' ? 'New' : 'Read'}
+                </Badge>
               </div>
-            ) : (
-              notifications.map((notification) => (
-                <Card key={notification.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-lg font-semibold">
-                          {notification.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {notification.message}
-                        </p>
-                      </div>
-                      <Badge variant={notification.status === 'unread' ? 'default' : 'secondary'}>
-                        {notification.status}
-                      </Badge>
-                    </div>
-
-                    {notification.job && (
-                      <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p><strong>Location:</strong> {notification.job.location}</p>
-                          <p><strong>Type:</strong> {notification.job.type}</p>
-                          <p><strong>Category:</strong> {notification.job.category}</p>
-                        </div>
-                        <div>
-                          <p><strong>Salary:</strong> {notification.job.salary}</p>
-                          <p><strong>Duration:</strong> {notification.job.duration}</p>
-                          <p><strong>Start Date:</strong> {new Date(notification.job.start_date).toLocaleDateString()}</p>
-                        </div>
-                      </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="mb-3">{notification.message}</p>
+              <div className="flex items-center text-sm text-muted-foreground mb-4">
+                <Clock className="h-4 w-4 mr-1" />
+                {new Date(notification.created_at).toLocaleString()}
+              </div>
+              
+              {notification.action_required && notification.status === 'unread' && (
+                <div className="flex gap-3 justify-end">
+                  <Button 
+                    variant="outline" 
+                    className="border-red-500 text-red-500 hover:bg-red-50" 
+                    onClick={() => handleResponse(notification.id, 'decline')}
+                    disabled={processingId === notification.id}
+                  >
+                    {processingId === notification.id && (
+                      <LoadingSpinner size="sm" className="mr-2" />
                     )}
-
-                    {notification.status === 'unread' && notification.action_required && (
-                      <div className="mt-4 flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleJobResponse(notification.job_id, 'accepted')}
-                          className="text-green-600 hover:text-green-700"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Accept
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleJobResponse(notification.job_id, 'declined')}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Decline
-                        </Button>
-                      </div>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Decline
+                  </Button>
+                  <Button 
+                    className="bg-green-500 hover:bg-green-600" 
+                    onClick={() => handleResponse(notification.id, 'accept')}
+                    disabled={processingId === notification.id}
+                  >
+                    {processingId === notification.id && (
+                      <LoadingSpinner size="sm" className="mr-2" />
                     )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Accept
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))
+      )}
     </div>
   );
-} 
+}
