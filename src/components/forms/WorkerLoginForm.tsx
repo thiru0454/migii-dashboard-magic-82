@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface WorkerLoginFormProps {
   onSuccess: (worker: any) => void;
@@ -17,15 +19,15 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [verifying, setVerifying] = useState(false);
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { loginWithPhone } = useAuth();
 
   const handleSendOTP = async () => {
     try {
       // Basic phone number validation
       if (!phone || phone.length < 10) {
-        toast({
+        uiToast({
           title: "Invalid phone number",
           description: "Please enter a valid 10-digit phone number",
         });
@@ -35,11 +37,11 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       setVerifying(true);
 
       // Sign in user with phone number
-      const { error } = await signIn({ phone: phone });
+      const result = await loginWithPhone(phone);
 
-      if (error) {
-        console.error("Error sending OTP:", error);
-        toast({
+      if (!result) {
+        console.error("Error sending OTP");
+        uiToast({
           title: "Error sending OTP",
           description: "Failed to send OTP. Please try again.",
         });
@@ -47,13 +49,13 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       }
 
       setOtpSent(true);
-      toast({
+      uiToast({
         title: "OTP sent",
         description: "Please enter the OTP sent to your phone number.",
       });
     } catch (error) {
       console.error("Error in handleSendOTP:", error);
-      toast({
+      uiToast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
       });
@@ -78,12 +80,18 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         
       if (error) {
         console.error("Error fetching worker:", error);
-        toast.error("Worker verification failed");
+        toast("Worker verification failed", { 
+          description: "Could not verify worker information", 
+          status: "error" 
+        });
         return;
       }
       
       if (!workers) {
-        toast.error("No worker found with this phone number");
+        toast("No worker found", { 
+          description: "No worker found with this phone number",
+          status: "error" 
+        });
         return;
       }
       
@@ -100,13 +108,16 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       
       localStorage.setItem("currentUser", JSON.stringify(userInfo));
       
-      toast.success("Login successful!");
+      toast("Login successful!", { status: "success" });
       
       // Trigger the onSuccess callback with the worker data
       onSuccess(workers);
     } catch (error) {
       console.error("Error in OTP verification:", error);
-      toast.error("Verification failed. Please try again.");
+      toast("Verification failed", { 
+        description: "Please try again", 
+        status: "error" 
+      });
     } finally {
       setVerifying(false);
     }
