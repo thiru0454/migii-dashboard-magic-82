@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BusinessNotificationsTab } from "@/components/business/BusinessNotificationsTab";
 import { RequestStatusTab } from "@/components/business/RequestStatusTab";
+import { AssignedWorkersTab } from "@/components/business/AssignedWorkersTab";
 import { Building, BellRing, ClipboardList, Users } from "lucide-react";
 
 export default function BusinessDashboard() {
@@ -46,22 +47,7 @@ export default function BusinessDashboard() {
           </TabsContent>
           
           <TabsContent value="workers" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Assigned Workers</CardTitle>
-                <CardDescription>
-                  Manage workers assigned to your business
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="py-8 text-center">
-                  <Building className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">
-                    Workers assigned to your business will appear here
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <AssignedWorkersTab />
           </TabsContent>
           
           <TabsContent value="notifications" className="mt-4">

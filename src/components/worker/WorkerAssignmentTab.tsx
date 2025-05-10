@@ -1,35 +1,36 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/lib/supabase";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { Briefcase, Calendar, Building, Clock, MapPin, CheckCircle, XCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { T } from "@/components/T";
-import { Check, X, Building, Calendar } from "lucide-react";
 
-interface WorkerAssignment {
+interface Assignment {
   id: string;
-  worker_id: string;
   business_id: string;
   business_name: string;
-  status: string;
+  worker_id: string;
+  status: "pending" | "accepted" | "rejected" | "completed";
   created_at: string;
-  updated_at: string;
   job_description?: string;
-  skill_required?: string;
+  job_location?: string;
   duration?: string;
+  start_date?: string;
+  skill_required?: string;
 }
 
 export function WorkerAssignmentTab() {
-  const [assignments, setAssignments] = useState<WorkerAssignment[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadAssignments();
-    // Real-time subscription
+    
+    // Set up real-time subscription
     const channel = supabase
       .channel('worker_assignments_changes')
       .on(
@@ -44,195 +45,298 @@ export function WorkerAssignmentTab() {
         }
       )
       .subscribe();
+      
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
 
   const loadAssignments = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
+      
+      // Get current user ID from localStorage
       const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      const { data, error } = await supabase
-        .from("worker_assignments")
-        .select("*, worker_requests(skill, description, duration)")
-        .eq("worker_id", currentUser.id)
-        .order("created_at", { ascending: false });
-        
-      if (error) {
-        throw error;
+      if (!currentUser || !currentUser.id) {
+        console.warn("No user ID found in localStorage");
+        setAssignments([]);
+        return;
       }
       
-      // Format the data
-      const formattedData = data?.map(item => ({
-        ...item,
-        skill_required: item.worker_requests?.skill || "",
-        job_description: item.worker_requests?.description || "",
-        duration: item.worker_requests?.duration || ""
-      })) || [];
+      // Query both worker_assignments table
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('worker_assignments')
+        .select('*')
+        .eq('worker_id', currentUser.id)
+        .order('created_at', { ascending: false });
+        
+      if (assignmentsError) {
+        throw assignmentsError;
+      }
+
+      // Also look in worker_requests for assignments to this worker
+      const { data: requestsData, error: requestsError } = await supabase
+        .from('worker_requests')
+        .select('*')
+        .eq('assigned_worker_id', currentUser.id)
+        .order('created_at', { ascending: false });
+        
+      if (requestsError) {
+        console.error("Error fetching from worker_requests:", requestsError);
+      }
       
-      setAssignments(formattedData);
+      // Process data from worker_assignments
+      const formattedAssignments = (assignmentsData || []).map(assignment => ({
+        id: assignment.id,
+        business_id: assignment.business_id,
+        business_name: assignment.business_name || "Business",
+        worker_id: assignment.worker_id,
+        status: assignment.status,
+        created_at: assignment.created_at,
+        job_description: assignment.job_description || "No description provided",
+        job_location: assignment.location || "Not specified",
+        duration: assignment.duration || "Not specified",
+        start_date: assignment.start_date || null,
+        skill_required: assignment.skill_required || "Not specified"
+      }));
+      
+      // Process data from worker_requests
+      const assignmentsFromRequests = (requestsData || []).map(request => ({
+        id: `req-${request.id}`,
+        business_id: request.business_id,
+        business_name: request.business_name || "Business",
+        worker_id: request.assigned_worker_id,
+        status: "pending" as const,
+        created_at: request.created_at,
+        job_description: request.description || "No description provided",
+        job_location: "Not specified",
+        duration: request.duration || "Not specified",
+        skill_required: request.skill || "Not specified"
+      }));
+      
+      // Combine both sources, avoiding duplicates by business_id
+      const combinedAssignments = [...formattedAssignments];
+      assignmentsFromRequests.forEach(req => {
+        if (!combinedAssignments.some(a => a.business_id === req.business_id)) {
+          combinedAssignments.push(req);
+        }
+      });
+      
+      setAssignments(combinedAssignments);
+      
     } catch (error) {
       console.error("Error loading assignments:", error);
-      toast.error("Failed to load your assignments");
-      setAssignments([]);
+      toast.error("Failed to load assignments");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStatusChange = async (assignmentId: string, newStatus: "accepted" | "declined") => {
-    setActionInProgress(assignmentId);
+  const handleUpdateStatus = async (assignmentId: string, newStatus: "accepted" | "rejected") => {
     try {
-      const { error } = await supabase
-        .from("worker_assignments")
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", assignmentId);
+      setUpdatingId(assignmentId);
+      
+      // Check if it's a request-derived assignment
+      const isRequestDerived = assignmentId.startsWith('req-');
+      const actualId = isRequestDerived ? assignmentId.substring(4) : assignmentId;
+      const assignment = assignments.find(a => a.id === assignmentId);
+      
+      if (!assignment) {
+        throw new Error("Assignment not found");
+      }
+      
+      if (isRequestDerived) {
+        // It's from worker_requests table
+        const { error } = await supabase
+          .from('worker_assignments')
+          .insert({
+            worker_id: assignment.worker_id,
+            business_id: assignment.business_id,
+            business_name: assignment.business_name,
+            status: newStatus,
+            job_description: assignment.job_description,
+            skill_required: assignment.skill_required,
+            created_at: new Date().toISOString()
+          });
         
-      if (error) throw error;
+        if (error) throw error;
+        
+        // Update the worker_requests entry status
+        await supabase
+          .from('worker_requests')
+          .update({
+            status: newStatus === 'accepted' ? 'confirmed' : 'rejected'
+          })
+          .eq('id', actualId);
+      } else {
+        // It's already in worker_assignments table
+        const { error } = await supabase
+          .from('worker_assignments')
+          .update({ 
+            status: newStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', assignmentId);
+          
+        if (error) throw error;
+      }
       
       // Update local state
       setAssignments(prev => 
-        prev.map(assignment => assignment.id === assignmentId ? { ...assignment, status: newStatus } : assignment)
+        prev.map(a => 
+          a.id === assignmentId 
+            ? { ...a, status: newStatus } 
+            : a
+        )
       );
       
-      // Create notification for business
-      const assignment = assignments.find(a => a.id === assignmentId);
-      if (assignment) {
-        await supabase
-          .from('business_notifications')
-          .insert({
-            business_id: assignment.business_id,
-            type: `worker_${newStatus}`,
-            message: `A worker has ${newStatus} your job assignment`,
-            created_at: new Date().toISOString(),
-            read: false,
-            worker_id: assignment.worker_id
-          });
-      }
+      // Create notification for the business
+      await supabase.from('business_notifications').insert({
+        business_id: assignment.business_id,
+        type: newStatus === 'accepted' ? 'assignment_accepted' : 'assignment_rejected',
+        message: `Worker ${newStatus === 'accepted' ? 'accepted' : 'rejected'} your assignment request`,
+        worker_id: assignment.worker_id,
+        worker_name: JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || "Worker",
+        read: false,
+        created_at: new Date().toISOString()
+      });
       
-      toast.success(`Assignment ${newStatus} successfully!`);
+      toast.success(`Assignment ${newStatus} successfully`);
+      
     } catch (error) {
-      console.error(`Error changing assignment status to ${newStatus}:`, error);
-      toast.error(`Failed to ${newStatus} the assignment`);
+      console.error(`Error updating assignment status to ${newStatus}:`, error);
+      toast.error("Failed to update assignment status");
     } finally {
-      setActionInProgress(null);
+      setUpdatingId(null);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Badge variant="secondary">Pending</Badge>;
-      case "accepted":
-        return <Badge className="bg-green-500 text-white">Accepted</Badge>;
-      case "declined":
-        return <Badge variant="destructive">Declined</Badge>;
+    switch(status) {
+      case 'pending':
+        return <Badge className="bg-yellow-500">Pending</Badge>;
+      case 'accepted':
+        return <Badge className="bg-green-500">Accepted</Badge>;
+      case 'rejected':
+        return <Badge className="bg-red-500">Rejected</Badge>;
+      case 'completed':
+        return <Badge className="bg-blue-500">Completed</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge className="bg-slate-500">Unknown</Badge>;
     }
   };
 
   if (loading) {
     return (
-      <Card className="w-full">
-        <CardContent className="py-8 flex justify-center">
-          <LoadingSpinner text="Loading your assignments..." />
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center py-8">
+        <LoadingSpinner text="Loading your assignments..." />
+      </div>
     );
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Your Job Assignments</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {assignments.length === 0 ? (
-            <p className="text-center text-muted-foreground p-4">No assignments found</p>
-          ) : (
-            assignments.map((assignment) => (
-              <Card key={assignment.id} className="p-4 hover-glow">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Building size={18} className="text-muted-foreground" />
-                      <h3 className="font-semibold">{assignment.business_name}</h3>
-                    </div>
-                    <div className="flex gap-2 items-center mt-1 text-sm text-muted-foreground">
-                      <Calendar size={16} />
-                      <span>{new Date(assignment.created_at).toLocaleDateString()}</span>
-                    </div>
-                    {assignment.skill_required && (
-                      <p className="text-sm mt-2">
-                        <span className="font-medium">Required Skill:</span> {assignment.skill_required}
-                      </p>
-                    )}
-                    {assignment.duration && (
-                      <p className="text-sm mt-1">
-                        <span className="font-medium">Duration:</span> {assignment.duration}
-                      </p>
-                    )}
-                  </div>
-                  {getStatusBadge(assignment.status)}
+    <div className="space-y-6">
+      {assignments.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Briefcase className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-xl font-medium mb-2">No assignments yet</p>
+            <p className="text-muted-foreground">
+              You don't have any job assignments yet. When businesses assign you to jobs, they will appear here.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        assignments.map((assignment) => (
+          <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-primary" />
+                    {assignment.business_name}
+                  </CardTitle>
+                  <CardDescription>
+                    Assigned on {new Date(assignment.created_at).toLocaleDateString()}
+                  </CardDescription>
                 </div>
-                {assignment.job_description && (
-                  <div className="mt-2">
-                    <p className="text-sm">
-                      <span className="font-medium">Description:</span> {assignment.job_description}
-                    </p>
+                {getStatusBadge(assignment.status)}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-start gap-2">
+                <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium text-sm">Job Description</p>
+                  <p className="text-sm text-muted-foreground">{assignment.job_description}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm">Duration</p>
+                  <p className="text-sm text-muted-foreground">{assignment.duration}</p>
+                </div>
+              </div>
+              {assignment.skill_required && (
+                <div className="flex items-center gap-2">
+                  <div>
+                    <p className="font-medium text-sm">Skills Required</p>
+                    <Badge variant="outline" className="mt-1">
+                      {assignment.skill_required}
+                    </Badge>
                   </div>
-                )}
-                {assignment.status === "pending" && (
-                  <div className="flex gap-2 mt-4">
-                    <Button
-                      size="sm"
-                      className="bg-green-500 text-white hover:bg-green-600"
-                      onClick={() => handleStatusChange(assignment.id, "accepted")}
-                      disabled={actionInProgress === assignment.id}
-                    >
-                      {actionInProgress === assignment.id ? (
-                        <>
-                          <LoadingSpinner size="sm" className="mr-1" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="h-4 w-4 mr-1" />
-                          Accept
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleStatusChange(assignment.id, "declined")}
-                      disabled={actionInProgress === assignment.id}
-                    >
-                      {actionInProgress === assignment.id ? (
-                        <>
-                          <LoadingSpinner size="sm" className="mr-1" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <X className="h-4 w-4 mr-1" />
-                          Decline
-                        </>
-                      )}
-                    </Button>
+                </div>
+              )}
+              {assignment.job_location && assignment.job_location !== "Not specified" && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm">Location</p>
+                    <p className="text-sm text-muted-foreground">{assignment.job_location}</p>
                   </div>
-                )}
-              </Card>
-            ))
-          )}
-        </div>
-      </CardContent>
-    </Card>
+                </div>
+              )}
+              {assignment.start_date && (
+                <div className="flex items-start gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm">Start Date</p>
+                    <p className="text-sm text-muted-foreground">{new Date(assignment.start_date).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+            {assignment.status === "pending" && (
+              <CardFooter className="flex gap-3 justify-end pt-0">
+                <Button 
+                  variant="outline" 
+                  className="border-red-500 text-red-500 hover:bg-red-50" 
+                  onClick={() => handleUpdateStatus(assignment.id, "rejected")}
+                  disabled={updatingId === assignment.id}
+                >
+                  {updatingId === assignment.id && (
+                    <LoadingSpinner size="sm" className="mr-2" />
+                  )}
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reject
+                </Button>
+                <Button 
+                  className="bg-green-500 hover:bg-green-600" 
+                  onClick={() => handleUpdateStatus(assignment.id, "accepted")}
+                  disabled={updatingId === assignment.id}
+                >
+                  {updatingId === assignment.id && (
+                    <LoadingSpinner size="sm" className="mr-2" />
+                  )}
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Accept
+                </Button>
+              </CardFooter>
+            )}
+          </Card>
+        ))
+      )}
+    </div>
   );
 }
