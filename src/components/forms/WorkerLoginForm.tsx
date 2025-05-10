@@ -81,16 +81,14 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       if (error) {
         console.error("Error fetching worker:", error);
         toast("Worker verification failed", { 
-          description: "Could not verify worker information", 
-          status: "error" 
+          description: "Could not verify worker information"
         });
         return;
       }
       
       if (!workers) {
         toast("No worker found", { 
-          description: "No worker found with this phone number",
-          status: "error" 
+          description: "No worker found with this phone number"
         });
         return;
       }
@@ -108,15 +106,14 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       
       localStorage.setItem("currentUser", JSON.stringify(userInfo));
       
-      toast("Login successful!", { status: "success" });
+      toast("Login successful!");
       
       // Trigger the onSuccess callback with the worker data
       onSuccess(workers);
     } catch (error) {
       console.error("Error in OTP verification:", error);
       toast("Verification failed", { 
-        description: "Please try again", 
-        status: "error" 
+        description: "Please try again"
       });
     } finally {
       setVerifying(false);
