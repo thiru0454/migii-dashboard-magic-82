@@ -219,4 +219,15 @@ export function WorkerNotificationsTab({ workerId }: WorkerNotificationsTabProps
       </CardContent>
     </Card>
   );
+  
+  function getNotificationIcon(type: string) {
+    switch (type) {
+      case 'assignment':
+        return <Building className="h-5 w-5 text-blue-500" />;
+      case 'job_assignment':
+        return <Briefcase className="h-5 w-5 text-green-500" />;
+      default:
+        return <Bell className="h-5 w-5 text-gray-500" />;
+    }
+  }
 }
