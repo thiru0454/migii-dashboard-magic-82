@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { MigrantWorker } from '@/types/worker';
 
@@ -77,7 +78,7 @@ export function subscribeToWorkers(callback: () => void) {
     .subscribe();
 }
 
-// Add the improved assignWorkerToBusiness function
+// Improved function to assign worker to business
 export async function assignWorkerToBusiness(workerId: string, businessId: string) {
   console.log(`Assigning worker ${workerId} to business ${businessId}`);
   
@@ -122,6 +123,7 @@ export async function assignWorkerToBusiness(workerId: string, businessId: strin
       console.error('Error assigning worker:', error);
       throw error;
     }
+    
     // Insert assignment notification for the worker
     const { error: insertError } = await supabase.from('worker_assignments').insert([
       {
@@ -132,11 +134,23 @@ export async function assignWorkerToBusiness(workerId: string, businessId: strin
         updated_at: new Date().toISOString()
       }
     ]);
+    
     if (insertError) {
       console.error('Error inserting into worker_assignments:', insertError);
     } else {
       console.log('Inserted into worker_assignments:', formattedWorkerId, businessId);
     }
+    
+    // Create a notification for the worker
+    await supabase.from('notifications').insert([
+      {
+        user_id: formattedWorkerId,
+        type: 'assignment',
+        message: `You have been assigned to a new business`,
+        read: false,
+        created_at: new Date().toISOString()
+      }
+    ]);
     
     console.log('Worker successfully assigned:', data);
     return { data, error: null };
@@ -302,4 +316,98 @@ export async function updateSupportRequestStatus(id: string, status: string) {
     .eq('id', id)
     .select()
     .single();
+}
+
+// Worker notifications
+export async function getWorkerNotifications(workerId: string) {
+  return await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', workerId)
+    .order('created_at', { ascending: false });
+}
+
+export async function markNotificationAsRead(notificationId: string) {
+  return await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('id', notificationId);
+}
+
+export async function markAllNotificationsAsRead(userId: string) {
+  return await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+}
+
+// Business notifications
+export async function getBusinessNotifications(businessId: string) {
+  return await supabase
+    .from('business_notifications')
+    .select('*')
+    .eq('business_id', businessId)
+    .order('created_at', { ascending: false });
+}
+
+export async function markBusinessNotificationAsRead(notificationId: string) {
+  return await supabase
+    .from('business_notifications')
+    .update({ read: true })
+    .eq('id', notificationId);
+}
+
+export async function markAllBusinessNotificationsAsRead(businessId: string) {
+  return await supabase
+    .from('business_notifications')
+    .update({ read: true })
+    .eq('business_id', businessId)
+    .eq('read', false);
+}
+
+// Create Supabase tables if they don't exist (helper functions for development)
+export async function ensureRequiredTables() {
+  const tables = [
+    {
+      name: 'notifications',
+      columns: [
+        { name: 'id', type: 'uuid', isPrimary: true },
+        { name: 'user_id', type: 'uuid', isNullable: false },
+        { name: 'type', type: 'text', isNullable: false },
+        { name: 'message', type: 'text', isNullable: false },
+        { name: 'read', type: 'boolean', defaultValue: 'false' },
+        { name: 'created_at', type: 'timestamptz', defaultValue: 'now()' },
+        { name: 'metadata', type: 'jsonb', isNullable: true }
+      ]
+    },
+    {
+      name: 'business_notifications',
+      columns: [
+        { name: 'id', type: 'uuid', isPrimary: true },
+        { name: 'business_id', type: 'uuid', isNullable: false },
+        { name: 'type', type: 'text', isNullable: false },
+        { name: 'message', type: 'text', isNullable: false },
+        { name: 'read', type: 'boolean', defaultValue: 'false' },
+        { name: 'created_at', type: 'timestamptz', defaultValue: 'now()' },
+        { name: 'worker_id', type: 'uuid', isNullable: true },
+        { name: 'worker_name', type: 'text', isNullable: true }
+      ]
+    },
+    {
+      name: 'worker_assignments',
+      columns: [
+        { name: 'id', type: 'uuid', isPrimary: true },
+        { name: 'worker_id', type: 'uuid', isNullable: false },
+        { name: 'business_id', type: 'uuid', isNullable: false },
+        { name: 'status', type: 'text', defaultValue: "'pending'" },
+        { name: 'created_at', type: 'timestamptz', defaultValue: 'now()' },
+        { name: 'updated_at', type: 'timestamptz', defaultValue: 'now()' }
+      ]
+    }
+  ];
+  
+  // For each table, check if it exists and create it if it doesn't
+  // This is a simplified version and would require Supabase admin privileges in a real app
+  console.log('Database tables would be created here in a real application');
 }
