@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,27 +20,19 @@ interface JobNotification {
   action_type?: string;
 }
 
-interface JobNotificationsTabProps {
-  workerId?: string | null;
-}
-
-export function JobNotificationsTab({ workerId }: JobNotificationsTabProps) {
+export function JobNotificationsTab() {
   const [notifications, setNotifications] = useState<JobNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    // Use provided workerId or fallback to currentUser.id
-    const effectiveWorkerId = workerId || currentUser?.id;
-    
-    if (!effectiveWorkerId) {
+    if (!currentUser || !currentUser.id) {
       setLoading(false);
-      toast.error("Worker ID not found. Please log in again.");
       return;
     }
 
-    loadNotifications(effectiveWorkerId);
+    loadNotifications(currentUser.id);
 
     // Set up real-time subscription
     const channel = supabase
@@ -50,11 +43,10 @@ export function JobNotificationsTab({ workerId }: JobNotificationsTabProps) {
           event: '*',
           schema: 'public',
           table: 'worker_notifications',
-          filter: `worker_id=eq.${effectiveWorkerId}`,
+          filter: `worker_id=eq.${currentUser.id}`,
         },
-        (payload) => {
-          console.log("Notification change detected:", payload);
-          loadNotifications(effectiveWorkerId);
+        () => {
+          loadNotifications(currentUser.id);
         }
       )
       .subscribe();
@@ -62,11 +54,10 @@ export function JobNotificationsTab({ workerId }: JobNotificationsTabProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [workerId]);
+  }, []);
 
   const loadNotifications = async (workerId: string) => {
     try {
-      console.log("Loading notifications for worker ID:", workerId);
       setLoading(true);
       
       // Query worker_notifications table
@@ -79,8 +70,7 @@ export function JobNotificationsTab({ workerId }: JobNotificationsTabProps) {
       if (error) {
         throw error;
       }
-      
-      console.log("Notifications loaded:", data?.length || 0, "notifications found");
+
       setNotifications(data || []);
     } catch (error) {
       console.error("Error loading notifications:", error);
@@ -98,96 +88,74 @@ export function JobNotificationsTab({ workerId }: JobNotificationsTabProps) {
       if (!notification) return;
 
       // Mark notification as read
-      supabase
+      await supabase
         .from('worker_notifications')
         .update({ status: 'read' })
-        .eq('id', notificationId)
-        .then(async ({ error: notificationError }) => {
-          if (notificationError) {
-            console.error("Error updating notification:", notificationError);
-            toast.error("Failed to update notification");
-            setProcessingId(null);
-            return;
-          }
+        .eq('id', notificationId);
 
-          // Find the assignment in worker_assignments related to this notification
-          const { data: assignments, error: assignmentError } = await supabase
-            .from('worker_assignments')
-            .select('*')
-            .eq('job_id', notification.job_id);
-            
-          if (assignmentError) {
-            console.error("Error finding assignment:", assignmentError);
-            toast.error("Failed to find assignment");
-            setProcessingId(null);
-            return;
-          }
+      // Find the assignment in worker_assignments related to this notification
+      const { data: assignments, error: assignmentError } = await supabase
+        .from('worker_assignments')
+        .select('*')
+        .eq('job_id', notification.job_id);
+        
+      if (assignmentError) {
+        throw assignmentError;
+      }
 
-          if (assignments && assignments.length > 0) {
-            const assignment = assignments[0];
-            
-            // Update assignment status
-            const { error: updateError } = await supabase
-              .from('worker_assignments')
-              .update({ 
-                status: response === 'accept' ? 'accepted' : 'rejected',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', assignment.id);
-              
-            if (updateError) {
-              console.error("Error updating assignment:", updateError);
-              toast.error("Failed to update assignment");
-              setProcessingId(null);
-              return;
-            }
+      if (assignments && assignments.length > 0) {
+        const assignment = assignments[0];
+        
+        // Update assignment status
+        await supabase
+          .from('worker_assignments')
+          .update({ 
+            status: response === 'accept' ? 'accepted' : 'rejected',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', assignment.id);
 
-            // Create notification for the business
-            const { error: businessNotificationError } = await supabase
-              .from('business_notifications')
-              .insert({
-                business_id: assignment.business_id,
-                type: response === 'accept' ? 'assignment_accepted' : 'assignment_rejected',
-                message: `Worker ${response === 'accept' ? 'accepted' : 'rejected'} your assignment request`,
-                worker_id: assignment.worker_id,
-                worker_name: JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || "Worker",
-                read: false,
-                created_at: new Date().toISOString()
-              });
-              
-            if (businessNotificationError) {
-              console.error("Error creating business notification:", businessNotificationError);
-            }
-          }
+        // Create notification for the business
+        await supabase
+          .from('business_notifications')
+          .insert({
+            business_id: assignment.business_id,
+            type: response === 'accept' ? 'assignment_accepted' : 'assignment_rejected',
+            message: `Worker ${response === 'accept' ? 'accepted' : 'rejected'} your assignment request`,
+            worker_id: assignment.worker_id,
+            worker_name: JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || "Worker",
+            read: false,
+            created_at: new Date().toISOString()
+          });
+      }
 
-          // Update local state
-          setNotifications(prev => 
-            prev.map(n => 
-              n.id === notificationId 
-                ? { ...n, status: 'read' } 
-                : n
-            )
-          );
-          
-          toast.success(`Job ${response === 'accept' ? 'accepted' : 'declined'} successfully`);
-          setProcessingId(null);
-        });
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notificationId 
+            ? { ...n, status: 'read' } 
+            : n
+        )
+      );
+      
+      toast.success(`Job ${response === 'accept' ? 'accepted' : 'declined'} successfully`);
     } catch (error) {
       console.error(`Error handling notification response:`, error);
       toast.error(`Failed to ${response} job`);
+    } finally {
       setProcessingId(null);
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      const effectiveWorkerId = workerId || JSON.parse(localStorage.getItem('currentUser') || '{}')?.id;
-      if (!effectiveWorkerId) return;
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      if (!currentUser || !currentUser.id) return;
 
       await supabase
         .from('worker_notifications')
         .update({ status: 'read' })
-        .eq('worker_id', effectiveWorkerId)
+        .eq('worker_id', currentUser.id)
         .eq('status', 'unread');
 
       // Update local state
