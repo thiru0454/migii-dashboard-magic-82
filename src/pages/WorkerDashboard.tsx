@@ -11,51 +11,109 @@ import { T } from "@/components/T";
 import { Briefcase, BellRing, ClipboardList, Bell } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { toast } from "sonner";
 
 export default function WorkerDashboard() {
   const [activeTab, setActiveTab] = useState<string>("assignments");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadJobNotifications, setUnreadJobNotifications] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentWorkerId, setCurrentWorkerId] = useState<string | null>(null);
   
   useEffect(() => {
     // Get current user from localStorage
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
     if (!currentUser || !currentUser.id) {
+      setIsLoading(false);
+      toast.error("User not authenticated. Please log in again.");
       return;
     }
     
-    // Check for unread notifications
-    const fetchUnreadCounts = async () => {
+    // Verify worker exists in the database
+    const verifyWorker = async () => {
       try {
-        // Regular notifications
-        const { count: notificationsCount, error: notificationsError } = await supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', currentUser.id)
-          .eq('read', false);
+        setIsLoading(true);
+        
+        // Try to find worker by phone or email
+        const { data: workers, error } = await supabase
+          .from('workers')
+          .select('*')
+          .or(`phone.eq.${currentUser.phone},email.eq.${currentUser.email}`);
           
-        if (!notificationsError) {
-          setUnreadNotifications(notificationsCount || 0);
+        if (error) {
+          console.error("Error verifying worker:", error);
+          setIsLoading(false);
+          return;
         }
         
-        // Job notifications
-        const { count: jobNotificationsCount, error: jobNotificationsError } = await supabase
-          .from('worker_notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('worker_id', currentUser.id)
-          .eq('status', 'unread');
+        if (workers && workers.length > 0) {
+          // Found worker in database
+          const workerId = workers[0].id;
+          setCurrentWorkerId(workerId);
           
-        if (!jobNotificationsError) {
-          setUnreadJobNotifications(jobNotificationsCount || 0);
+          // Now fetch notification counts with the verified worker ID
+          fetchUnreadCounts(workerId);
+        } else {
+          console.error("Worker not found in database");
+          toast.error("Worker profile not found. Please contact support.");
+          setIsLoading(false);
         }
       } catch (error) {
-        console.error("Error fetching notification counts:", error);
+        console.error("Error in verifyWorker:", error);
+        setIsLoading(false);
       }
     };
     
-    fetchUnreadCounts();
+    verifyWorker();
     
-    // Set up real-time subscriptions for notifications
+  }, []);
+  
+  // Check for unread notifications
+  const fetchUnreadCounts = async (workerId: string) => {
+    try {
+      console.log("Fetching notification counts for worker ID:", workerId);
+      
+      // Regular notifications
+      const { count: notificationsCount, error: notificationsError } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', workerId)
+        .eq('read', false);
+        
+      if (notificationsError) {
+        console.error("Error fetching notifications count:", notificationsError);
+      } else {
+        console.log("Unread notifications count:", notificationsCount);
+        setUnreadNotifications(notificationsCount || 0);
+      }
+      
+      // Job notifications
+      const { count: jobNotificationsCount, error: jobNotificationsError } = await supabase
+        .from('worker_notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('worker_id', workerId)
+        .eq('status', 'unread');
+        
+      if (jobNotificationsError) {
+        console.error("Error fetching job notifications count:", jobNotificationsError);
+      } else {
+        console.log("Unread job notifications count:", jobNotificationsCount);
+        setUnreadJobNotifications(jobNotificationsCount || 0);
+      }
+      
+      // Set up real-time subscriptions for notifications
+      setupNotificationSubscriptions(workerId);
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching notification counts:", error);
+      setIsLoading(false);
+    }
+  };
+  
+  // Set up real-time subscriptions
+  const setupNotificationSubscriptions = (workerId: string) => {
     const notificationsChannel = supabase
       .channel('worker_dashboard_notifications')
       .on(
@@ -64,9 +122,12 @@ export default function WorkerDashboard() {
           event: '*',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${currentUser.id}`
+          filter: `user_id=eq.${workerId}`
         },
-        () => fetchUnreadCounts()
+        () => {
+          console.log("Notifications changed, updating counts...");
+          fetchUnreadCounts(workerId);
+        }
       )
       .subscribe();
       
@@ -78,9 +139,12 @@ export default function WorkerDashboard() {
           event: '*',
           schema: 'public',
           table: 'worker_notifications',
-          filter: `worker_id=eq.${currentUser.id}`
+          filter: `worker_id=eq.${workerId}`
         },
-        () => fetchUnreadCounts()
+        () => {
+          console.log("Job notifications changed, updating counts...");
+          fetchUnreadCounts(workerId);
+        }
       )
       .subscribe();
       
@@ -88,7 +152,30 @@ export default function WorkerDashboard() {
       supabase.removeChannel(notificationsChannel);
       supabase.removeChannel(jobNotificationsChannel);
     };
-  }, []);
+  };
+  
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center min-h-[300px]">
+          <LoadingSpinner text="Loading your dashboard..." />
+        </div>
+      </DashboardLayout>
+    );
+  }
+  
+  if (!currentWorkerId) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-center">
+          <h2 className="text-xl font-semibold mb-4">Worker profile not found</h2>
+          <p className="text-muted-foreground mb-4">
+            We couldn't find your worker profile in our system. Please make sure you're registered or contact support.
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
   
   return (
     <DashboardLayout>
@@ -134,7 +221,7 @@ export default function WorkerDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <WorkerAssignmentTab />
+                <WorkerAssignmentTab workerId={currentWorkerId} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -162,13 +249,13 @@ export default function WorkerDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <JobNotificationsTab />
+                <JobNotificationsTab workerId={currentWorkerId} />
               </CardContent>
             </Card>
           </TabsContent>
           
           <TabsContent value="notifications" className="mt-4">
-            <WorkerNotificationsTab />
+            <WorkerNotificationsTab workerId={currentWorkerId} />
           </TabsContent>
         </Tabs>
       </div>

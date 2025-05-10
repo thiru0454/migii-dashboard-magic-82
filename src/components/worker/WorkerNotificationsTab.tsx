@@ -18,12 +18,24 @@ interface Notification {
   metadata?: any;
 }
 
-export function WorkerNotificationsTab() {
+interface WorkerNotificationsTabProps {
+  workerId?: string | null;
+}
+
+export function WorkerNotificationsTab({ workerId }: WorkerNotificationsTabProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadNotifications();
+    const effectiveWorkerId = workerId || JSON.parse(localStorage.getItem('currentUser') || '{}')?.id;
+    
+    if (!effectiveWorkerId) {
+      setLoading(false);
+      console.warn("No worker ID found");
+      return;
+    }
+    
+    loadNotifications(effectiveWorkerId);
     
     // Set up real-time subscription
     const channel = supabase
@@ -34,9 +46,11 @@ export function WorkerNotificationsTab() {
           event: '*',
           schema: 'public',
           table: 'notifications',
+          filter: `user_id=eq.${effectiveWorkerId}`,
         },
-        () => {
-          loadNotifications();
+        (payload) => {
+          console.log("Notification change detected:", payload);
+          loadNotifications(effectiveWorkerId);
         }
       )
       .subscribe();
@@ -44,29 +58,24 @@ export function WorkerNotificationsTab() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [workerId]);
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (userId: string) => {
     try {
+      console.log("Loading notifications for user ID:", userId);
       setLoading(true);
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      
-      if (!currentUser.id) {
-        console.warn("No user ID found in local storage");
-        setLoading(false);
-        return;
-      }
       
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", currentUser.id)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false });
         
       if (error) {
         throw error;
       }
       
+      console.log("Notifications loaded:", data?.length || 0, "notifications found");
       setNotifications(data || []);
     } catch (error) {
       console.error("Error loading notifications:", error);
@@ -103,14 +112,14 @@ export function WorkerNotificationsTab() {
 
   const markAllAsRead = async () => {
     try {
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const effectiveWorkerId = workerId || JSON.parse(localStorage.getItem('currentUser') || '{}')?.id;
       
-      if (!currentUser.id) return;
+      if (!effectiveWorkerId) return;
       
       const { error } = await supabase
         .from("notifications")
         .update({ read: true })
-        .eq("user_id", currentUser.id)
+        .eq("user_id", effectiveWorkerId)
         .eq("read", false);
         
       if (error) {
@@ -210,4 +219,15 @@ export function WorkerNotificationsTab() {
       </CardContent>
     </Card>
   );
+  
+  function getNotificationIcon(type: string) {
+    switch (type) {
+      case 'assignment':
+        return <Building className="h-5 w-5 text-blue-500" />;
+      case 'job_assignment':
+        return <Briefcase className="h-5 w-5 text-green-500" />;
+      default:
+        return <Bell className="h-5 w-5 text-gray-500" />;
+    }
+  }
 }
