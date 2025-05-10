@@ -111,6 +111,7 @@ export function WorkerAssignmentTab() {
         job_description: request.description || "No description provided",
         job_location: "Not specified",
         duration: request.duration || "Not specified",
+        start_date: null, // Adding the missing start_date property
         skill_required: request.skill || "Not specified"
       }));
       

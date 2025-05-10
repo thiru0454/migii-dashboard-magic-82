@@ -28,6 +28,16 @@ interface AssignedWorker {
   location?: string;
 }
 
+interface NotificationPayload {
+  new?: {
+    type?: string;
+    worker_name?: string;
+    created_at?: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
 export function AssignedWorkersTab() {
   const [workers, setWorkers] = useState<AssignedWorker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +73,7 @@ export function AssignedWorkersTab() {
           schema: 'public',
           table: 'business_notifications',
         },
-        (payload) => {
+        (payload: NotificationPayload) => {
           if (payload.new && 
               (payload.new.type === 'assignment_accepted' || 
                payload.new.type === 'assignment_rejected')) {
@@ -71,11 +81,11 @@ export function AssignedWorkersTab() {
             
             // Show toast notification
             const message = payload.new.type === 'assignment_accepted' 
-              ? `${payload.new.worker_name} accepted your assignment request`
-              : `${payload.new.worker_name} rejected your assignment request`;
+              ? `${payload.new.worker_name || 'Worker'} accepted your assignment request`
+              : `${payload.new.worker_name || 'Worker'} rejected your assignment request`;
               
             toast(message, {
-              description: new Date(payload.new.created_at).toLocaleString()
+              description: payload.new.created_at ? new Date(payload.new.created_at).toLocaleString() : ''
             });
           }
         }
