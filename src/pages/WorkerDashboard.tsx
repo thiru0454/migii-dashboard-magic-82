@@ -26,26 +26,30 @@ export default function WorkerDashboard() {
     
     // Check for unread notifications
     const fetchUnreadCounts = async () => {
-      // Regular notifications
-      const { data: notificationsData, error: notificationsError } = await supabase
-        .from('notifications')
-        .select('count', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id)
-        .eq('read', false);
+      try {
+        // Regular notifications
+        const { count: notificationsCount, error: notificationsError } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id)
+          .eq('read', false);
+          
+        if (!notificationsError) {
+          setUnreadNotifications(notificationsCount || 0);
+        }
         
-      if (!notificationsError) {
-        setUnreadNotifications(notificationsData || 0);
-      }
-      
-      // Job notifications
-      const { data: jobNotificationsData, error: jobNotificationsError } = await supabase
-        .from('worker_notifications')
-        .select('count', { count: 'exact', head: true })
-        .eq('worker_id', currentUser.id)
-        .eq('status', 'unread');
-        
-      if (!jobNotificationsError) {
-        setUnreadJobNotifications(jobNotificationsData || 0);
+        // Job notifications
+        const { count: jobNotificationsCount, error: jobNotificationsError } = await supabase
+          .from('worker_notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('worker_id', currentUser.id)
+          .eq('status', 'unread');
+          
+        if (!jobNotificationsError) {
+          setUnreadJobNotifications(jobNotificationsCount || 0);
+        }
+      } catch (error) {
+        console.error("Error fetching notification counts:", error);
       }
     };
     
