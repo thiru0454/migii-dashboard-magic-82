@@ -350,25 +350,103 @@ export async function updateSupportRequestStatus(id: string, status: string) {
 // Worker notifications
 export async function getWorkerNotifications(workerId: string) {
   return await supabase
-    .from('notifications')
+    .from('worker_notifications')
     .select('*')
-    .eq('user_id', workerId)
+    .eq('worker_id', workerId)
     .order('created_at', { ascending: false });
+}
+
+export async function updateNotificationStatus(notificationId: string, status: 'read' | 'accepted' | 'declined') {
+  // First update the notification status
+  const { data: notification, error: notificationError } = await supabase
+    .from('worker_notifications')
+    .update({ 
+      status,
+      action_required: false,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', notificationId)
+    .select()
+    .single();
+
+  if (notificationError) {
+    console.error('Error updating notification:', notificationError);
+    return { error: notificationError };
+  }
+
+  // If it's a job assignment notification, also update the worker_assignments table
+  if (notification.job_id && (status === 'accepted' || status === 'declined')) {
+    const { error: assignmentError } = await supabase
+      .from('worker_assignments')
+      .update({ 
+        status, 
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', notification.job_id);
+
+    if (assignmentError) {
+      console.error('Error updating assignment:', assignmentError);
+      return { error: assignmentError };
+    }
+    
+    // Create a notification for the business
+    try {
+      const { data: assignmentData } = await supabase
+        .from('worker_assignments')
+        .select('business_id, worker_id')
+        .eq('id', notification.job_id)
+        .single();
+      
+      if (assignmentData) {
+        // Get worker name
+        const { data: workerData } = await supabase
+          .from('workers')
+          .select('name')
+          .eq('id', assignmentData.worker_id)
+          .single();
+        
+        const workerName = workerData?.name || 'Worker';
+        
+        // Create business notification
+        await supabase
+          .from('business_notifications')
+          .insert({
+            business_id: assignmentData.business_id,
+            type: `worker_${status}`,
+            message: `Worker ${workerName} has ${status} your job assignment`,
+            worker_id: assignmentData.worker_id,
+            worker_name: workerName,
+            read: false,
+            created_at: new Date().toISOString()
+          });
+      }
+    } catch (error) {
+      console.error('Error creating business notification:', error);
+    }
+  }
+
+  return { data: notification, error: null };
 }
 
 export async function markNotificationAsRead(notificationId: string) {
   return await supabase
-    .from('notifications')
-    .update({ read: true })
+    .from('worker_notifications')
+    .update({ 
+      status: 'read',
+      updated_at: new Date().toISOString()
+    })
     .eq('id', notificationId);
 }
 
 export async function markAllNotificationsAsRead(userId: string) {
   return await supabase
-    .from('notifications')
-    .update({ read: true })
+    .from('worker_notifications')
+    .update({ 
+      status: 'read',
+      updated_at: new Date().toISOString()
+    })
     .eq('user_id', userId)
-    .eq('read', false);
+    .eq('status', 'unread');
 }
 
 // Business notifications
@@ -458,4 +536,24 @@ export async function ensureRequiredTables() {
   // For each table, check if it exists and create it if it doesn't
   // This is a simplified version and would require Supabase admin privileges in a real app
   console.log('Database tables would be created here in a real application');
+}
+
+// Helper functions to create missing tables if needed
+export async function ensureWorkerNotificationsTable() {
+  console.log('Ensuring worker_notifications table exists');
+  // In a real app, you would check if the table exists and create it if needed
+  // For this demo, we'll assume the table exists or is created via migrations
+}
+
+export async function ensureBusinessNotificationsTable() {
+  console.log('Ensuring business_notifications table exists');
+  // In a real app, you would check if the table exists and create it if needed
+  // For this demo, we'll assume the table exists or is created via migrations
+}
+
+// Initialize tables when the app starts
+export function initializeDatabase() {
+  ensureRequiredTables();
+  ensureWorkerNotificationsTable();
+  ensureBusinessNotificationsTable();
 }

@@ -38,7 +38,7 @@ function App() {
       <Toaster position="top-right" />
       {!isAuthenticated ? (
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/worker-registration" element={<Navigate to="/worker-registration" replace />} />
@@ -47,6 +47,7 @@ function App() {
       ) : (
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/workers" element={<Workers />} />
           <Route 
