@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -239,9 +238,25 @@ export function AssignWorkersTab() {
             return false;
           }
           
-          // Create notification for the worker with improved details
+          // Update the workers table with assigned business
+          const { error: workerUpdateError } = await supabase
+            .from("workers")
+            .update({
+              assignedBusinessId: businessId,
+              status: "active", // Ensure worker status is active
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", workerId);
+            
+          if (workerUpdateError) {
+            console.error("Error updating worker record:", workerUpdateError);
+            // Continue despite error to try notification creation
+          }
+          
+          // Create assignment notification for the worker with improved details
           const workerNotification = {
             worker_id: workerId,
+            job_id: requestId, // Include the job ID for reference
             type: 'assignment',
             message: `You have been assigned to work for ${request.businessName || request.business_name}. ${request.description ? `Job description: ${request.description}` : ''}`,
             status: 'unread',
@@ -263,6 +278,29 @@ export function AssignWorkersTab() {
             console.log("Worker notification created successfully");
           }
           
+          // Create a more detailed worker assignment record
+          const assignmentData = {
+            worker_id: workerId,
+            business_id: businessId,
+            business_name: request.businessName || request.business_name,
+            status: 'pending',
+            job_description: request.description || "No description provided",
+            skill_required: request.requiredSkills || request.skill || "Not specified",
+            created_at: new Date().toISOString(),
+            location: "Job site", // Default location
+            duration: request.duration || "As needed" // Default duration
+          };
+          
+          const { error: assignmentError } = await supabase
+            .from('worker_assignments')
+            .insert(assignmentData);
+            
+          if (assignmentError) {
+            console.error("Error creating worker assignment:", assignmentError);
+          } else {
+            console.log("Worker assignment created successfully");
+          }
+          
           // Create notification for the business
           const businessNotification = {
             business_id: businessId,
@@ -280,19 +318,6 @@ export function AssignWorkersTab() {
             
           if (businessNotificationError) {
             console.error("Error creating business notification:", businessNotificationError);
-          }
-          
-          // Also update the workers table with assigned status
-          const { error: workerUpdateError } = await supabase
-            .from("workers")
-            .update({
-              assignedBusinessId: businessId,
-              updated_at: new Date().toISOString()
-            })
-            .eq("id", workerId);
-            
-          if (workerUpdateError) {
-            console.error("Error updating worker:", workerUpdateError);
           }
           
           console.log(`Successfully assigned worker ${workerId} to business ${businessId}`);

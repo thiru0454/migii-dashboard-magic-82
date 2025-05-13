@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +30,7 @@ export function WorkerAssignmentTab() {
     loadAssignments();
     
     // Set up real-time subscription
-    const channel = supabase
+    const assignmentsChannel = supabase
       .channel('worker_assignments_changes')
       .on(
         'postgres_changes',
@@ -41,13 +40,32 @@ export function WorkerAssignmentTab() {
           table: 'worker_assignments',
         },
         () => {
+          console.log("Worker assignments changed, refreshing data");
           loadAssignments();
         }
       )
       .subscribe();
       
+    // Also subscribe to worker_notifications table for assignment status changes
+    const notificationsChannel = supabase
+      .channel('worker_notifications_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'worker_notifications',
+        },
+        () => {
+          console.log("Worker notifications changed, refreshing assignments data");
+          loadAssignments();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(assignmentsChannel);
+      supabase.removeChannel(notificationsChannel);
     };
   }, []);
 
@@ -85,6 +103,18 @@ export function WorkerAssignmentTab() {
         console.error("Error fetching from worker_requests:", requestsError);
       }
       
+      // Also check worker_notifications for any assignment notifications
+      const { data: notificationsData, error: notificationsError } = await supabase
+        .from('worker_notifications')
+        .select('*')
+        .eq('worker_id', currentUser.id)
+        .eq('type', 'assignment')
+        .order('created_at', { ascending: false });
+        
+      if (notificationsError) {
+        console.error("Error fetching from worker_notifications:", notificationsError);
+      }
+      
       // Process data from worker_assignments
       const formattedAssignments = (assignmentsData || []).map(assignment => ({
         id: assignment.id,
@@ -115,11 +145,37 @@ export function WorkerAssignmentTab() {
         skill_required: request.skill || "Not specified"
       }));
       
-      // Combine both sources, avoiding duplicates by business_id
+      // Process data from worker_notifications that don't have a corresponding assignment
+      const assignmentsFromNotifications = (notificationsData || [])
+        .filter(notification => 
+          notification.job_id && 
+          !assignmentsData?.some(a => a.id === notification.job_id)
+        )
+        .map(notification => ({
+          id: `notif-${notification.id}`,
+          business_id: notification.business_id || "",
+          business_name: notification.title?.replace("New Assignment: ", "") || "Business",
+          worker_id: notification.worker_id,
+          status: notification.status === 'accepted' ? 'accepted' : 
+                  notification.status === 'declined' ? 'rejected' : 'pending',
+          created_at: notification.created_at,
+          job_description: notification.message,
+          job_location: "Not specified",
+          duration: "Not specified",
+          start_date: null,
+          skill_required: "Not specified"
+        }));
+      
+      // Combine all sources, avoiding duplicates by ID
       const combinedAssignments = [...formattedAssignments];
       assignmentsFromRequests.forEach(req => {
         if (!combinedAssignments.some(a => a.business_id === req.business_id)) {
           combinedAssignments.push(req);
+        }
+      });
+      assignmentsFromNotifications.forEach(notif => {
+        if (!combinedAssignments.some(a => a.id === notif.id)) {
+          combinedAssignments.push(notif);
         }
       });
       

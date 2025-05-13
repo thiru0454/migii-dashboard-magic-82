@@ -1,4 +1,5 @@
-import { toast as sonnerToast, type ToastT } from "sonner";
+
+import { toast as sonnerToast } from "sonner";
 
 export type ToastProps = {
   title?: string;
@@ -12,7 +13,11 @@ export type ToastProps = {
 // Array to keep track of created toasts for the toaster component
 const toasts: ToastProps[] = [];
 
-export function toast(props: ToastProps) {
+export function toast(props: ToastProps | string) {
+  if (typeof props === "string") {
+    return sonnerToast(props);
+  }
+
   const { title, description, ...rest } = props;
   
   // Create unique ID if not provided
