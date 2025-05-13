@@ -44,7 +44,7 @@ export function AssignWorkersTab() {
     loadData();
     
     // Set up real-time subscription to worker_requests table
-    const channel = supabase
+    const requestsChannel = supabase
       .channel('worker_requests_changes')
       .on(
         'postgres_changes',
@@ -59,9 +59,27 @@ export function AssignWorkersTab() {
         }
       )
       .subscribe();
+      
+    // Also subscribe to worker_notifications table for assignment status changes
+    const notificationsChannel = supabase
+      .channel('worker_notifications_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'worker_notifications',
+        },
+        () => {
+          console.log("Worker notifications changed, refreshing data");
+          loadData();
+        }
+      )
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(requestsChannel);
+      supabase.removeChannel(notificationsChannel);
     };
   }, []);
 
@@ -204,15 +222,9 @@ export function AssignWorkersTab() {
       const workerPromises = workersToAssign.map(async (workerId) => {
         try {
           console.log(`Attempting to assign worker ${workerId} to business ${businessId}`);
-          const result = await assignWorkerToBusiness(workerId, businessId);
           
-          if (result && result.error) {
-            console.error(`Error assigning worker ${workerId}:`, result.error);
-            return false;
-          }
-          
-          // Also update the worker_requests table with the assigned worker
-          const { error: updateError } = await supabase
+          // First update the worker_requests table with the assigned worker
+          const { error: updateRequestError } = await supabase
             .from("worker_requests")
             .update({ 
               assigned_worker_id: workerId,
@@ -221,40 +233,61 @@ export function AssignWorkersTab() {
             })
             .eq("id", requestId);
             
-          if (updateError) {
-            console.error("Error updating request:", updateError);
+          if (updateRequestError) {
+            console.error("Error updating request:", updateRequestError);
+            return false;
           }
           
           // Create notification for the worker
-          const { error: notificationError } = await supabase
-            .from('notifications')
-            .insert({
-              user_id: workerId,
-              type: 'assignment',
-              message: `You have been assigned to ${request.businessName || request.business_name}`,
-              read: false,
-              created_at: new Date().toISOString()
-            });
+          const workerNotification = {
+            worker_id: workerId,
+            type: 'assignment',
+            message: `You have been assigned to ${request.businessName || request.business_name}`,
+            status: 'unread',
+            created_at: new Date().toISOString(),
+            action_required: true,
+            action_type: 'accept_decline',
+            title: `New Assignment: ${request.businessName || request.business_name}`
+          };
+          
+          const { error: workerNotificationError } = await supabase
+            .from('worker_notifications')
+            .insert(workerNotification);
             
-          if (notificationError) {
-            console.error("Error creating worker notification:", notificationError);
+          if (workerNotificationError) {
+            console.error("Error creating worker notification:", workerNotificationError);
           }
           
           // Create notification for the business
+          const businessNotification = {
+            business_id: businessId,
+            type: 'worker_assigned',
+            message: `Worker ${getWorkerName(workerId).split(' (')[0]} has been assigned to your request`,
+            worker_id: workerId,
+            worker_name: getWorkerName(workerId).split(' (')[0],
+            read: false,
+            created_at: new Date().toISOString()
+          };
+          
           const { error: businessNotificationError } = await supabase
             .from('business_notifications')
-            .insert({
-              business_id: businessId,
-              type: 'worker_assigned',
-              message: `A worker has been assigned to your request`,
-              worker_id: workerId,
-              worker_name: getWorkerName(workerId).split(' (')[0],
-              read: false,
-              created_at: new Date().toISOString()
-            });
+            .insert(businessNotification);
             
           if (businessNotificationError) {
             console.error("Error creating business notification:", businessNotificationError);
+          }
+          
+          // Also update the workers table with assigned status
+          const { error: workerUpdateError } = await supabase
+            .from("workers")
+            .update({
+              assignedBusinessId: businessId,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", workerId);
+            
+          if (workerUpdateError) {
+            console.error("Error updating worker:", workerUpdateError);
           }
           
           console.log(`Successfully assigned worker ${workerId} to business ${businessId}`);
@@ -281,7 +314,10 @@ export function AssignWorkersTab() {
         });
 
         setRequests(updatedRequests);
+        
+        // Update local storage
         localStorage.setItem('workerRequests', JSON.stringify(updatedRequests));
+        
         toast.success("Workers assigned successfully!");
       } else {
         toast.error("Failed to assign one or more workers. Please try again.");

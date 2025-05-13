@@ -1,177 +1,166 @@
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BellRing, RefreshCw } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
-import { getBusinessNotifications, markBusinessNotificationAsRead, markAllBusinessNotificationsAsRead } from "@/utils/supabaseClient";
 import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
+import { Bell, User, CheckCircle, XCircle } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { format } from "date-fns";
+
+interface BusinessNotification {
+  id: string;
+  business_id: string;
+  type: string;
+  message: string;
+  worker_id?: string;
+  worker_name?: string;
+  created_at: string;
+  read: boolean;
+}
 
 export function BusinessNotificationsTab() {
-  const [notifications, setNotifications] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [notifications, setNotifications] = useState<BusinessNotification[]>([]);
+  const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
-
+  
   useEffect(() => {
-    if (currentUser?.businessId) {
+    if (currentUser?.id) {
       fetchNotifications();
+      
+      // Set up real-time subscription
+      const channel = supabase
+        .channel('business_notifications_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'business_notifications',
+            filter: `business_id=eq.${currentUser.id}`
+          },
+          () => {
+            console.log('Business notification changed, refreshing...');
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [currentUser]);
-
+  
   const fetchNotifications = async () => {
-    setIsLoading(true);
     try {
-      const { data, error } = await getBusinessNotifications(currentUser?.businessId || '');
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('business_notifications')
+        .select('*')
+        .eq('business_id', currentUser?.id || '')
+        .order('created_at', { ascending: false });
+        
       if (error) {
-        console.error("Error fetching business notifications:", error);
-        toast.error("Failed to load notifications");
-      } else {
-        setNotifications(data || []);
+        throw error;
       }
-    } catch (err) {
-      console.error("Error in fetchNotifications:", err);
-      toast.error("Failed to load notifications");
+      
+      setNotifications(data || []);
+      
+      // Mark all fetched notifications as read
+      const unreadIds = data?.filter(n => !n.read).map(n => n.id) || [];
+      if (unreadIds.length > 0) {
+        await supabase
+          .from('business_notifications')
+          .update({ read: true })
+          .in('id', unreadIds);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      toast.error('Failed to load notifications');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
-
-  const markAsRead = async (notificationId) => {
+  
+  const formatDate = (dateString: string) => {
     try {
-      const { error } = await markBusinessNotificationAsRead(notificationId);
-      if (error) {
-        console.error("Error marking notification as read:", error);
-        toast.error("Failed to mark notification as read");
-      } else {
-        setNotifications(prev =>
-          prev.map(notif =>
-            notif.id === notificationId ? { ...notif, read: true } : notif
-          )
-        );
-      }
-    } catch (err) {
-      console.error("Error in markAsRead:", err);
-      toast.error("Failed to mark notification as read");
+      return format(new Date(dateString), 'PPP');
+    } catch (e) {
+      return dateString;
     }
   };
-
-  const markAllAsRead = async () => {
-    try {
-      const { error } = await markAllBusinessNotificationsAsRead(currentUser?.businessId || '');
-      if (error) {
-        console.error("Error marking all notifications as read:", error);
-        toast.error("Failed to mark all notifications as read");
-      } else {
-        setNotifications(prev => 
-          prev.map(notif => ({ ...notif, read: true }))
-        );
-        toast.success("Marked all notifications as read");
-      }
-    } catch (err) {
-      console.error("Error in markAllAsRead:", err);
-      toast.error("Failed to mark all notifications as read");
+  
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'worker_assigned':
+        return <User className="h-5 w-5 text-blue-500" />;
+      case 'worker_accepted':
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'worker_declined':
+        return <XCircle className="h-5 w-5 text-red-500" />;
+      default:
+        return <Bell className="h-5 w-5 text-gray-500" />;
     }
   };
-
-  if (isLoading) {
+  
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
-
-  // Helper function to get notification status color
-  const getStatusColor = (type) => {
-    if (type === 'worker_accepted') return 'bg-green-100 text-green-800';
-    if (type === 'worker_declined') return 'bg-red-100 text-red-800';
-    return 'bg-blue-100 text-blue-800';
-  };
-
+  
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Business Notifications</h3>
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={markAllAsRead}>
-            Mark All Read
-          </Button>
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-center">
+          <CardTitle>Notifications</CardTitle>
           <Button variant="outline" size="sm" onClick={fetchNotifications}>
-            <RefreshCw className="h-4 w-4 mr-1" />
             Refresh
           </Button>
         </div>
-      </div>
-
-      {notifications.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-center text-muted-foreground">
-            <BellRing className="mx-auto h-10 w-10 mb-3 text-muted-foreground/70" />
+      </CardHeader>
+      <CardContent>
+        {notifications.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Bell className="mx-auto h-8 w-8 mb-2 opacity-40" />
             <p>No notifications yet</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {notifications.map((notification) => (
-            <Card 
-              key={notification.id} 
-              className={`overflow-hidden border-l-4 ${
-                notification.read ? 'border-l-gray-200' : 'border-l-primary'
-              }`}
-            >
-              <CardHeader className="py-3 px-4 bg-muted/50 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-medium">
-                  {notification.type === 'worker_assigned' && 'New Worker Assignment'}
-                  {notification.type === 'worker_accepted' && 'Worker Accepted Job'}
-                  {notification.type === 'worker_declined' && 'Worker Declined Job'}
-                  {!['worker_assigned', 'worker_accepted', 'worker_declined'].includes(notification.type) && 
-                    'Notification'}
-                </CardTitle>
-                <Badge 
-                  className={`${getStatusColor(notification.type)}`}
-                  variant="outline"
-                >
-                  {notification.type === 'worker_assigned' && 'New'}
-                  {notification.type === 'worker_accepted' && 'Accepted'}
-                  {notification.type === 'worker_declined' && 'Declined'}
-                  {!['worker_assigned', 'worker_accepted', 'worker_declined'].includes(notification.type) && 
-                    'Info'}
-                </Badge>
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-4">
-                  <p className="text-sm">{notification.message}</p>
-                  {notification.created_at && (
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                    </span>
-                  )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {notifications.map((notification) => (
+              <div 
+                key={notification.id} 
+                className="flex items-start p-3 rounded-md border border-border bg-card"
+              >
+                <div className="mr-3 mt-1">
+                  {getNotificationIcon(notification.type)}
                 </div>
-                
-                {notification.worker_name && (
-                  <div className="text-xs text-muted-foreground mt-2">
-                    Worker: {notification.worker_name}
+                <div className="flex-1">
+                  <div className="flex justify-between">
+                    <div className="font-medium">{notification.worker_name || 'System'}</div>
+                    <Badge variant={
+                      notification.type === 'worker_accepted' ? 'success' : 
+                      notification.type === 'worker_declined' ? 'destructive' : 
+                      notification.type === 'worker_assigned' ? 'default' : 
+                      'outline'
+                    }>
+                      {notification.type.replace('worker_', '').replace(/^\w/, c => c.toUpperCase())}
+                    </Badge>
                   </div>
-                )}
-                
-                {!notification.read && (
-                  <div className="flex justify-end mt-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => markAsRead(notification.id)}
-                    >
-                      Mark as read
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
+                  <p className="text-sm my-1">{notification.message}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(notification.created_at)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

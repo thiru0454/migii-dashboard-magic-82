@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -36,13 +37,9 @@ const App = () => (
                 <BrowserRouter>
                   <Toaster position="top-right" />
                   
-                  {/* Add language selector to all routes */}
-                  {/* <div className="fixed top-4 right-4 z-50">
-                    <LanguageSelector />
-                  </div> */}
-                  
                   <Routes>
-                    <Route path="/" element={<Index />} />
+                    {/* Redirect root to login */}
+                    <Route path="/" element={<Navigate to="/login" replace />} />
                     
                     {/* Protected Routes */}
                     <Route 
@@ -91,6 +88,7 @@ const App = () => (
                     <Route path="/worker" element={<Navigate to="/login?tab=worker" replace />} />
                     <Route path="/register" element={<Navigate to="/worker-registration" replace />} />
                     <Route path="/signin" element={<Navigate to="/login" replace />} />
+                    <Route path="/index" element={<Navigate to="/login" replace />} />
                     
                     {/* Catch-all */}
                     <Route path="*" element={<NotFound />} />

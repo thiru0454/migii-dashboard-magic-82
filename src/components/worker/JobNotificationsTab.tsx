@@ -2,11 +2,13 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, X, BellRing } from "lucide-react";
+import { Check, X, BellRing, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { getWorkerNotifications, updateNotificationStatus } from "@/utils/supabaseClient";
+import { getWorkerNotifications, updateNotificationStatus, markNotificationAsRead } from "@/utils/supabaseClient";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabase";
+import { format } from "date-fns";
 
 export function JobNotificationsTab() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -16,6 +18,28 @@ export function JobNotificationsTab() {
   useEffect(() => {
     if (currentUser?.id) {
       fetchNotifications();
+      
+      // Set up real-time subscription for notifications
+      const channel = supabase
+        .channel('worker_job_notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'worker_notifications',
+            filter: `worker_id=eq.${currentUser.id}`
+          },
+          () => {
+            console.log('Worker notification changed, refreshing...');
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [currentUser]);
 
@@ -29,6 +53,14 @@ export function JobNotificationsTab() {
       } else {
         console.log("Fetched notifications:", data);
         setNotifications(data || []);
+        
+        // Mark unread notifications as read when viewed
+        const unreadNotifications = data?.filter(n => n.status === 'unread') || [];
+        for (const notification of unreadNotifications) {
+          if (notification.id) {
+            await markNotificationAsRead(notification.id);
+          }
+        }
       }
     } catch (err) {
       console.error("Error in fetchNotifications:", err);
@@ -57,13 +89,18 @@ export function JobNotificationsTab() {
       );
       
       toast.success(`Job ${status} successfully`);
-      
-      // Also update the assignment status in worker_assignments table
-      // This would be handled by the updateNotificationStatus function
-      
     } catch (err) {
       console.error(`Error in handle${status}:`, err);
       toast.error(`Failed to ${status} job`);
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    try {
+      return format(new Date(dateString), 'PPP');
+    } catch (e) {
+      return dateString;
     }
   };
 
@@ -104,28 +141,45 @@ export function JobNotificationsTab() {
                 </Badge>
               </CardHeader>
               <CardContent className="p-4">
-                <p className="mb-4">{notification.message}</p>
-                {notification.action_required && notification.action_type === 'accept_decline' && (
-                  <div className="flex gap-2 justify-end">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleAcceptDecline(notification.id, 'declined')}
-                      className="border-destructive text-destructive hover:bg-destructive hover:text-white"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Decline
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleAcceptDecline(notification.id, 'accepted')}
-                      className="bg-primary text-primary-foreground"
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      Accept
-                    </Button>
-                  </div>
-                )}
+                <div className="space-y-3">
+                  <p>{notification.message}</p>
+                  {notification.created_at && (
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(notification.created_at)}
+                    </p>
+                  )}
+                  
+                  {notification.action_required && notification.status !== 'accepted' && notification.status !== 'declined' && (
+                    <div className="flex gap-2 mt-4">
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleAcceptDecline(notification.id, 'accepted')}
+                        className="bg-green-500 hover:bg-green-600 text-white flex items-center"
+                      >
+                        <Check className="mr-1 h-4 w-4" />
+                        Accept
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="destructive" 
+                        onClick={() => handleAcceptDecline(notification.id, 'declined')}
+                        className="flex items-center"
+                      >
+                        <X className="mr-1 h-4 w-4" />
+                        Decline
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {(notification.status === 'accepted' || notification.status === 'declined') && (
+                    <div className="text-sm mt-2">
+                      <span className="font-medium">Status:</span>{' '}
+                      <span className={notification.status === 'accepted' ? 'text-green-600' : 'text-red-600'}>
+                        You {notification.status} this assignment
+                      </span>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
