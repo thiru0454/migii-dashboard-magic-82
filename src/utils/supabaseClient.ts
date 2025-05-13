@@ -379,7 +379,24 @@ export async function getWorkerNotifications(workerId: string) {
 export async function updateNotificationStatus(notificationId: string, status: 'read' | 'accepted' | 'declined') {
   console.log(`Updating notification ${notificationId} status to ${status}`);
   
-  // First update the notification status
+  // First get the notification to get the worker_id
+  const { data: notificationData, error: fetchError } = await supabase
+    .from('worker_notifications')
+    .select('*')
+    .eq('id', notificationId)
+    .single();
+    
+  if (fetchError) {
+    console.error('Error fetching notification:', fetchError);
+    return { error: fetchError };
+  }
+  
+  if (!notificationData) {
+    console.error('No notification found with ID:', notificationId);
+    return { error: new Error('Notification not found') };
+  }
+  
+  // Now update the notification status
   const { data: notification, error: notificationError } = await supabase
     .from('worker_notifications')
     .update({ 
@@ -397,65 +414,79 @@ export async function updateNotificationStatus(notificationId: string, status: '
   }
 
   try {
-    // Get worker info and business info
+    // Get worker info
     const { data: workerData } = await supabase
       .from('workers')
-      .select('name')
+      .select('name, id')
       .eq('id', notification.worker_id)
       .single();
     
     const workerName = workerData?.name || notification.worker_name || 'Worker';
     
-    // Create a notification for the business
-    try {
-      // Find the related worker request based on worker_id
-      const { data: requestData } = await supabase
-        .from('worker_requests')
-        .select('business_id, id')
-        .eq('assigned_worker_id', notification.worker_id)
-        .single();
+    // Find the related worker request based on worker_id
+    const { data: requestData } = await supabase
+      .from('worker_requests')
+      .select('business_id, id')
+      .eq('assigned_worker_id', notification.worker_id);
       
-      if (requestData) {
-        // Create business notification
-        await supabase
-          .from('business_notifications')
-          .insert({
-            business_id: requestData.business_id,
-            type: `worker_${status}`,
-            message: `Worker ${workerName} has ${status} your job assignment`,
-            worker_id: notification.worker_id,
-            worker_name: workerName,
-            read: false,
-            created_at: new Date().toISOString()
-          });
-          
-        // Also update the request status
-        await supabase
-          .from('worker_requests')
-          .update({ status: status === 'declined' ? 'rejected' : status })
-          .eq('id', requestData.id);
-          
-        // Also update the notifications table with the response
-        const { data: notificationData } = await supabase
-          .from('notifications')
-          .select('id')
-          .eq('user_id', notification.worker_id)
-          .eq('type', 'assignment')
-          .order('created_at', { ascending: false })
-          .limit(1);
-          
-        if (notificationData && notificationData.length > 0) {
-          await supabase
-            .from('notifications')
-            .update({
-              response_status: status === 'read' ? null : status,
-              response_date: new Date().toISOString()
-            })
-            .eq('id', notificationData[0].id);
-        }
+    if (requestData && requestData.length > 0) {
+      const businessId = requestData[0].business_id;
+      
+      // Create business notification
+      const businessNotification = {
+        business_id: businessId,
+        type: `worker_${status}`,
+        message: `Worker ${workerName} has ${status} your job assignment`,
+        worker_id: notification.worker_id,
+        worker_name: workerName,
+        read: false,
+        created_at: new Date().toISOString()
+      };
+      
+      const { error: businessNotificationError } = await supabase
+        .from('business_notifications')
+        .insert(businessNotification);
+        
+      if (businessNotificationError) {
+        console.error("Error creating business notification:", businessNotificationError);
+      } else {
+        console.log("Created business notification about worker response:", businessNotification);
       }
-    } catch (error) {
-      console.error('Error creating business notification:', error);
+      
+      // Also update the request status
+      const { error: requestUpdateError } = await supabase
+        .from('worker_requests')
+        .update({ status: status === 'declined' ? 'rejected' : status })
+        .eq('id', requestData[0].id);
+        
+      if (requestUpdateError) {
+        console.error("Error updating request status:", requestUpdateError);
+      } else {
+        console.log(`Updated worker request ${requestData[0].id} to status ${status}`);
+      }
+    } else {
+      console.log("No worker request found for worker ID:", notification.worker_id);
+    }
+    
+    // Also update the notifications table with the response
+    const { data: generalNotificationData } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('user_id', notification.worker_id)
+      .eq('type', 'assignment')
+      .order('created_at', { ascending: false })
+      .limit(1);
+      
+    if (generalNotificationData && generalNotificationData.length > 0) {
+      await supabase
+        .from('notifications')
+        .update({
+          response_status: status === 'read' ? null : status,
+          response_date: new Date().toISOString()
+        })
+        .eq('id', generalNotificationData[0].id);
+        
+      console.log(`Updated general notification ${generalNotificationData[0].id} with response status ${status}`);
     }
   } catch (error) {
     console.error('Error handling worker notification status change:', error);

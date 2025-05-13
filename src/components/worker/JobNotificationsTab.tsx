@@ -30,8 +30,8 @@ export function JobNotificationsTab() {
             table: 'worker_notifications',
             filter: `worker_id=eq.${currentUser.id}`
           },
-          () => {
-            console.log('Worker notification changed, refreshing...');
+          (payload) => {
+            console.log('Worker notification changed:', payload);
             fetchNotifications();
           }
         )
@@ -46,12 +46,13 @@ export function JobNotificationsTab() {
   const fetchNotifications = async () => {
     setIsLoading(true);
     try {
+      console.log("Fetching notifications for worker ID:", currentUser?.id);
       const { data, error } = await getWorkerNotifications(currentUser?.id || '');
       if (error) {
         console.error("Error fetching notifications:", error);
         toast.error("Failed to load notifications");
       } else {
-        console.log("Fetched notifications:", data);
+        console.log("Fetched worker notifications:", data);
         setNotifications(data || []);
         
         // Mark unread notifications as read when viewed

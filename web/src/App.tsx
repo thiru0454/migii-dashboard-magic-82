@@ -36,43 +36,45 @@ function App() {
   return (
     <LanguageProvider>
       <Toaster position="top-right" />
-      {!isAuthenticated ? (
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/jobs" element={<Jobs />} />
-          <Route path="/worker-registration" element={<Navigate to="/worker-registration" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      ) : (
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/workers" element={<Workers />} />
-          <Route 
-            path="/workers/:workerId" 
-            element={
+      <Routes>
+        {/* Always redirect root to login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
+        {/* Public routes - accessible without authentication */}
+        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/jobs" element={<Jobs />} />
+        <Route path="/worker-registration" element={<Navigate to="/worker-registration" replace />} />
+        
+        {/* Protected routes - require authentication */}
+        <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />} />
+        <Route path="/workers" element={isAuthenticated ? <Workers /> : <Navigate to="/login" replace />} />
+        <Route 
+          path="/workers/:workerId" 
+          element={
+            isAuthenticated ? (
               <Suspense fallback={<LoadingFallback />}>
                 <WorkerDetails />
               </Suspense>
-            } 
-          />
-          <Route 
-            path="/assign-workers" 
-            element={
+            ) : <Navigate to="/login" replace />
+          } 
+        />
+        <Route 
+          path="/assign-workers" 
+          element={
+            isAuthenticated ? (
               <Suspense fallback={<LoadingFallback />}>
                 <AssignWorkers />
               </Suspense>
-            } 
-          />
-          <Route path="/location" element={<Location />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/jobs" element={<Jobs />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      )}
+            ) : <Navigate to="/login" replace />
+          } 
+        />
+        <Route path="/location" element={isAuthenticated ? <Location /> : <Navigate to="/login" replace />} />
+        <Route path="/analytics" element={isAuthenticated ? <Analytics /> : <Navigate to="/login" replace />} />
+        <Route path="/settings" element={isAuthenticated ? <Settings /> : <Navigate to="/login" replace />} />
+        
+        {/* Fallback route for any other path */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
     </LanguageProvider>
   );
 }

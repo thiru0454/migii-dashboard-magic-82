@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -238,11 +239,11 @@ export function AssignWorkersTab() {
             return false;
           }
           
-          // Create notification for the worker
+          // Create notification for the worker with improved details
           const workerNotification = {
             worker_id: workerId,
             type: 'assignment',
-            message: `You have been assigned to ${request.businessName || request.business_name}`,
+            message: `You have been assigned to work for ${request.businessName || request.business_name}. ${request.description ? `Job description: ${request.description}` : ''}`,
             status: 'unread',
             created_at: new Date().toISOString(),
             action_required: true,
@@ -256,6 +257,10 @@ export function AssignWorkersTab() {
             
           if (workerNotificationError) {
             console.error("Error creating worker notification:", workerNotificationError);
+            toast.error("Failed to send notification to worker");
+            return false;
+          } else {
+            console.log("Worker notification created successfully");
           }
           
           // Create notification for the business
