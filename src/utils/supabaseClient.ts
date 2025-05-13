@@ -153,6 +153,25 @@ export async function assignWorkerToBusiness(workerId: string, businessId: strin
     } else {
       console.log('Inserted into worker_assignments:', assignmentData);
       
+      // Create a notification for the worker in the notifications table
+      await supabase.from('notifications').insert([
+        {
+          user_id: formattedWorkerId,
+          type: 'assignment',
+          message: `You have been assigned to ${businessName}`,
+          read: false,
+          created_at: new Date().toISOString(),
+          metadata: {
+            business_id: businessId,
+            business_name: businessName,
+            job_id: assignmentData.id,
+            job_description: "New work assignment"
+          },
+          response_status: null,
+          response_date: null
+        }
+      ]);
+      
       // Create a notification for the worker in worker_notifications table
       await supabase.from('worker_notifications').insert([
         {
@@ -415,6 +434,25 @@ export async function updateNotificationStatus(notificationId: string, status: '
           .from('worker_requests')
           .update({ status: status === 'declined' ? 'rejected' : status })
           .eq('id', requestData.id);
+          
+        // Also update the notifications table with the response
+        const { data: notificationData } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', notification.worker_id)
+          .eq('type', 'assignment')
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (notificationData && notificationData.length > 0) {
+          await supabase
+            .from('notifications')
+            .update({
+              response_status: status === 'read' ? null : status,
+              response_date: new Date().toISOString()
+            })
+            .eq('id', notificationData[0].id);
+        }
       }
     } catch (error) {
       console.error('Error creating business notification:', error);
@@ -483,7 +521,9 @@ export async function ensureRequiredTables() {
         { name: 'message', type: 'text', isNullable: false },
         { name: 'read', type: 'boolean', defaultValue: 'false' },
         { name: 'created_at', type: 'timestamptz', defaultValue: 'now()' },
-        { name: 'metadata', type: 'jsonb', isNullable: true }
+        { name: 'metadata', type: 'jsonb', isNullable: true },
+        { name: 'response_status', type: 'text', isNullable: true },
+        { name: 'response_date', type: 'timestamptz', isNullable: true }
       ]
     },
     {
