@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 const workerSchema = new mongoose.Schema({
@@ -50,10 +51,22 @@ const workerSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: {
-      values: ['pending', 'approved', 'rejected'],
+      values: ['pending', 'approved', 'rejected', 'available', 'assigned'],
       message: '{VALUE} is not a valid status'
     },
     default: 'pending'
+  },
+  assignedBusinessId: {
+    type: String,
+    ref: 'Business',
+    sparse: true
+  },
+  assignmentStatus: {
+    type: String,
+    enum: {
+      values: ['pending', 'accepted', 'declined', 'completed'],
+      default: 'pending'
+    }
   },
   createdAt: {
     type: Date,
@@ -76,6 +89,7 @@ workerSchema.index({ phone: 1 });
 workerSchema.index({ email: 1 });
 workerSchema.index({ status: 1 });
 workerSchema.index({ createdAt: -1 });
+workerSchema.index({ assignedBusinessId: 1 });
 
 const Worker = mongoose.model('Worker', workerSchema);
 

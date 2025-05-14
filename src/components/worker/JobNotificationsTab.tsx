@@ -157,6 +157,14 @@ export function JobNotificationsTab() {
           created_at: new Date().toISOString()
         });
         
+        // Update worker status to "assigned" in workers table
+        await supabase
+          .from('workers')
+          .update({ status: 'assigned', assignedBusinessId: notification.business_id })
+          .eq('id', currentUser.id);
+          
+        toast.success("Assignment accepted successfully");
+        
         // Navigate to assignments tab to show the new assignment
         setTimeout(() => {
           navigate('/worker-dashboard', { state: { activeTab: 'assignments' } });
@@ -187,6 +195,14 @@ export function JobNotificationsTab() {
           read: false,
           created_at: new Date().toISOString()
         });
+        
+        // Update worker status to "available" in workers table
+        await supabase
+          .from('workers')
+          .update({ status: 'available', assignedBusinessId: null })
+          .eq('id', currentUser.id);
+          
+        toast.success("Assignment declined successfully");
       }
       
       // Update local state
@@ -194,7 +210,6 @@ export function JobNotificationsTab() {
         prev.map(n => n.id === notificationId ? { ...n, status: newStatus, action_required: false } : n)
       );
       
-      toast.success(`Assignment ${action === 'read' ? 'marked as read' : action + 'ed'} successfully`);
     } catch (error) {
       console.error(`Error handling notification action (${action}):`, error);
       toast.error(`Failed to ${action} notification`);

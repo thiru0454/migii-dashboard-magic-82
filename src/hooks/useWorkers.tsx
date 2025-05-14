@@ -64,7 +64,7 @@ export function useWorkers() {
     };
   }, []);
 
-  // Function to assign a worker to a business with improved error handling
+  // Function to assign a worker to a business with improved error handling and notification
   const assignWorker = async (workerId: string, businessId: string) => {
     setIsAssigning(true);
     try {
@@ -90,7 +90,7 @@ export function useWorkers() {
         )
       );
       
-      toast.success("Worker assigned successfully");
+      toast.success("Worker assigned successfully. Worker notification sent for approval.");
       setIsAssigning(false);
       return true;
     } catch (error: any) {

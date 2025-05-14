@@ -12,6 +12,7 @@ import { Briefcase, BellRing, ClipboardList, Bell, MapPin, Wrench, CheckCircle }
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function WorkerDashboard() {
   const [activeTab, setActiveTab] = useState<string>("profile");
@@ -25,6 +26,10 @@ export default function WorkerDashboard() {
     // If there's a specified tab in location state, use it
     if (location.state?.activeTab) {
       setActiveTab(location.state.activeTab);
+      // Show a toast if this is from an action
+      if (location.state?.message) {
+        toast.success(location.state.message);
+      }
     }
   }, [location]);
   
@@ -46,6 +51,8 @@ export default function WorkerDashboard() {
       
       if (data && !error) {
         setWorkerData(data);
+      } else {
+        console.error("Error fetching worker data:", error);
       }
       setLoading(false);
     };
@@ -104,13 +111,33 @@ export default function WorkerDashboard() {
           table: 'worker_notifications',
           filter: `worker_id=eq.${currentUser.id}`
         },
-        () => fetchUnreadCounts()
+        () => {
+          fetchUnreadCounts();
+          // If there's a new assignment notification, show a toast
+          toast.success("New job assignment received! Please check your notifications.");
+        }
+      )
+      .subscribe();
+      
+    // Also subscribe to worker table changes for profile updates
+    const workerChannel = supabase
+      .channel('worker_profile_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'workers',
+          filter: `id=eq.${currentUser.id}`
+        },
+        () => fetchWorkerData()
       )
       .subscribe();
       
     return () => {
       supabase.removeChannel(notificationsChannel);
       supabase.removeChannel(jobNotificationsChannel);
+      supabase.removeChannel(workerChannel);
     };
   }, []);
   

@@ -44,8 +44,26 @@ export function WorkerRequestsList() {
         }
       )
       .subscribe();
+      
+    // Also subscribe to worker_notifications for changes in acceptance/declines
+    const notificationChannel = supabase
+      .channel('worker_notifications_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'worker_notifications',
+        },
+        () => {
+          loadRequests();
+        }
+      )
+      .subscribe();
+      
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(notificationChannel);
     };
   }, []);
 
@@ -77,12 +95,41 @@ export function WorkerRequestsList() {
   const handleStatusChange = async (requestId: string, newStatus: "accepted" | "declined") => {
     setActionInProgress(requestId);
     try {
+      // Update the worker_requests table
       const { error } = await supabase
         .from("worker_requests")
         .update({ status: newStatus })
         .eq("id", requestId);
         
       if (error) throw error;
+      
+      // Get the current user
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      
+      // Get the business ID for this request
+      const request = requests.find(req => req.id === requestId);
+      if (!request) throw new Error("Request not found");
+      
+      // Create notification for the business
+      await supabase.from('business_notifications').insert({
+        business_id: request.business_id,
+        type: `worker_${newStatus}`,
+        message: `Worker ${currentUser.name || 'Worker'} has ${newStatus} your job assignment`,
+        worker_id: currentUser.id,
+        worker_name: currentUser.name || 'Worker',
+        read: false,
+        created_at: new Date().toISOString()
+      });
+      
+      // Update worker status in workers table
+      const statusUpdate = newStatus === "accepted" 
+        ? { status: 'assigned', assignedBusinessId: request.business_id }
+        : { status: 'available', assignedBusinessId: null };
+        
+      await supabase
+        .from('workers')
+        .update(statusUpdate)
+        .eq('id', currentUser.id);
       
       // Update local state
       setRequests(prev => 

@@ -11,7 +11,6 @@ type ToastProps = {
   variant?: "default" | "destructive";
 };
 
-// Create a hook for accessing toast functionality
 export function useToast() {
   const [toasts, setToasts] = useState<ToastProps[]>([]);
 
@@ -26,24 +25,38 @@ export function useToast() {
     
     const newToast = {
       ...props,
-      id
+      id,
     };
     
-    setToasts((prevToasts) => [...prevToasts, newToast]);
+    setToasts((currentToasts) => [...currentToasts, newToast]);
     
     return id;
   };
 
-  const dismissToast = (id: string | number) => {
-    toast.dismiss(id);
-    setToasts((prevToasts) => prevToasts.filter(toast => toast.id !== id));
+  const dismissToast = (id: string) => {
+    setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
   };
 
   return {
     toast: showToast,
-    dismiss: dismissToast,
-    toasts
+    toasts,
+    dismissToast,
   };
 }
 
-export { toast };
+export const toast = {
+  success: (title: string, options?: Omit<ToastProps, "title" | "variant">) => {
+    return toast({
+      ...options,
+      title,
+      variant: "default",
+    });
+  },
+  error: (title: string, options?: Omit<ToastProps, "title" | "variant">) => {
+    return toast({
+      ...options,
+      title,
+      variant: "destructive",
+    });
+  },
+};
