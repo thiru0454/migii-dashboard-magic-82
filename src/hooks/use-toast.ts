@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast as sonnerToast } from "sonner";
 
 // Define types for toast functionality
 type ToastProps = {
@@ -18,7 +18,7 @@ export function useToast() {
     // Use the toast function from sonner
     const id = props.id || String(Math.random());
     
-    toast(props.title as string, {
+    sonnerToast(props.title as string, {
       description: props.description,
       action: props.action,
     });
@@ -44,19 +44,22 @@ export function useToast() {
   };
 }
 
+// Create a standalone toast object with methods for different toast types
 export const toast = {
   success: (title: string, options?: Omit<ToastProps, "title" | "variant">) => {
-    return toast({
-      ...options,
-      title,
-      variant: "default",
-    });
+    sonnerToast.success(title, options);
+    return String(Math.random());
   },
   error: (title: string, options?: Omit<ToastProps, "title" | "variant">) => {
-    return toast({
-      ...options,
-      title,
-      variant: "destructive",
-    });
+    sonnerToast.error(title, options);
+    return String(Math.random());
   },
+  // Add a default method to match the showToast function signature
+  default: (props: ToastProps) => {
+    sonnerToast(props.title as string, {
+      description: props.description,
+      action: props.action,
+    });
+    return String(Math.random());
+  }
 };
