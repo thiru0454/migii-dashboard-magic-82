@@ -1,6 +1,5 @@
 
 import { useToast } from "@/hooks/use-toast";
-import { Toast } from "sonner";
 
 export function Toaster() {
   const { toasts } = useToast();
@@ -8,7 +7,10 @@ export function Toaster() {
   return (
     <div>
       {toasts.map((toast) => (
-        <Toast key={toast.id} {...toast} />
+        <div key={toast.id}>
+          {toast.title && <div>{toast.title}</div>}
+          {toast.description && <div>{toast.description}</div>}
+        </div>
       ))}
     </div>
   );

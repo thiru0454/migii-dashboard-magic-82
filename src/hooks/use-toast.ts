@@ -3,8 +3,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 // Define types for toast functionality
-type ToastProps = Parameters<typeof toast>[0] & {
+type ToastProps = {
   id?: string;
+  title?: React.ReactNode;
   description?: React.ReactNode;
   action?: React.ReactNode;
   variant?: "default" | "destructive";
@@ -15,7 +16,13 @@ export function useToast() {
   const [toasts, setToasts] = useState<ToastProps[]>([]);
 
   const showToast = (props: ToastProps) => {
-    const id = toast(props);
+    // Use the toast function from sonner
+    const id = props.id || String(Math.random());
+    
+    toast(props.title as string, {
+      description: props.description,
+      action: props.action,
+    });
     
     const newToast = {
       ...props,
