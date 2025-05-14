@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { T } from "@/components/T";
 import { Briefcase, BellRing, ClipboardList, Bell, MapPin, Wrench, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
+import { useLocation } from "react-router-dom";
 
 export default function WorkerDashboard() {
   const [activeTab, setActiveTab] = useState<string>("profile");
@@ -17,6 +19,14 @@ export default function WorkerDashboard() {
   const [unreadJobNotifications, setUnreadJobNotifications] = useState(0);
   const [workerData, setWorkerData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  
+  useEffect(() => {
+    // If there's a specified tab in location state, use it
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location]);
   
   useEffect(() => {
     // Get current user from localStorage

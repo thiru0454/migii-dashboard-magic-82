@@ -1,54 +1,42 @@
 
-import { toast as sonnerToast } from "sonner";
+import { useState } from "react";
+import { toast } from "sonner";
 
-export type ToastProps = {
-  title?: string;
-  description?: string;
+// Define types for toast functionality
+type ToastProps = Parameters<typeof toast>[0] & {
+  id?: string;
+  description?: React.ReactNode;
   action?: React.ReactNode;
   variant?: "default" | "destructive";
-  id?: string;
-  [key: string]: any;
 };
 
-// Array to keep track of created toasts for the toaster component
-const toasts: ToastProps[] = [];
+// Create a hook for accessing toast functionality
+export function useToast() {
+  const [toasts, setToasts] = useState<ToastProps[]>([]);
 
-export function toast(props: ToastProps | string) {
-  if (typeof props === "string") {
-    return sonnerToast(props);
-  }
-
-  const { title, description, ...rest } = props;
-  
-  // Create unique ID if not provided
-  const id = rest.id || Date.now().toString();
-  
-  // Keep track of the toast for the toaster component
-  const newToast = {
-    id,
-    title,
-    description,
-    ...rest
+  const showToast = (props: ToastProps) => {
+    const id = toast(props);
+    
+    const newToast = {
+      ...props,
+      id
+    };
+    
+    setToasts((prevToasts) => [...prevToasts, newToast]);
+    
+    return id;
   };
-  
-  toasts.push(newToast);
-  
-  // Limit stored toasts to most recent 5
-  if (toasts.length > 5) {
-    toasts.shift();
-  }
-  
-  // Use sonner's toast functionality
-  return sonnerToast(title || "", {
-    id,
-    description,
-    ...rest,
-  });
+
+  const dismissToast = (id: string | number) => {
+    toast.dismiss(id);
+    setToasts((prevToasts) => prevToasts.filter(toast => toast.id !== id));
+  };
+
+  return {
+    toast: showToast,
+    dismiss: dismissToast,
+    toasts
+  };
 }
 
-export const useToast = () => {
-  return {
-    toast,
-    toasts, // Return the toasts array so it's available to components
-  };
-};
+export { toast };

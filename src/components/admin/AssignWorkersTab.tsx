@@ -117,6 +117,7 @@ export function AssignWorkersTab() {
         createdAt: req.created_at,
         description: req.description,
         skill: req.skill,
+        duration: req.duration,
         assignedWorkers: req.assigned_workers || [],
         // Add required fields from WorkerRequest interface with default values
         contactPerson: req.contact_person || "",
@@ -264,7 +265,9 @@ export function AssignWorkersTab() {
             created_at: new Date().toISOString(),
             action_required: true,
             action_type: 'accept_decline',
-            title: `New Assignment: ${request.businessName || request.business_name}`
+            title: `New Assignment: ${request.businessName || request.business_name}`,
+            business_id: businessId,
+            duration: request.duration || "Not specified"
           };
           
           const { error: workerNotificationError } = await supabase
