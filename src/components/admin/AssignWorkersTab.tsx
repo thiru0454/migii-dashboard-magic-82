@@ -29,6 +29,7 @@ interface WorkerRequest {
   business_name?: string;
   workers_needed?: number;
   skill?: string;
+  duration?: string;
 }
 
 export function AssignWorkersTab() {
@@ -288,7 +289,7 @@ export function AssignWorkersTab() {
             skill_required: request.requiredSkills || request.skill || "Not specified",
             created_at: new Date().toISOString(),
             location: "Job site", // Default location
-            duration: request.duration || "As needed" // Default duration
+            duration: request.duration || "As needed" // Fixed: Use the request.duration if available, otherwise default to "As needed"
           };
           
           const { error: assignmentError } = await supabase
