@@ -24,25 +24,49 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
 
     const fetchWorkers = async () => {
       try {
-        const { data, error } = await getAllWorkers();
+        // Add timeout to prevent infinite loading state
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        );
+
+        const fetchPromise = getAllWorkers();
+        
+        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+        
         console.log("WorkersContext: Initial fetch result:", { data, error });
         
         if (error) {
-          toast.error("Failed to fetch workers");
           console.error("Error fetching workers:", error);
-        } else {
-          // Ensure all worker IDs are strings
-          const formattedWorkers = data?.map(worker => ({
-            ...worker,
-            id: String(worker.id),
-            skill: worker.primary_skill || worker.skill,
-            originState: worker.origin_state || worker.originState
-          })) || [];
-          setWorkers(formattedWorkers);
+          toast.error("Failed to fetch workers. Please check your connection and try again.");
+          return;
         }
+
+        if (!data) {
+          console.warn("No data received from workers fetch");
+          toast.error("No worker data available");
+          return;
+        }
+
+        // Ensure all worker IDs are strings
+        const formattedWorkers = data.map(worker => ({
+          ...worker,
+          id: String(worker.id),
+          skill: worker.primary_skill || worker.skill,
+          originState: worker.origin_state || worker.originState
+        }));
+
+        setWorkers(formattedWorkers);
       } catch (err) {
         console.error("Error in fetchWorkers:", err);
-        toast.error("Failed to fetch workers");
+        
+        // Provide more specific error messages based on the error type
+        if (err instanceof TypeError && err.message === 'Failed to fetch') {
+          toast.error("Network error. Please check your internet connection.");
+        } else if (err instanceof Error && err.message === 'Request timeout') {
+          toast.error("Request timed out. Please try again.");
+        } else {
+          toast.error("Failed to fetch workers. Please try again later.");
+        }
       } finally {
         setIsLoading(false);
       }
