@@ -7,7 +7,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { sendOtpEmail, verifyOtp } from "@/utils/emailService";
+import { sendOtpEmail } from "@/utils/emailService";
+import { verifyOtp } from "@/utils/firebase";
 import { toast } from "sonner";
 import { AlertCircle, Loader2, Mail, MessageSquare, Phone, Timer } from "lucide-react";
 import { getAllWorkers } from "@/utils/supabaseClient";
@@ -361,7 +362,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   return (
     <div className="space-y-6">
       {error && (
-        <Alert variant="destructive\" className="animate-in fade-in slide-in-from-top duration-300">
+        <Alert variant="destructive" className="animate-in fade-in slide-in-from-top duration-300">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -401,7 +402,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Sending OTP...
                 </>
               ) : (
@@ -460,7 +461,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Verifying...
                 </>
               ) : (
