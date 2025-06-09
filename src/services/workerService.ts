@@ -35,10 +35,8 @@ export async function registerNewWorker(workerData: Omit<{
       throw new Error('Missing required fields');
     }
 
-    // Map fields to match MigrantWorker type structure
-    // We need to match both camelCase properties and those with spaces
+    // Map fields to match database schema with standard naming conventions
     const workerPayload = {
-      // Standard fields
       name: workerData.name,
       age: parsedAge,
       phone: workerData.phone,
@@ -48,18 +46,7 @@ export async function registerNewWorker(workerData: Omit<{
       originState: workerData.originState,
       photoUrl: workerData.photoUrl || null,
       status: "active" as const,
-      // Fields with spaces (needed for MigrantWorker type)
-      "Full Name": workerData.name,
-      "Age": parsedAge,
-      "Phone Number": workerData.phone,
-      "Email Address": workerData.email || "",
-      "Primary Skill": workerData.skill,
-      "Origin State": workerData.originState,
-      "Photo URL": workerData.photoUrl || null,
-      "Aadhaar Number": workerData.aadhaar,
-      // Required fields from MigrantWorker type
       registrationDate: new Date().toISOString(),
-      // Geographic data
       latitude: typeof workerData.latitude === 'number' ? workerData.latitude : null,
       longitude: typeof workerData.longitude === 'number' ? workerData.longitude : null
     };
