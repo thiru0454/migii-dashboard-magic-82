@@ -10,7 +10,7 @@ import { supabase } from "@/utils/supabaseClient";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { sendJobPostingNotifications } from "@/services/emailService";
+import { sendJobNotificationEmail } from "@/utils/emailService";
 
 interface JobFormData {
   title: string;
@@ -35,6 +35,7 @@ interface WorkerSkill {
     name: string;
     experience: number;
     rating: number;
+    email: string;
   }>;
 }
 
@@ -124,27 +125,35 @@ export function JobsTab() {
 
       if (notificationError) throw notificationError;
 
-      // Send email notifications to matching workers
-      if (jobData) {
-        sendJobPostingNotifications({
-          id: jobData.id,
-          title: jobData.title,
-          company: jobData.company,
-          location: jobData.location,
-          description: jobData.description,
-          salary: jobData.salary,
-          category: jobData.category
-        }, jobData.category)
-          .then(success => {
-            if (success) {
-              console.log("Job notification emails sent successfully");
-            } else {
-              console.log("Some job notification emails failed to send");
-            }
-          })
-          .catch(err => {
-            console.error("Error sending job notification emails:", err);
-          });
+      // Find workers with matching skills to notify them
+      const { data: matchingWorkers, error: workersError } = await supabase
+        .from('workers')
+        .select('id, name, email, skill')
+        .eq('status', 'active')
+        .ilike('skill', `%${formData.category}%`);
+
+      if (!workersError && matchingWorkers && matchingWorkers.length > 0) {
+        // Format workers for email notification
+        const workersToNotify = matchingWorkers
+          .filter(worker => worker.email) // Only notify workers with email
+          .map(worker => ({
+            name: worker.name,
+            email: worker.email
+          }));
+
+        if (workersToNotify.length > 0) {
+          // Send email notification to matching workers
+          await sendJobNotificationEmail(
+            {
+              title: formData.title,
+              company: formData.company,
+              location: formData.location,
+              description: formData.description,
+              salary: formData.salary
+            },
+            workersToNotify
+          );
+        }
       }
 
       toast.success("Job posted successfully! Waiting for admin approval.");
