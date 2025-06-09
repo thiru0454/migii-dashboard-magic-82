@@ -24,44 +24,65 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
 
     const fetchWorkers = async () => {
       try {
-        // Add timeout to prevent infinite loading state
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
-        );
-
-        const fetchPromise = getAllWorkers();
+        setIsLoading(true);
         
-        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-        
-        console.log("WorkersContext: Initial fetch result:", { data, error });
-        
-        if (error) {
-          console.error("Error fetching workers:", error);
-          toast.error("Failed to fetch workers. Please check your connection and try again.");
+        // Check if environment variables are available
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+          console.error("Missing Supabase environment variables");
+          toast.error("Database configuration error. Please check environment variables.");
+          setIsLoading(false);
           return;
         }
 
-        if (!data) {
+        console.log("Fetching workers from Supabase...");
+        const result = await getAllWorkers();
+        
+        console.log("WorkersContext: Fetch result:", result);
+        
+        if (result.error) {
+          console.error("Error fetching workers:", result.error);
+          
+          // Provide more specific error messages
+          if (result.error.message?.includes('Failed to fetch')) {
+            toast.error("Unable to connect to the database. Please check your internet connection.");
+          } else if (result.error.message?.includes('JWT')) {
+            toast.error("Authentication error. Please refresh the page.");
+          } else {
+            toast.error("Failed to fetch workers. Please try again later.");
+          }
+          return;
+        }
+
+        if (!result.data) {
           console.warn("No data received from workers fetch");
-          toast.error("No worker data available");
+          setWorkers([]);
           return;
         }
 
         // Ensure all worker IDs are strings and map database fields to component fields
-        const formattedWorkers = data.map(worker => ({
+        const formattedWorkers = result.data.map(worker => ({
           ...worker,
           id: String(worker.id),
           skill: worker.primary_skill || worker.skill,
           originState: worker.origin_state || worker.originState
         }));
 
+        console.log("Setting workers:", formattedWorkers);
         setWorkers(formattedWorkers);
+        
+        // Store in localStorage as backup
+        try {
+          localStorage.setItem('workers', JSON.stringify(formattedWorkers));
+        } catch (storageError) {
+          console.warn("Could not save to localStorage:", storageError);
+        }
+        
       } catch (err) {
         console.error("Error in fetchWorkers:", err);
         
         // Provide more specific error messages based on the error type
-        if (err instanceof TypeError && err.message === 'Failed to fetch') {
-          toast.error("Network error. Please check your internet connection.");
+        if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+          toast.error("Network error. Please check your internet connection and try again.");
         } else if (err instanceof Error && err.message === 'Request timeout') {
           toast.error("Request timed out. Please try again.");
         } else {
@@ -75,41 +96,72 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
     fetchWorkers();
 
     // Set up real-time subscription
-    const subscription = subscribeToWorkers(() => {
-      console.log("WorkersContext: Subscription triggered, fetching updates...");
-      fetchWorkers();
-    });
-    
-    unsubscribeFunc = () => {
+    try {
+      const subscription = subscribeToWorkers(() => {
+        console.log("WorkersContext: Subscription triggered, fetching updates...");
+        fetchWorkers();
+      });
+      
       if (subscription) {
-        subscription.unsubscribe();
+        unsubscribeFunc = () => {
+          subscription.unsubscribe();
+        };
       }
-    };
+    } catch (subscriptionError) {
+      console.error("Error setting up subscription:", subscriptionError);
+    }
 
     return () => {
-      if (unsubscribeFunc) unsubscribeFunc();
+      if (unsubscribeFunc) {
+        unsubscribeFunc();
+      }
     };
   }, []);
 
   const addWorker = (worker: MigrantWorker) => {
     console.log("WorkersContext: Adding worker:", worker);
-    setWorkers(prev => [...prev, worker]);
+    setWorkers(prev => {
+      const updated = [...prev, worker];
+      // Update localStorage
+      try {
+        localStorage.setItem('workers', JSON.stringify(updated));
+      } catch (error) {
+        console.warn("Could not update localStorage:", error);
+      }
+      return updated;
+    });
   };
 
   const updateWorker = (workerId: string, updates: Partial<MigrantWorker>) => {
     console.log("WorkersContext: Updating worker:", { workerId, updates });
-    setWorkers(prev =>
-      prev.map(worker =>
+    setWorkers(prev => {
+      const updated = prev.map(worker =>
         worker.id === workerId
           ? { ...worker, ...updates }
           : worker
-      )
-    );
+      );
+      // Update localStorage
+      try {
+        localStorage.setItem('workers', JSON.stringify(updated));
+      } catch (error) {
+        console.warn("Could not update localStorage:", error);
+      }
+      return updated;
+    });
   };
 
   const removeWorker = (workerId: string) => {
     console.log("WorkersContext: Removing worker:", workerId);
-    setWorkers(prev => prev.filter(worker => worker.id !== workerId));
+    setWorkers(prev => {
+      const updated = prev.filter(worker => worker.id !== workerId);
+      // Update localStorage
+      try {
+        localStorage.setItem('workers', JSON.stringify(updated));
+      } catch (error) {
+        console.warn("Could not update localStorage:", error);
+      }
+      return updated;
+    });
   };
 
   const value = {
