@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 import { toast } from "sonner";
 
 // Configure nodemailer with Gmail SMTP
-const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransporter({
   service: 'gmail',
   auth: {
     user: 'migiiworker@gmail.com',
@@ -245,6 +245,99 @@ export const sendBusinessNotificationEmail = async (
     return success;
   } catch (error: any) {
     console.error('Error sending business notification email:', error);
+    return false;
+  }
+};
+
+// Send job application confirmation email to worker
+export const sendJobApplicationConfirmation = async (
+  worker: { name: string; email: string },
+  job: { title: string; company: string; id: string }
+): Promise<boolean> => {
+  try {
+    const subject = `Job Application Confirmation - ${job.title}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+        <h2 style="color: #8B5CF6; text-align: center;">Migii Worker Portal</h2>
+        <h3 style="text-align: center;">Application Confirmation</h3>
+        <p>Hello ${worker.name},</p>
+        <p>Thank you for applying to the following position:</p>
+        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h4 style="margin: 5px 0; color: #4F46E5;">${job.title}</h4>
+          <p style="margin: 5px 0;"><strong>Company:</strong> ${job.company}</p>
+          <p style="margin: 5px 0;"><strong>Application ID:</strong> ${job.id}</p>
+          <p style="margin: 5px 0;"><strong>Date Applied:</strong> ${new Date().toLocaleString()}</p>
+        </div>
+        <p>Your application has been successfully submitted. The employer will review your application and contact you if you're selected for an interview.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/worker-login" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Application Status</a>
+        </div>
+        <p style="margin-top: 20px; font-size: 12px; color: #6b7280;">
+          Good luck with your application!
+        </p>
+        <p style="margin-top: 30px; font-size: 12px; color: #6b7280; text-align: center;">
+          &copy; ${new Date().getFullYear()} Migii Worker Portal. All rights reserved.
+        </p>
+      </div>
+    `;
+    
+    const success = await sendEmail(worker.email, subject, html);
+    
+    if (success) {
+      toast.success(`Application confirmation sent to ${worker.name}`);
+    }
+    
+    return success;
+  } catch (error: any) {
+    console.error('Error sending job application confirmation:', error);
+    return false;
+  }
+};
+
+// Send job application notification to business
+export const sendJobApplicationNotificationToBusiness = async (
+  business: { name: string; email: string },
+  worker: { name: string; id: string; skill: string },
+  job: { title: string; id: string }
+): Promise<boolean> => {
+  try {
+    const subject = `New Job Application - ${job.title}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+        <h2 style="color: #8B5CF6; text-align: center;">Migii Business Portal</h2>
+        <h3 style="text-align: center;">New Job Application</h3>
+        <p>Hello ${business.name},</p>
+        <p>You have received a new application for your job posting:</p>
+        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h4 style="margin: 5px 0; color: #4F46E5;">${job.title}</h4>
+          <p style="margin: 5px 0;"><strong>Job ID:</strong> ${job.id}</p>
+        </div>
+        <div style="background-color: #f0fdf4; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #22c55e;">
+          <h4 style="margin: 5px 0; color: #22c55e;">Applicant Details</h4>
+          <p style="margin: 5px 0;"><strong>Worker Name:</strong> ${worker.name}</p>
+          <p style="margin: 5px 0;"><strong>Worker ID:</strong> ${worker.id}</p>
+          <p style="margin: 5px 0;"><strong>Skill:</strong> ${worker.skill}</p>
+          <p style="margin: 5px 0;"><strong>Application Date:</strong> ${new Date().toLocaleString()}</p>
+        </div>
+        <p>Log in to your Migii Business Portal to review the application and contact the worker.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/login?tab=business" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review Application</a>
+        </div>
+        <p style="margin-top: 30px; font-size: 12px; color: #6b7280; text-align: center;">
+          &copy; ${new Date().getFullYear()} Migii Business Portal. All rights reserved.
+        </p>
+      </div>
+    `;
+    
+    const success = await sendEmail(business.email, subject, html);
+    
+    if (success) {
+      toast.success(`Application notification sent to ${business.name}`);
+    }
+    
+    return success;
+  } catch (error: any) {
+    console.error('Error sending job application notification to business:', error);
     return false;
   }
 };
