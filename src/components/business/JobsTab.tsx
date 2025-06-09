@@ -365,7 +365,7 @@ export function JobsTab() {
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner size="sm\" className="mr-2" />
                   Posting Job...
                 </>
               ) : (
