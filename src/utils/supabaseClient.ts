@@ -12,12 +12,60 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true
-  }
+  },
+  global: {
+    fetch: (url, options = {}) => {
+      return fetch(url, {
+        ...options,
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+    },
+  },
 });
+
+// Test Supabase connection
+export async function testSupabaseConnection() {
+  try {
+    const { data, error } = await supabase
+      .from('workers')
+      .select('count', { count: 'exact', head: true });
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      return { connected: false, error };
+    }
+    
+    console.log('Supabase connection test successful');
+    return { connected: true, error: null };
+  } catch (error) {
+    console.error('Supabase connection test error:', error);
+    return { connected: false, error };
+  }
+}
 
 // Get all workers
 export async function getAllWorkers() {
   try {
+    // First test the connection
+    const connectionTest = await testSupabaseConnection();
+    if (!connectionTest.connected) {
+      console.warn('Supabase connection failed, using fallback data');
+      
+      // Try to get from localStorage as fallback
+      try {
+        const storedWorkers = localStorage.getItem('workers');
+        if (storedWorkers) {
+          console.log('Using fallback data from localStorage');
+          return { data: JSON.parse(storedWorkers), error: null };
+        }
+      } catch (storageError) {
+        console.error('Error reading from localStorage:', storageError);
+      }
+      
+      // Return empty array if no fallback data available
+      return { data: [], error: connectionTest.error };
+    }
+
     const { data, error } = await supabase
       .from('workers')
       .select('*')
@@ -43,7 +91,7 @@ export async function getAllWorkers() {
       console.error('Error reading from localStorage:', storageError);
     }
     
-    return { data: null, error };
+    return { data: [], error };
   }
 }
 
@@ -64,7 +112,7 @@ export async function getActiveJobs() {
     return { data, error: null };
   } catch (error) {
     console.error('Error fetching active jobs:', error);
-    return { data: null, error };
+    return { data: [], error };
   }
 }
 

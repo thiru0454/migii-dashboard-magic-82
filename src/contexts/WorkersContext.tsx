@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { MigrantWorker } from "@/types/worker";
-import { getAllWorkers, subscribeToWorkers } from "@/utils/supabaseClient";
+import { getAllWorkers, subscribeToWorkers, testSupabaseConnection } from "@/utils/supabaseClient";
 import { toast } from "sonner";
 
 interface WorkersContextType {
@@ -9,6 +9,7 @@ interface WorkersContextType {
   updateWorker: (workerId: string, updates: Partial<MigrantWorker>) => void;
   removeWorker: (workerId: string) => void;
   isLoading: boolean;
+  connectionStatus: 'connected' | 'disconnected' | 'testing';
 }
 
 const WorkersContext = createContext<WorkersContextType | undefined>(undefined);
@@ -16,6 +17,7 @@ const WorkersContext = createContext<WorkersContextType | undefined>(undefined);
 export function WorkersProvider({ children }: { children: ReactNode }) {
   const [workers, setWorkers] = useState<MigrantWorker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'testing'>('testing');
 
   // Fetch initial workers data
   useEffect(() => {
@@ -25,15 +27,43 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
     const fetchWorkers = async () => {
       try {
         setIsLoading(true);
+        setConnectionStatus('testing');
         
         // Check if environment variables are available
         if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
           console.error("Missing Supabase environment variables");
           toast.error("Database configuration error. Please check environment variables.");
+          setConnectionStatus('disconnected');
           setIsLoading(false);
           return;
         }
 
+        // Test connection first
+        console.log("Testing Supabase connection...");
+        const connectionTest = await testSupabaseConnection();
+        
+        if (!connectionTest.connected) {
+          console.warn("Supabase connection failed:", connectionTest.error);
+          setConnectionStatus('disconnected');
+          
+          // Try to load from localStorage
+          try {
+            const storedWorkers = localStorage.getItem('workers');
+            if (storedWorkers) {
+              const parsedWorkers = JSON.parse(storedWorkers);
+              setWorkers(parsedWorkers);
+              toast.warning("Using offline data. Some features may be limited.");
+              return;
+            }
+          } catch (storageError) {
+            console.error('Error reading from localStorage:', storageError);
+          }
+          
+          toast.error("Unable to connect to database. Please check your internet connection.");
+          return;
+        }
+
+        setConnectionStatus('connected');
         console.log("Fetching workers from Supabase...");
         const result = await getAllWorkers();
         
@@ -79,6 +109,20 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
         
       } catch (err) {
         console.error("Error in fetchWorkers:", err);
+        setConnectionStatus('disconnected');
+        
+        // Try to load from localStorage as fallback
+        try {
+          const storedWorkers = localStorage.getItem('workers');
+          if (storedWorkers) {
+            const parsedWorkers = JSON.parse(storedWorkers);
+            setWorkers(parsedWorkers);
+            toast.warning("Using offline data. Some features may be limited.");
+            return;
+          }
+        } catch (storageError) {
+          console.error('Error reading from localStorage:', storageError);
+        }
         
         // Provide more specific error messages based on the error type
         if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
@@ -95,21 +139,28 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
 
     fetchWorkers();
 
-    // Set up real-time subscription
-    try {
-      const subscription = subscribeToWorkers(() => {
-        console.log("WorkersContext: Subscription triggered, fetching updates...");
-        fetchWorkers();
-      });
-      
-      if (subscription) {
-        unsubscribeFunc = () => {
-          subscription.unsubscribe();
-        };
+    // Set up real-time subscription only if connected
+    const setupSubscription = async () => {
+      try {
+        if (connectionStatus === 'connected') {
+          const subscription = subscribeToWorkers(() => {
+            console.log("WorkersContext: Subscription triggered, fetching updates...");
+            fetchWorkers();
+          });
+          
+          if (subscription) {
+            unsubscribeFunc = () => {
+              subscription.unsubscribe();
+            };
+          }
+        }
+      } catch (subscriptionError) {
+        console.error("Error setting up subscription:", subscriptionError);
       }
-    } catch (subscriptionError) {
-      console.error("Error setting up subscription:", subscriptionError);
-    }
+    };
+
+    // Setup subscription after initial fetch
+    setTimeout(setupSubscription, 1000);
 
     return () => {
       if (unsubscribeFunc) {
@@ -169,7 +220,8 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
     addWorker,
     updateWorker,
     removeWorker,
-    isLoading
+    isLoading,
+    connectionStatus
   };
 
   return (
