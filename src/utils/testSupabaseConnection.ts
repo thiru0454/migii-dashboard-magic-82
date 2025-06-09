@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 export async function testSupabaseConnection() {
   try {
@@ -48,4 +48,4 @@ export async function testSupabaseConnection() {
       error
     };
   }
-} 
+}

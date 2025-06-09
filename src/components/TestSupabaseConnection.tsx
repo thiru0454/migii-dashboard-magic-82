@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { testSupabaseConnection } from '@/utils/testSupabaseConnection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 export function TestSupabaseConnection() {
   const [testResult, setTestResult] = useState<any>(null);
@@ -31,7 +32,12 @@ export function TestSupabaseConnection() {
           disabled={isLoading}
           className="mb-4"
         >
-          {isLoading ? 'Testing...' : 'Run Connection Test'}
+          {isLoading ? (
+            <>
+              <LoadingSpinner size="sm" className="mr-2" />
+              Testing...
+            </>
+          ) : 'Run Connection Test'}
         </Button>
 
         {testResult && (
@@ -42,21 +48,21 @@ export function TestSupabaseConnection() {
             
             <div className="space-y-2">
               <h4 className="font-medium">Auth Test:</h4>
-              <pre className="bg-gray-100 p-2 rounded">
+              <pre className="bg-gray-100 p-2 rounded overflow-auto max-h-40">
                 {JSON.stringify(testResult.auth, null, 2)}
               </pre>
             </div>
 
             <div className="space-y-2">
               <h4 className="font-medium">Insert Test:</h4>
-              <pre className="bg-gray-100 p-2 rounded">
+              <pre className="bg-gray-100 p-2 rounded overflow-auto max-h-40">
                 {JSON.stringify(testResult.insert, null, 2)}
               </pre>
             </div>
 
             <div className="space-y-2">
               <h4 className="font-medium">Read Test:</h4>
-              <pre className="bg-gray-100 p-2 rounded">
+              <pre className="bg-gray-100 p-2 rounded overflow-auto max-h-40">
                 {JSON.stringify(testResult.read, null, 2)}
               </pre>
             </div>
@@ -64,7 +70,7 @@ export function TestSupabaseConnection() {
             {testResult.error && (
               <div className="space-y-2">
                 <h4 className="font-medium text-red-500">Error:</h4>
-                <pre className="bg-red-50 p-2 rounded text-red-700">
+                <pre className="bg-red-50 p-2 rounded text-red-700 overflow-auto max-h-40">
                   {JSON.stringify(testResult.error, null, 2)}
                 </pre>
               </div>
@@ -74,4 +80,4 @@ export function TestSupabaseConnection() {
       </CardContent>
     </Card>
   );
-} 
+}
