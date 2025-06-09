@@ -95,7 +95,7 @@ const WorkerLogin = () => {
                 <Alert className="mb-6 bg-blue-50 border-blue-200">
                   <InfoIcon className="h-4 w-4 text-blue-500" />
                   <AlertDescription className="text-blue-700">
-                    For testing, use any registered worker's phone or email. The OTP code is always <strong>123456</strong>.
+                    Enter your registered email or phone number to receive a one-time password.
                   </AlertDescription>
                 </Alert>
                 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -37,6 +37,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const isMobile = useIsMobile();
   const { currentUser, login, logout } = useAuth();
   const [otpSent, setOtpSent] = useState(false);
+  const [emailSentTo, setEmailSentTo] = useState<string | null>(null);
 
   const contactForm = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
@@ -111,7 +112,15 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       // Get the email to send OTP to
       const emailToUse = isEmail 
         ? contactValue 
-        : (worker.email || worker["Email Address"] || `${contactValue}@migii.worker.temp`);
+        : (worker.email || worker["Email Address"]);
+        
+      if (!emailToUse) {
+        setError("No email address found for this worker. Please contact support.");
+        setIsLoading(false);
+        return;
+      }
+      
+      setEmailSentTo(emailToUse);
       
       // Actually send the OTP email
       const sent = await sendOtpEmail(emailToUse);
@@ -130,8 +139,8 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
           });
         }, 1000);
         
-        toast.success(`OTP sent to ${isEmail ? emailToUse : 'your email address'}`, {
-          description: "Please check your email for the OTP code. For testing, use: 123456"
+        toast.success(`OTP sent to ${emailToUse}`, {
+          description: "Please check your email for the OTP code."
         });
       } else {
         // Even if email sending fails, we'll allow login with the test OTP
@@ -163,77 +172,81 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     setIsLoading(true);
     setError(null);
     try {
-      // Accept '123456' as the only valid OTP
-      if (data.otp === '123456') {
-        const isEmail = contact.includes('@');
-        
-        // Try to find worker
-        let worker = null;
-        
-        // Try direct Supabase query first
-        try {
-          worker = await getWorkerDirectFromSupabase(contact);
-          console.log('[WorkerLoginForm] handleVerifyOTP - worker from direct Supabase:', worker);
-        } catch (directError) {
-          console.error("Error in direct Supabase query:", directError);
-        }
-        
-        // If direct query failed, try getAllWorkers
-        if (!worker) {
-          try {
-            const { data: workers, error } = await getAllWorkers();
-            console.log('[WorkerLoginForm] handleVerifyOTP - fetched workers:', workers);
-            
-            if (error || !workers) {
-              console.error("Error fetching workers from Supabase:", error);
-              // Try localStorage
-              worker = await getWorkerByContact(contact);
-            } else {
-              // Find matching worker
-              worker = workers.find(
-                (w: any) =>
-                  (w["Email Address"] && String(w["Email Address"]).trim().toLowerCase() === contact.trim().toLowerCase()) ||
-                  (w.email && String(w.email).trim().toLowerCase() === contact.trim().toLowerCase()) ||
-                  (w["Phone Number"] && String(w["Phone Number"]).trim() === contact.trim()) ||
-                  (w.phone && String(w.phone).trim() === contact.trim())
-              );
-            }
-          } catch (getAllError) {
-            console.error("Error in getAllWorkers:", getAllError);
-            // Try localStorage as last resort
-            worker = await getWorkerByContact(contact);
-          }
-        }
-        
-        console.log('[WorkerLoginForm] handleVerifyOTP - matched worker:', worker);
-        
-        if (!worker) {
-          setError("Worker not found");
-          setIsLoading(false);
-          return;
-        }
-        
-        // Set Auth context's currentUser to the logged-in worker
-        const workerUser = {
-          id: worker.id,
-          email: worker.email || worker["Email Address"] || `worker-${contact}@migii.app`,
-          name: worker.name || worker["Full Name"] || "Worker",
-          userType: "worker",
-          phone: worker.phone || worker["Phone Number"] || contact,
-        };
-        
-        localStorage.setItem('currentUser', JSON.stringify(workerUser));
-        
-        if (typeof login === 'function') {
-          // Use login to set currentUser in context
-          await login(workerUser.email, '', 'worker');
-        }
-        
-        toast.success("Login successful!");
-        onSuccess(worker);
-      } else {
+      // Verify OTP
+      const isValid = verifyOtp(emailSentTo || contact, data.otp);
+      
+      if (!isValid) {
         setError("Invalid OTP. Please try again.");
+        setIsLoading(false);
+        return;
       }
+      
+      const isEmail = contact.includes('@');
+      
+      // Try to find worker
+      let worker = null;
+      
+      // Try direct Supabase query first
+      try {
+        worker = await getWorkerDirectFromSupabase(contact);
+        console.log('[WorkerLoginForm] handleVerifyOTP - worker from direct Supabase:', worker);
+      } catch (directError) {
+        console.error("Error in direct Supabase query:", directError);
+      }
+      
+      // If direct query failed, try getAllWorkers
+      if (!worker) {
+        try {
+          const { data: workers, error } = await getAllWorkers();
+          console.log('[WorkerLoginForm] handleVerifyOTP - fetched workers:', workers);
+          
+          if (error || !workers) {
+            console.error("Error fetching workers from Supabase:", error);
+            // Try localStorage
+            worker = await getWorkerByContact(contact);
+          } else {
+            // Find matching worker
+            worker = workers.find(
+              (w: any) =>
+                (w["Email Address"] && String(w["Email Address"]).trim().toLowerCase() === contact.trim().toLowerCase()) ||
+                (w.email && String(w.email).trim().toLowerCase() === contact.trim().toLowerCase()) ||
+                (w["Phone Number"] && String(w["Phone Number"]).trim() === contact.trim()) ||
+                (w.phone && String(w.phone).trim() === contact.trim())
+            );
+          }
+        } catch (getAllError) {
+          console.error("Error in getAllWorkers:", getAllError);
+          // Try localStorage as last resort
+          worker = await getWorkerByContact(contact);
+        }
+      }
+      
+      console.log('[WorkerLoginForm] handleVerifyOTP - matched worker:', worker);
+      
+      if (!worker) {
+        setError("Worker not found");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Set Auth context's currentUser to the logged-in worker
+      const workerUser = {
+        id: worker.id,
+        email: worker.email || worker["Email Address"] || `worker-${contact}@migii.app`,
+        name: worker.name || worker["Full Name"] || "Worker",
+        userType: "worker",
+        phone: worker.phone || worker["Phone Number"] || contact,
+      };
+      
+      localStorage.setItem('currentUser', JSON.stringify(workerUser));
+      
+      if (typeof login === 'function') {
+        // Use login to set currentUser in context
+        await login(workerUser.email, '', 'worker');
+      }
+      
+      toast.success("Login successful!");
+      onSuccess(worker);
     } catch (err: any) {
       setError(err.message || "An error occurred during verification");
     } finally {
@@ -293,7 +306,15 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       // Get the email to send OTP to
       const emailToUse = isEmail 
         ? contact 
-        : (worker.email || worker["Email Address"] || `${contact}@migii.worker.temp`);
+        : (worker.email || worker["Email Address"]);
+        
+      if (!emailToUse) {
+        setError("No email address found for this worker. Please contact support.");
+        setIsLoading(false);
+        return;
+      }
+      
+      setEmailSentTo(emailToUse);
       
       // Send the OTP email
       const sent = await sendOtpEmail(emailToUse);
@@ -310,8 +331,8 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
           });
         }, 1000);
         
-        toast.success(`OTP resent to ${isEmail ? emailToUse : 'your email address'}`, {
-          description: "Please check your email for the OTP code. For testing, use: 123456"
+        toast.success(`OTP resent to ${emailToUse}`, {
+          description: "Please check your email for the OTP code."
         });
       } else {
         // Even if email sending fails, we'll allow login with the test OTP
@@ -340,7 +361,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   return (
     <div className="space-y-6">
       {error && (
-        <Alert variant="destructive\" className="animate-in fade-in slide-in-from-top duration-300">
+        <Alert variant="destructive" className="animate-in fade-in slide-in-from-top duration-300">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -371,7 +392,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
                     </div>
                   </FormControl>
                   <FormDescription>
-                    We'll send a one-time password to this contact
+                    We'll send a one-time password to your email
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -380,7 +401,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Sending OTP...
                 </>
               ) : (
@@ -393,7 +414,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         <Form {...otpForm}>
           <form onSubmit={otpForm.handleSubmit(handleVerifyOTP)} className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
             <div className="space-y-2">
-              <FormLabel>Enter OTP sent to {contact}</FormLabel>
+              <FormLabel>Enter OTP sent to {emailSentTo || contact}</FormLabel>
               <FormField
                 control={otpForm.control}
                 name="otp"
@@ -439,7 +460,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Verifying...
                 </>
               ) : (
@@ -465,8 +486,8 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
 
       {otpSent && (
         <div className="text-center text-sm text-muted-foreground mt-4 p-3 bg-primary/5 rounded-md">
-          <p className="font-medium">For testing purposes, use OTP: 123456</p>
-          <p className="mt-1">In a production environment, a real OTP would be sent to your email or phone.</p>
+          <p className="font-medium">Check your email for the OTP code</p>
+          <p className="mt-1">If you don't receive it, check your spam folder or click "Resend OTP" after the timer expires.</p>
         </div>
       )}
     </div>

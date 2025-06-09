@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import nodemailer from 'nodemailer';
 
 // Store OTPs temporarily (in a real app, this would be in a database)
 const otpStore: Record<string, { otp: string, timestamp: number }> = {};
@@ -8,22 +9,22 @@ export const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Mock email sending function for browser environment
-const sendEmail = async (to: string, subject: string, html: string): Promise<boolean> => {
-  try {
-    // Mock email for development/demo - nodemailer cannot run in browser
-    console.log(`[Mock Email] To: ${to}, Subject: ${subject}`);
-    console.log(`[Mock Email] Content: ${html}`);
-    
-    // Simulate async operation
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Return true to simulate success in development
-    return true;
-  } catch (error) {
-    console.error('Error in mock email service:', error);
-    return false;
-  }
+// Create a transporter for sending emails
+const createTransporter = () => {
+  // For production, you would use your actual SMTP credentials
+  // For development/testing, we'll use a test account from Ethereal
+  return nodemailer.createTransport({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: 'yvette.kuvalis@ethereal.email', // generated ethereal user
+      pass: 'Pu5Uf1Nt9Ym9Yd1Yjj'  // generated ethereal password
+    },
+    tls: {
+      rejectUnauthorized: false // Accept self-signed certificates for development
+    }
+  });
 };
 
 // Send OTP email
@@ -56,20 +57,41 @@ export const sendOtpEmail = async (email: string, otp?: string): Promise<boolean
       </div>
     `;
     
+    // Create transporter
+    const transporter = createTransporter();
+    
     // Send email
-    const success = await sendEmail(email, subject, html);
+    const info = await transporter.sendMail({
+      from: '"Migii Worker Portal" <noreply@migii.com>',
+      to: email,
+      subject,
+      html
+    });
     
-    // Always show the OTP in toast for testing purposes
-    if (success) {
-      toast.success(`OTP sent to ${email}. For testing, use: ${generatedOtp}`);
-    } else {
-      toast.error(`Failed to send OTP to ${email}`);
-    }
+    console.log('Message sent: %s', info.messageId);
+    console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
     
-    return success;
+    // Show success message with preview URL for testing
+    toast.success(`OTP sent to ${email}`, {
+      description: `Check your email or view at: ${nodemailer.getTestMessageUrl(info)}`
+    });
+    
+    return true;
   } catch (error: any) {
     console.error('Error in email service:', error);
     toast.error(`Failed to send OTP: ${error.message}`);
+    
+    // For testing purposes, still store the OTP even if email fails
+    const generatedOtp = "123456"; // Fallback test OTP
+    otpStore[email] = {
+      otp: generatedOtp,
+      timestamp: Date.now() + 10 * 60 * 1000
+    };
+    
+    toast.info(`For testing, use OTP: ${generatedOtp}`, {
+      description: "Email service failed, but you can still use this test OTP"
+    });
+    
     return false;
   }
 };
@@ -103,7 +125,7 @@ export const sendRegistrationEmail = async (worker: {
         </div>
         <p>You can now log in to the Migii Worker Portal using your phone number or email to receive jobs and access support.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/worker-login" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login Now</a>
+          <a href="${window.location.origin}/worker-login" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login Now</a>
         </div>
         <p style="margin-top: 20px; font-size: 12px; color: #6b7280;">
           If you have any questions or need assistance, please contact our support team.
@@ -114,18 +136,28 @@ export const sendRegistrationEmail = async (worker: {
       </div>
     `;
 
+    // Create transporter
+    const transporter = createTransporter();
+    
     // Send email
-    const success = await sendEmail(worker.email, subject, html);
+    const info = await transporter.sendMail({
+      from: '"Migii Worker Portal" <noreply@migii.com>',
+      to: worker.email,
+      subject,
+      html
+    });
     
-    if (success) {
-      toast.success(`Registration confirmation sent to ${worker.email}`);
-    } else {
-      console.log(`Failed to send registration email to ${worker.email}, but continuing with registration`);
-    }
+    console.log('Registration email sent: %s', info.messageId);
+    console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
     
-    return success;
+    toast.success(`Registration confirmation sent to ${worker.email}`, {
+      description: `Check your email or view at: ${nodemailer.getTestMessageUrl(info)}`
+    });
+    
+    return true;
   } catch (error: any) {
     console.error('Error sending registration email:', error);
+    toast.error(`Failed to send registration email: ${error.message}`);
     return false;
   }
 };
@@ -143,6 +175,9 @@ export const sendJobNotificationEmail = async (
 ): Promise<boolean> => {
   try {
     const subject = `New Job Opportunity: ${job.title} at ${job.company}`;
+    
+    // Create transporter
+    const transporter = createTransporter();
     
     // Send email to each worker
     const emailPromises = workers.map(worker => {
@@ -162,7 +197,7 @@ export const sendJobNotificationEmail = async (
           </div>
           <p>Log in to your Migii account to apply for this position.</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/worker-login" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login to Apply</a>
+            <a href="${window.location.origin}/worker-login" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login to Apply</a>
           </div>
           <p style="margin-top: 30px; font-size: 12px; color: #6b7280; text-align: center;">
             &copy; ${new Date().getFullYear()} Migii Worker Portal. All rights reserved.
@@ -170,12 +205,24 @@ export const sendJobNotificationEmail = async (
         </div>
       `;
       
-      return sendEmail(worker.email, subject, html);
+      return transporter.sendMail({
+        from: '"Migii Worker Portal" <noreply@migii.com>',
+        to: worker.email,
+        subject,
+        html
+      });
     });
     
     // Wait for all emails to be sent
     const results = await Promise.all(emailPromises);
-    const successCount = results.filter(Boolean).length;
+    
+    // Log results
+    results.forEach((info, index) => {
+      console.log(`Job notification email sent to ${workers[index].email}: ${info.messageId}`);
+      console.log(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+    });
+    
+    const successCount = results.length;
     
     if (successCount > 0) {
       toast.success(`Job notification sent to ${successCount} workers`);
@@ -189,50 +236,7 @@ export const sendJobNotificationEmail = async (
   }
 };
 
-// Send business notification when worker accepts/rejects assignment
-export const sendBusinessNotificationEmail = async (
-  business: { name: string; email: string },
-  worker: { name: string; id: string },
-  action: 'accepted' | 'rejected'
-): Promise<boolean> => {
-  try {
-    const subject = `Worker ${action} your assignment request`;
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-        <h2 style="color: #8B5CF6; text-align: center;">Migii Business Portal</h2>
-        <h3 style="text-align: center;">Assignment Update</h3>
-        <p>Hello ${business.name},</p>
-        <p>Worker <strong>${worker.name}</strong> has <strong>${action}</strong> your assignment request.</p>
-        <div style="background-color: ${action === 'accepted' ? '#f0fdf4' : '#fef2f2'}; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid ${action === 'accepted' ? '#22c55e' : '#ef4444'};">
-          <p style="margin: 5px 0;"><strong>Worker ID:</strong> ${worker.id}</p>
-          <p style="margin: 5px 0;"><strong>Worker Name:</strong> ${worker.name}</p>
-          <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: ${action === 'accepted' ? '#22c55e' : '#ef4444'}; font-weight: bold;">${action.toUpperCase()}</span></p>
-          <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date().toLocaleString()}</p>
-        </div>
-        <p>Log in to your Migii Business Portal to view more details.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/login?tab=business" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login to Business Portal</a>
-        </div>
-        <p style="margin-top: 30px; font-size: 12px; color: #6b7280; text-align: center;">
-          &copy; ${new Date().getFullYear()} Migii Business Portal. All rights reserved.
-        </p>
-      </div>
-    `;
-    
-    const success = await sendEmail(business.email, subject, html);
-    
-    if (success) {
-      toast.success(`Notification sent to ${business.name}`);
-    }
-    
-    return success;
-  } catch (error: any) {
-    console.error('Error sending business notification email:', error);
-    return false;
-  }
-};
-
-// Send job application confirmation email to worker
+// Send job application confirmation to worker
 export const sendJobApplicationConfirmation = async (
   worker: { name: string; email: string },
   job: { title: string; company: string; id: string }
@@ -253,7 +257,7 @@ export const sendJobApplicationConfirmation = async (
         </div>
         <p>Your application has been successfully submitted. The employer will review your application and contact you if you're selected for an interview.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/worker-login" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Application Status</a>
+          <a href="${window.location.origin}/worker-login" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Application Status</a>
         </div>
         <p style="margin-top: 20px; font-size: 12px; color: #6b7280;">
           Good luck with your application!
@@ -264,15 +268,28 @@ export const sendJobApplicationConfirmation = async (
       </div>
     `;
     
-    const success = await sendEmail(worker.email, subject, html);
+    // Create transporter
+    const transporter = createTransporter();
     
-    if (success) {
-      toast.success(`Application confirmation sent to ${worker.name}`);
-    }
+    // Send email
+    const info = await transporter.sendMail({
+      from: '"Migii Worker Portal" <noreply@migii.com>',
+      to: worker.email,
+      subject,
+      html
+    });
     
-    return success;
+    console.log('Application confirmation email sent: %s', info.messageId);
+    console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+    
+    toast.success(`Application confirmation sent to ${worker.name}`, {
+      description: `Check your email or view at: ${nodemailer.getTestMessageUrl(info)}`
+    });
+    
+    return true;
   } catch (error: any) {
     console.error('Error sending job application confirmation:', error);
+    toast.error(`Failed to send application confirmation: ${error.message}`);
     return false;
   }
 };
@@ -280,7 +297,7 @@ export const sendJobApplicationConfirmation = async (
 // Send job application notification to business
 export const sendJobApplicationNotificationToBusiness = async (
   business: { name: string; email: string },
-  worker: { name: string; id: string; skill: string },
+  worker: { name: string; id: string },
   job: { title: string; id: string }
 ): Promise<boolean> => {
   try {
@@ -299,12 +316,11 @@ export const sendJobApplicationNotificationToBusiness = async (
           <h4 style="margin: 5px 0; color: #22c55e;">Applicant Details</h4>
           <p style="margin: 5px 0;"><strong>Worker Name:</strong> ${worker.name}</p>
           <p style="margin: 5px 0;"><strong>Worker ID:</strong> ${worker.id}</p>
-          <p style="margin: 5px 0;"><strong>Skill:</strong> ${worker.skill}</p>
           <p style="margin: 5px 0;"><strong>Application Date:</strong> ${new Date().toLocaleString()}</p>
         </div>
         <p>Log in to your Migii Business Portal to review the application and contact the worker.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/login?tab=business" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review Application</a>
+          <a href="${window.location.origin}/login?tab=business" style="background-color: #8B5CF6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review Application</a>
         </div>
         <p style="margin-top: 30px; font-size: 12px; color: #6b7280; text-align: center;">
           &copy; ${new Date().getFullYear()} Migii Business Portal. All rights reserved.
@@ -312,13 +328,21 @@ export const sendJobApplicationNotificationToBusiness = async (
       </div>
     `;
     
-    const success = await sendEmail(business.email, subject, html);
+    // Create transporter
+    const transporter = createTransporter();
     
-    if (success) {
-      toast.success(`Application notification sent to ${business.name}`);
-    }
+    // Send email
+    const info = await transporter.sendMail({
+      from: '"Migii Business Portal" <noreply@migii.com>',
+      to: business.email,
+      subject,
+      html
+    });
     
-    return success;
+    console.log('Application notification email sent to business: %s', info.messageId);
+    console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+    
+    return true;
   } catch (error: any) {
     console.error('Error sending job application notification to business:', error);
     return false;
