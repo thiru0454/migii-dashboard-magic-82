@@ -26,10 +26,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Test Supabase connection
 export async function testSupabaseConnection() {
   try {
-    // Use a simple query that doesn't depend on specific tables or RLS policies
+    // Use a simple query to the auth.users table which is always available
     const { data, error } = await supabase
-      .from('information_schema.tables')
-      .select('table_name')
+      .from('auth.users')
+      .select('id')
       .limit(1);
     
     if (error) {
