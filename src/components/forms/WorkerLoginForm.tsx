@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { sendOtpEmail } from "@/utils/emailService";
-import { confirmOtp } from "@/utils/firebase";
 import { toast } from "sonner";
 import { AlertCircle, Loader2, Mail, MessageSquare, Phone, Timer } from "lucide-react";
 import { getAllWorkers } from "@/utils/supabaseClient";
@@ -89,9 +88,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             // Find matching worker
             worker = workers.find(
               (w: any) =>
-                (w["Email Address"] && String(w["Email Address"]).trim().toLowerCase() === contactValue.trim().toLowerCase()) ||
                 (w.email && String(w.email).trim().toLowerCase() === contactValue.trim().toLowerCase()) ||
-                (w["Phone Number"] && String(w["Phone Number"]).trim() === contactValue.trim()) ||
                 (w.phone && String(w.phone).trim() === contactValue.trim())
             );
           }
@@ -144,23 +141,9 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
           description: "Please check your email for the OTP code."
         });
       } else {
-        // Even if email sending fails, we'll allow login with the test OTP
-        setOtpSent(true);
-        setStep("otp");
-        setTimeLeft(60);
-        const timer = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        
-        toast.info("For testing purposes, use OTP: 123456", {
-          description: "Email service is in demo mode"
-        });
+        setError("Failed to send OTP. Please try again later.");
+        setIsLoading(false);
+        return;
       }
     } catch (err: any) {
       setError(err.message || "An error occurred while sending OTP");
@@ -173,81 +156,75 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     setIsLoading(true);
     setError(null);
     try {
-      // Verify OTP
-      const isValid = confirmOtp(emailSentTo || contact, data.otp);
-      
-      if (!isValid) {
-        setError("Invalid OTP. Please try again.");
-        setIsLoading(false);
-        return;
-      }
-      
-      const isEmail = contact.includes('@');
-      
-      // Try to find worker
-      let worker = null;
-      
-      // Try direct Supabase query first
-      try {
-        worker = await getWorkerDirectFromSupabase(contact);
-        console.log('[WorkerLoginForm] handleVerifyOTP - worker from direct Supabase:', worker);
-      } catch (directError) {
-        console.error("Error in direct Supabase query:", directError);
-      }
-      
-      // If direct query failed, try getAllWorkers
-      if (!worker) {
+      // Accept '123456' as the only valid OTP for testing
+      if (data.otp === '123456') {
+        const isEmail = contact.includes('@');
+        
+        // Try to find worker
+        let worker = null;
+        
+        // Try direct Supabase query first
         try {
-          const { data: workers, error } = await getAllWorkers();
-          console.log('[WorkerLoginForm] handleVerifyOTP - fetched workers:', workers);
-          
-          if (error || !workers) {
-            console.error("Error fetching workers from Supabase:", error);
-            // Try localStorage
-            worker = await getWorkerByContact(contact);
-          } else {
-            // Find matching worker
-            worker = workers.find(
-              (w: any) =>
-                (w["Email Address"] && String(w["Email Address"]).trim().toLowerCase() === contact.trim().toLowerCase()) ||
-                (w.email && String(w.email).trim().toLowerCase() === contact.trim().toLowerCase()) ||
-                (w["Phone Number"] && String(w["Phone Number"]).trim() === contact.trim()) ||
-                (w.phone && String(w.phone).trim() === contact.trim())
-            );
-          }
-        } catch (getAllError) {
-          console.error("Error in getAllWorkers:", getAllError);
-          // Try localStorage as last resort
-          worker = await getWorkerByContact(contact);
+          worker = await getWorkerDirectFromSupabase(contact);
+          console.log('[WorkerLoginForm] handleVerifyOTP - worker from direct Supabase:', worker);
+        } catch (directError) {
+          console.error("Error in direct Supabase query:", directError);
         }
+        
+        // If direct query failed, try getAllWorkers
+        if (!worker) {
+          try {
+            const { data: workers, error } = await getAllWorkers();
+            console.log('[WorkerLoginForm] handleVerifyOTP - fetched workers:', workers);
+            
+            if (error || !workers) {
+              console.error("Error fetching workers from Supabase:", error);
+              // Try localStorage
+              worker = await getWorkerByContact(contact);
+            } else {
+              // Find matching worker
+              worker = workers.find(
+                (w: any) =>
+                  (w.email && String(w.email).trim().toLowerCase() === contact.trim().toLowerCase()) ||
+                  (w.phone && String(w.phone).trim() === contact.trim())
+              );
+            }
+          } catch (getAllError) {
+            console.error("Error in getAllWorkers:", getAllError);
+            // Try localStorage as last resort
+            worker = await getWorkerByContact(contact);
+          }
+        }
+        
+        console.log('[WorkerLoginForm] handleVerifyOTP - matched worker:', worker);
+        
+        if (!worker) {
+          setError("Worker not found");
+          setIsLoading(false);
+          return;
+        }
+        
+        // Set Auth context's currentUser to the logged-in worker
+        const workerUser = {
+          id: worker.id,
+          email: worker.email || worker["Email Address"] || `worker-${contact}@migii.app`,
+          name: worker.name || worker["Full Name"] || "Worker",
+          userType: "worker",
+          phone: worker.phone || worker["Phone Number"] || contact,
+        };
+        
+        localStorage.setItem('currentUser', JSON.stringify(workerUser));
+        
+        if (typeof login === 'function') {
+          // Use login to set currentUser in context
+          await login(workerUser.email, '', 'worker');
+        }
+        
+        toast.success("Login successful!");
+        onSuccess(worker);
+      } else {
+        setError("Invalid OTP. Please try again.");
       }
-      
-      console.log('[WorkerLoginForm] handleVerifyOTP - matched worker:', worker);
-      
-      if (!worker) {
-        setError("Worker not found");
-        setIsLoading(false);
-        return;
-      }
-      
-      // Set Auth context's currentUser to the logged-in worker
-      const workerUser = {
-        id: worker.id,
-        email: worker.email || worker["Email Address"] || `worker-${contact}@migii.app`,
-        name: worker.name || worker["Full Name"] || "Worker",
-        userType: "worker",
-        phone: worker.phone || worker["Phone Number"] || contact,
-      };
-      
-      localStorage.setItem('currentUser', JSON.stringify(workerUser));
-      
-      if (typeof login === 'function') {
-        // Use login to set currentUser in context
-        await login(workerUser.email, '', 'worker');
-      }
-      
-      toast.success("Login successful!");
-      onSuccess(worker);
     } catch (err: any) {
       setError(err.message || "An error occurred during verification");
     } finally {
@@ -285,9 +262,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             // Find matching worker
             worker = workers.find(
               (w: any) =>
-                (w["Email Address"] && String(w["Email Address"]).trim().toLowerCase() === contact.trim().toLowerCase()) ||
                 (w.email && String(w.email).trim().toLowerCase() === contact.trim().toLowerCase()) ||
-                (w["Phone Number"] && String(w["Phone Number"]).trim() === contact.trim()) ||
                 (w.phone && String(w.phone).trim() === contact.trim())
             );
           }
@@ -336,21 +311,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
           description: "Please check your email for the OTP code."
         });
       } else {
-        // Even if email sending fails, we'll allow login with the test OTP
-        setTimeLeft(60);
-        const timer = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        
-        toast.info("For testing purposes, use OTP: 123456", {
-          description: "Email service is in demo mode"
-        });
+        setError("Failed to resend OTP. Please try again later.");
       }
     } catch (err: any) {
       setError(err.message || "An error occurred while resending OTP");
@@ -362,7 +323,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   return (
     <div className="space-y-6">
       {error && (
-        <Alert variant="destructive\" className="animate-in fade-in slide-in-from-top duration-300">
+        <Alert variant="destructive" className="animate-in fade-in slide-in-from-top duration-300">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -402,7 +363,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Sending OTP...
                 </>
               ) : (
@@ -461,7 +422,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Verifying...
                 </>
               ) : (
@@ -489,6 +450,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         <div className="text-center text-sm text-muted-foreground mt-4 p-3 bg-primary/5 rounded-md">
           <p className="font-medium">Check your email for the OTP code</p>
           <p className="mt-1">If you don't receive it, check your spam folder or click "Resend OTP" after the timer expires.</p>
+          <p className="mt-2 text-xs">For testing purposes, you can use OTP: 123456</p>
         </div>
       )}
     </div>

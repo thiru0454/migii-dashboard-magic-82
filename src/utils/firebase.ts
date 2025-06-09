@@ -5,6 +5,7 @@ import { MigrantWorker, Worker } from '@/types/worker';
 import { toast } from 'sonner';
 import { generateWorkerId } from "./workerUtils";
 import { getAllWorkers } from './supabaseClient';
+import { verifyOtp } from './emailService';
 
 // Firebase auth compatibility types
 export const auth = {
@@ -262,7 +263,7 @@ export const getAllWorkersRealtime = (callback: (workers: MigrantWorker[]) => vo
   }
 };
 
-// Mock phone authentication for demo purposes
+// Phone authentication for real OTP
 export const signInWithPhoneNumber = async (phoneNumber: string) => {
   try {
     // For demo, we'll just add a delay to simulate the real process
@@ -285,7 +286,7 @@ export const signInWithPhoneNumber = async (phoneNumber: string) => {
       }
     }
     
-    // Return a mock verification ID (we'll use the phone number itself)
+    // Return a verification ID (we'll use the phone number itself)
     return phoneNumber;
   } catch (error) {
     console.error("Error in signInWithPhoneNumber:", error);
@@ -293,26 +294,13 @@ export const signInWithPhoneNumber = async (phoneNumber: string) => {
   }
 };
 
-export const confirmOtp = async (verificationId: string, otp: string) => {
+export const confirmOtp = (verificationId: string, otp: string) => {
   try {
-    // For demo, we'll accept any 6-digit OTP
-    if (otp.length !== 6 || !/^\d+$/.test(otp)) {
-      throw new Error("Invalid OTP format. Must be 6 digits.");
-    }
-    
-    // Simulate verification delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // In a real app, we would verify with Firebase/Supabase here
-    // For demo, we'll just return the phone number (verification ID)
-    return {
-      user: {
-        phoneNumber: verificationId
-      }
-    };
+    // Verify OTP using the emailService function
+    return verifyOtp(verificationId, otp);
   } catch (error) {
     console.error("Error in confirmOtp:", error);
-    throw error;
+    return false;
   }
 };
 
@@ -334,7 +322,6 @@ export const getWorkerByContact = async (contact: string): Promise<MigrantWorker
         ) || null
       );
     }
-    
     const trimmedContact = contact.trim();
     return (
       data.find(
