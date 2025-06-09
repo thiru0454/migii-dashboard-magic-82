@@ -50,9 +50,19 @@ export const findWorkerByEmail = async (email: string): Promise<MigrantWorker | 
       .from('workers')
       .select('*')
       .or(`email.eq.${email},email.eq.${email.toLowerCase()},email.eq.${email.toUpperCase()},email.ilike.${email}`)
-      .single();
+      .limit(1);
     
-    if (error || !data) {
+    if (error) {
+      console.log("Error querying Supabase, checking localStorage:", error);
+      // Fall back to localStorage
+      const workers = getAllWorkersFromStorage();
+      return workers.find(w => 
+        w.email?.toLowerCase() === email.toLowerCase() || 
+        w["Email Address"]?.toLowerCase() === email.toLowerCase()
+      ) || null;
+    }
+    
+    if (!data || data.length === 0) {
       console.log("Email not found in Supabase, checking localStorage");
       // Fall back to localStorage
       const workers = getAllWorkersFromStorage();
@@ -62,7 +72,7 @@ export const findWorkerByEmail = async (email: string): Promise<MigrantWorker | 
       ) || null;
     }
     
-    return data as MigrantWorker;
+    return data[0] as MigrantWorker;
   } catch (error) {
     console.error("Error finding worker by email:", error);
     // Fall back to localStorage
@@ -82,9 +92,19 @@ export const findWorkerByPhone = async (phone: string): Promise<MigrantWorker | 
       .from('workers')
       .select('*')
       .or(`phone.eq.${phone},phone.ilike.${phone}`)
-      .single();
+      .limit(1);
     
-    if (error || !data) {
+    if (error) {
+      console.log("Error querying Supabase, checking localStorage:", error);
+      // Fall back to localStorage
+      const workers = getAllWorkersFromStorage();
+      return workers.find(w => 
+        w.phone === phone || 
+        w["Phone Number"] === phone
+      ) || null;
+    }
+    
+    if (!data || data.length === 0) {
       console.log("Phone not found in Supabase, checking localStorage");
       // Fall back to localStorage
       const workers = getAllWorkersFromStorage();
@@ -94,7 +114,7 @@ export const findWorkerByPhone = async (phone: string): Promise<MigrantWorker | 
       ) || null;
     }
     
-    return data as MigrantWorker;
+    return data[0] as MigrantWorker;
   } catch (error) {
     console.error("Error finding worker by phone:", error);
     // Fall back to localStorage
@@ -279,9 +299,9 @@ export const signInWithPhoneNumber = async (phoneNumber: string) => {
         .from('workers')
         .select('*')
         .or(`phone.eq.${phoneNumber},phone.ilike.${phoneNumber}`)
-        .single();
+        .limit(1);
         
-      if (error || !data) {
+      if (error || !data || data.length === 0) {
         throw new Error("Phone number not registered. Please register first.");
       }
     }
@@ -360,21 +380,29 @@ export const getWorkerDirectFromSupabase = async (contact: string): Promise<Migr
       .from('workers')
       .select('*')
       .or(`phone.eq.${trimmedContact},phone.ilike.${trimmedContact}`)
-      .single();
+      .limit(1);
       
     console.log('[Worker Fetch] By Phone Number:', { data, error });
     
-    if (error || !data) {
+    if (error) {
+      console.error("Error querying by phone:", error);
+    }
+    
+    if (!data || data.length === 0) {
       // Try by email if not found by phone
       ({ data, error } = await supabase
         .from('workers')
         .select('*')
         .or(`email.eq.${trimmedContact},email.ilike.${trimmedContact}`)
-        .single());
+        .limit(1));
         
       console.log('[Worker Fetch] By Email Address:', { data, error });
       
-      if (error || !data) {
+      if (error) {
+        console.error("Error querying by email:", error);
+      }
+      
+      if (!data || data.length === 0) {
         // Try localStorage as fallback
         const workers = getAllWorkersFromStorage();
         const worker = workers.find(
@@ -389,7 +417,7 @@ export const getWorkerDirectFromSupabase = async (contact: string): Promise<Migr
       }
     }
     
-    return data as MigrantWorker;
+    return data[0] as MigrantWorker;
   } catch (error) {
     console.error('Error in getWorkerDirectFromSupabase:', error);
     // Try localStorage as fallback
