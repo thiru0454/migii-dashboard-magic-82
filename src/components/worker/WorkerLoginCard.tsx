@@ -1,7 +1,8 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkerLoginForm } from "@/components/forms/WorkerLoginForm";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
 interface WorkerLoginCardProps {
   onSuccess: () => void;
@@ -20,6 +21,12 @@ export function WorkerLoginCard({ onSuccess }: WorkerLoginCardProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="px-4 md:px-6 pb-8">
+          <Alert className="mb-6 bg-blue-50 border-blue-200">
+            <InfoIcon className="h-4 w-4 text-blue-500" />
+            <AlertDescription className="text-blue-700">
+              For testing, use any registered worker's phone or email. The OTP code is always <strong>123456</strong>.
+            </AlertDescription>
+          </Alert>
           <WorkerLoginForm onSuccess={onSuccess} />
         </CardContent>
       </Card>

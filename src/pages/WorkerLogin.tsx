@@ -9,6 +9,8 @@ import { LogIn } from "lucide-react";
 import { WorkerLoginForm } from "@/components/forms/WorkerLoginForm";
 import { getAllWorkers } from "@/utils/supabaseClient";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
 const WorkerLogin = () => {
   const { currentUser, logout } = useAuth();
@@ -29,9 +31,9 @@ const WorkerLogin = () => {
           }
           const worker = workers.find(
             (w: any) =>
-              (w.phone && w.phone.trim() === currentUser.phone.trim()) ||
+              (w.phone && w.phone.trim() === currentUser.phone?.trim()) ||
               (w.email && w.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()) ||
-              (w["Phone Number"] && w["Phone Number"].trim() === currentUser.phone.trim()) ||
+              (w["Phone Number"] && w["Phone Number"].trim() === currentUser.phone?.trim()) ||
               (w["Email Address"] && w["Email Address"].trim().toLowerCase() === currentUser.email.trim().toLowerCase())
           );
           if (worker) {
@@ -52,6 +54,9 @@ const WorkerLogin = () => {
   const handleLoginSuccess = (worker: any) => {
     setWorkerData(worker);
     setIsLoggedIn(true);
+    
+    // Redirect to worker dashboard
+    navigate("/worker/dashboard");
   };
 
   const handleSignOut = () => {
@@ -83,11 +88,19 @@ const WorkerLogin = () => {
               <CardHeader className="text-center space-y-2 pb-6">
                 <CardTitle className="text-2xl font-bold text-primary">Worker Login</CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  Enter your phone number to access your worker dashboard
+                  Enter your phone number or email to access your worker dashboard
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-6 pb-8">
+                <Alert className="mb-6 bg-blue-50 border-blue-200">
+                  <InfoIcon className="h-4 w-4 text-blue-500" />
+                  <AlertDescription className="text-blue-700">
+                    For testing, use any registered worker's phone or email. The OTP code is always <strong>123456</strong>.
+                  </AlertDescription>
+                </Alert>
+                
                 <WorkerLoginForm onSuccess={handleLoginSuccess} />
+                
                 <div className="mt-4 text-center text-sm text-muted-foreground">
                   <p>Not registered yet?</p>
                   <Button 
@@ -106,4 +119,4 @@ const WorkerLogin = () => {
   );
 };
 
-export default WorkerLogin; 
+export default WorkerLogin;

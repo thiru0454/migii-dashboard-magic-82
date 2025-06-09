@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -36,6 +36,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   const [timeLeft, setTimeLeft] = useState(0);
   const isMobile = useIsMobile();
   const { currentUser, login, logout } = useAuth();
+  const [otpSent, setOtpSent] = useState(false);
 
   const contactForm = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
@@ -107,18 +108,50 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         return;
       }
       
-      // Skip actual OTP sending, just go to OTP step
-      setStep("otp");
-      setTimeLeft(60);
-      const timer = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
+      // Get the email to send OTP to
+      const emailToUse = isEmail 
+        ? contactValue 
+        : (worker.email || worker["Email Address"] || `${contactValue}@migii.worker.temp`);
+      
+      // Actually send the OTP email
+      const sent = await sendOtpEmail(emailToUse);
+      
+      if (sent) {
+        setOtpSent(true);
+        setStep("otp");
+        setTimeLeft(60);
+        const timer = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
+        toast.success(`OTP sent to ${isEmail ? emailToUse : 'your email address'}`, {
+          description: "Please check your email for the OTP code. For testing, use: 123456"
         });
-      }, 1000);
+      } else {
+        // Even if email sending fails, we'll allow login with the test OTP
+        setOtpSent(true);
+        setStep("otp");
+        setTimeLeft(60);
+        const timer = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
+        toast.info("For testing purposes, use OTP: 123456", {
+          description: "Email service is in demo mode"
+        });
+      }
     } catch (err: any) {
       setError(err.message || "An error occurred while sending OTP");
     } finally {
@@ -183,10 +216,10 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         // Set Auth context's currentUser to the logged-in worker
         const workerUser = {
           id: worker.id,
-          email: worker["Email Address"] || worker.email || "",
-          name: worker["Full Name"] || worker.name || "",
+          email: worker.email || worker["Email Address"] || `worker-${contact}@migii.app`,
+          name: worker.name || worker["Full Name"] || "Worker",
           userType: "worker",
-          phone: worker["Phone Number"] || worker.phone || "",
+          phone: worker.phone || worker["Phone Number"] || contact,
         };
         
         localStorage.setItem('currentUser', JSON.stringify(workerUser));
@@ -257,10 +290,12 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
         return;
       }
       
+      // Get the email to send OTP to
       const emailToUse = isEmail 
         ? contact 
         : (worker.email || worker["Email Address"] || `${contact}@migii.worker.temp`);
-        
+      
+      // Send the OTP email
       const sent = await sendOtpEmail(emailToUse);
       
       if (sent) {
@@ -274,6 +309,26 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             return prev - 1;
           });
         }, 1000);
+        
+        toast.success(`OTP resent to ${isEmail ? emailToUse : 'your email address'}`, {
+          description: "Please check your email for the OTP code. For testing, use: 123456"
+        });
+      } else {
+        // Even if email sending fails, we'll allow login with the test OTP
+        setTimeLeft(60);
+        const timer = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
+        toast.info("For testing purposes, use OTP: 123456", {
+          description: "Email service is in demo mode"
+        });
       }
     } catch (err: any) {
       setError(err.message || "An error occurred while resending OTP");
@@ -285,7 +340,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
   return (
     <div className="space-y-6">
       {error && (
-        <Alert variant="destructive\" className="animate-in fade-in slide-in-from-top duration-300">
+        <Alert variant="destructive" className="animate-in fade-in slide-in-from-top duration-300">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -325,7 +380,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Sending OTP...
                 </>
               ) : (
@@ -384,7 +439,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             <Button type="submit" className="w-full hover-scale" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm\" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Verifying...
                 </>
               ) : (
@@ -406,6 +461,13 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
             </Button>
           </form>
         </Form>
+      )}
+
+      {otpSent && (
+        <div className="text-center text-sm text-muted-foreground mt-4 p-3 bg-primary/5 rounded-md">
+          <p className="font-medium">For testing purposes, use OTP: 123456</p>
+          <p className="mt-1">In a production environment, a real OTP would be sent to your email or phone.</p>
+        </div>
       )}
     </div>
   );
