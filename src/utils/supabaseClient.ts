@@ -47,6 +47,27 @@ export async function getAllWorkers() {
   }
 }
 
+// Get active jobs
+export async function getActiveJobs() {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('status', 'active')
+      .order('posted_at', { ascending: false });
+      
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching active jobs:', error);
+    return { data: null, error };
+  }
+}
+
 // Subscribe to workers changes
 export function subscribeToWorkers(callback: () => void) {
   try {
