@@ -43,7 +43,7 @@ export async function registerNewWorker(workerData: Omit<{
       email: workerData.email || "",
       aadhaar: workerData.aadhaar,
       skill: workerData.skill,
-      originState: workerData.originState,
+      origin_state: workerData.originState,
       photoUrl: workerData.photoUrl || null,
       status: "active" as const,
       registrationDate: new Date().toISOString(),

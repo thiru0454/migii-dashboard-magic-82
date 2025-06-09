@@ -1,4 +1,3 @@
-
 export type MigrantWorker = {
   id: string;
   name: string;
@@ -11,7 +10,7 @@ export type MigrantWorker = {
   "Email Address"?: string;
   primarySkill?: string;
   "Primary Skill": string;
-  originState?: string;
+  origin_state?: string;
   "Origin State": string;
   status: "active" | "inactive" | "pending";
   registrationDate: string;
@@ -32,7 +31,7 @@ export interface Worker {
   phone: string;
   skill: string;
   status: string;
-  originState?: string;
+  origin_state?: string;
   age?: number;
   email?: string;
   photoUrl?: string;

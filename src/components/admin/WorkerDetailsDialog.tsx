@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { WorkerIDCard } from "@/components/worker/WorkerIDCard";
@@ -47,7 +46,7 @@ export function WorkerDetailsDialog({ worker, open, onOpenChange }: WorkerDetail
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Origin State</p>
-                  <p className="font-medium">{worker.originState}</p>
+                  <p className="font-medium">{worker.originState || worker.origin_state || worker["Origin State"] || "Not specified"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Registration Date</p>
@@ -97,7 +96,7 @@ export function WorkerDetailsDialog({ worker, open, onOpenChange }: WorkerDetail
               name={worker.name}
               phone={worker.phone}
               skill={worker.skill}
-              originState={worker.originState}
+              originState={worker.originState || worker.origin_state || worker["Origin State"] || "Not specified"}
               photoUrl={worker.photoUrl}
             />
           </div>

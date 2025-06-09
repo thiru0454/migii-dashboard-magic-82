@@ -92,6 +92,10 @@ export function WorkersTab({ onViewDetails = () => {} }: WorkersTabProps) {
     {
       accessorKey: "originState",
       header: "Origin State",
+      cell: ({ row }) => {
+        const worker = row.original;
+        return worker.originState || worker.origin_state || worker["Origin State"] || "Not specified";
+      },
     },
     {
       accessorKey: "status",

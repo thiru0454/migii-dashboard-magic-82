@@ -47,7 +47,7 @@ export function WorkersProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Ensure all worker IDs are strings
+        // Ensure all worker IDs are strings and map database fields to component fields
         const formattedWorkers = data.map(worker => ({
           ...worker,
           id: String(worker.id),

@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +8,9 @@ interface WorkerData {
   name: string;
   phone: string;
   skill: string;
-  originState: string;
+  originState?: string;
+  origin_state?: string;
+  "Origin State"?: string;
   status: string;
   supportHistory: any[];
 }
@@ -23,6 +24,8 @@ export function WorkerDashboardTab({ workerData }: WorkerDashboardTabProps) {
   const pendingRequests = workerData.supportHistory.filter(
     (req) => req.status.toLowerCase() === "pending"
   ).length;
+
+  const originState = workerData.originState || workerData.origin_state || workerData["Origin State"] || "Not specified";
 
   return (
     <div className="space-y-6">
@@ -66,7 +69,7 @@ export function WorkerDashboardTab({ workerData }: WorkerDashboardTabProps) {
                       <MapPinIcon className="h-4 w-4 mr-3 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">Origin State</p>
-                        <p className="text-sm text-muted-foreground">{workerData.originState}</p>
+                        <p className="text-sm text-muted-foreground">{originState}</p>
                       </div>
                     </div>
                     <div className="flex items-center">
