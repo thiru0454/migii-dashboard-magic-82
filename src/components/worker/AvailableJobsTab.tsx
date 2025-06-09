@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { Briefcase, Calendar, MapPin, Building, Search, Clock, Loader2 } from "lucide-react";
 import { getActiveJobs, submitJobApplication } from "@/utils/supabaseClient";
+import { sendApplicationConfirmationEmail } from "@/services/emailService";
 
 interface Job {
   id: string;
@@ -88,8 +88,8 @@ export function AvailableJobsTab() {
     try {
       const { error } = await submitJobApplication({
         job_id: selectedJob.id,
-        worker_id: currentUser.id, // Use currentUser.id instead of uid
-        worker_name: currentUser.name, // Use currentUser.name instead of displayName
+        worker_id: currentUser.id,
+        worker_name: currentUser.name,
         status: "pending",
         notes: applicationNote
       });
@@ -99,6 +99,19 @@ export function AvailableJobsTab() {
         toast.error("Failed to submit application. Please try again.");
         return;
       }
+      
+      // Send confirmation email
+      sendApplicationConfirmationEmail(currentUser.id, selectedJob.id)
+        .then(success => {
+          if (success) {
+            console.log("Application confirmation email sent successfully");
+          } else {
+            console.log("Failed to send application confirmation email");
+          }
+        })
+        .catch(err => {
+          console.error("Error sending application confirmation email:", err);
+        });
       
       toast.success("Job application submitted successfully!");
       setApplyDialogOpen(false);
@@ -135,8 +148,8 @@ export function AvailableJobsTab() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
-        <div className="loader mb-4"></div>
-        <p className="text-muted-foreground">Loading available jobs...</p>
+        <LoadingSpinner size="md" />
+        <p className="text-muted-foreground mt-4">Loading available jobs...</p>
       </div>
     );
   }
@@ -253,11 +266,11 @@ export function AvailableJobsTab() {
                 </div>
               </CardContent>
               <CardFooter className="pt-2 flex justify-between">
-                <Button variant="outline" size="sm" onClick={() => handleApply(job)}>
-                  Apply Now
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedJob(job)}>
+                <Button variant="outline" size="sm" onClick={() => setSelectedJob(job)}>
                   View Details
+                </Button>
+                <Button size="sm" onClick={() => handleApply(job)}>
+                  Apply Now
                 </Button>
               </CardFooter>
             </Card>

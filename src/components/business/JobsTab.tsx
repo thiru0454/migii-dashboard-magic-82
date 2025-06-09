@@ -10,6 +10,7 @@ import { supabase } from "@/utils/supabaseClient";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { sendJobPostingNotifications } from "@/services/emailService";
 
 interface JobFormData {
   title: string;
@@ -122,6 +123,29 @@ export function JobsTab() {
         }]);
 
       if (notificationError) throw notificationError;
+
+      // Send email notifications to matching workers
+      if (jobData) {
+        sendJobPostingNotifications({
+          id: jobData.id,
+          title: jobData.title,
+          company: jobData.company,
+          location: jobData.location,
+          description: jobData.description,
+          salary: jobData.salary,
+          category: jobData.category
+        }, jobData.category)
+          .then(success => {
+            if (success) {
+              console.log("Job notification emails sent successfully");
+            } else {
+              console.log("Some job notification emails failed to send");
+            }
+          })
+          .catch(err => {
+            console.error("Error sending job notification emails:", err);
+          });
+      }
 
       toast.success("Job posted successfully! Waiting for admin approval.");
       setFormData({
@@ -388,4 +412,4 @@ export function JobsTab() {
       </Card>
     </div>
   );
-} 
+}

@@ -16,6 +16,7 @@ import { sendRegistrationEmail } from "@/utils/emailService";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { registerNewWorker } from '@/services/workerService';
 import { SKILLS } from "@/constants/skills";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const STATES = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"];
 
@@ -76,7 +77,20 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
       // Register worker in Supabase
       const registeredWorker = await registerNewWorker(workerData);
       
-      toast.success('Worker updated to Supabase!');
+      toast.success('Worker registered successfully!');
+      
+      // Send registration confirmation email
+      if (registeredWorker && (registeredWorker.email || registeredWorker["Email Address"])) {
+        sendRegistrationEmail(registeredWorker)
+          .then(success => {
+            if (success) {
+              toast.success('Registration confirmation email sent!');
+            }
+          })
+          .catch(err => {
+            console.error("Error sending registration email:", err);
+          });
+      }
       
       if (onSuccess) {
         onSuccess(registeredWorker);
@@ -249,7 +263,12 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
           </div>
         </div>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Registering..." : "Register Worker"}
+          {isSubmitting ? (
+            <div className="flex items-center justify-center">
+              <LoadingSpinner size="sm" className="mr-2" />
+              <span>Registering...</span>
+            </div>
+          ) : "Register Worker"}
         </Button>
         <div className="text-center text-sm text-muted-foreground mt-2">
           Registration typically completes in 2-3 seconds
