@@ -178,3 +178,24 @@ export async function deleteWorker(id: string) {
     return { data: null, error };
   }
 }
+
+// Submit job application
+export async function submitJobApplication(applicationData: any) {
+  try {
+    const { data, error } = await supabase
+      .from('job_applications')
+      .insert([applicationData])
+      .select('*')
+      .single();
+      
+    if (error) {
+      console.error('Supabase error submitting job application:', error);
+      throw error;
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error submitting job application:', error);
+    return { data: null, error };
+  }
+}
