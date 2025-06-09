@@ -23,12 +23,39 @@ Deno.serve(async (req) => {
   try {
     const { type, to, recipients, data } = await req.json()
 
+    // Check if email credentials are available
+    const emailUser = Deno.env.get('EMAIL_USER');
+    const emailPass = Deno.env.get('EMAIL_PASS');
+    
+    if (!emailUser || !emailPass) {
+      console.warn('Email credentials not configured. EMAIL_USER and EMAIL_PASS environment variables are required.');
+      
+      // Return a development response
+      const response = {
+        success: false,
+        message: 'Email service not configured - development mode',
+        error: 'EMAIL_USER and EMAIL_PASS environment variables not set'
+      };
+      
+      if (type === 'otp') {
+        response.otp = data.otp || generateOTP();
+      }
+      
+      return new Response(
+        JSON.stringify(response),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200, // Return 200 to avoid breaking the frontend
+        },
+      )
+    }
+
     // Configure email transporter
     const transporter = createTransport({
       service: 'gmail',
       auth: {
-        user: Deno.env.get('EMAIL_USER') || 'migii.worker.portal@gmail.com',
-        pass: Deno.env.get('EMAIL_PASS') || 'your-app-password-here' // Use app password for Gmail
+        user: emailUser,
+        pass: emailPass
       }
     });
 
@@ -191,6 +218,30 @@ Deno.serve(async (req) => {
     )
   } catch (error) {
     console.error('Error sending email:', error)
+    
+    // For development, still return a success response with OTP for testing
+    if (error.message?.includes('getaddrinfo') || error.message?.includes('ENOTFOUND')) {
+      const response = {
+        success: false,
+        message: 'Email service unavailable - development mode',
+        error: 'Network connectivity issue - likely missing email credentials'
+      };
+      
+      // If this was an OTP request, still provide an OTP for testing
+      const requestBody = await req.clone().json().catch(() => ({}));
+      if (requestBody.type === 'otp') {
+        response.otp = requestBody.data?.otp || generateOTP();
+      }
+      
+      return new Response(
+        JSON.stringify(response),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200, // Return 200 to avoid breaking the frontend
+        },
+      )
+    }
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       {
