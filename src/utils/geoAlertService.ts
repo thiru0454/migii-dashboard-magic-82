@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { MigrantWorker } from "@/types/worker";
 
@@ -45,44 +44,64 @@ const initFromLocalStorage = () => {
     // Load geo zones
     const storedZones = localStorage.getItem(ZONES_STORAGE_KEY);
     if (storedZones) {
-      geoZones = JSON.parse(storedZones);
+      try {
+        geoZones = JSON.parse(storedZones);
+      } catch (error) {
+        console.error('Error parsing geo zones from localStorage:', error);
+        initializeDefaultZones();
+      }
     } else {
-      // Initialize with default zones if none exist
-      geoZones = [
-        {
-          id: 'work_zone_1',
-          name: 'Main Construction Site',
-          center: { latitude: 13.0827, longitude: 80.2707 },
-          radiusInMeters: 500,
-          type: 'work',
-          description: 'Primary work zone for construction teams'
-        },
-        {
-          id: 'restricted_zone_1',
-          name: 'Hazardous Area',
-          center: { latitude: 13.0927, longitude: 80.2807 },
-          radiusInMeters: 200,
-          type: 'restricted',
-          description: 'Dangerous area - authorized personnel only'
-        }
-      ];
-      localStorage.setItem(ZONES_STORAGE_KEY, JSON.stringify(geoZones));
+      initializeDefaultZones();
     }
 
     // Load worker zone status
     const storedStatus = localStorage.getItem(WORKER_ZONE_STATUS_KEY);
     if (storedStatus) {
-      workerZoneStatus = JSON.parse(storedStatus);
+      try {
+        workerZoneStatus = JSON.parse(storedStatus);
+      } catch (error) {
+        console.error('Error parsing worker zone status from localStorage:', error);
+        workerZoneStatus = {};
+      }
     }
 
     // Load alerts
     const storedAlerts = localStorage.getItem(ALERTS_STORAGE_KEY);
     if (storedAlerts) {
-      alertsCache = JSON.parse(storedAlerts);
+      try {
+        alertsCache = JSON.parse(storedAlerts);
+      } catch (error) {
+        console.error('Error parsing alerts from localStorage:', error);
+        alertsCache = [];
+      }
     }
   } catch (error) {
     console.error('Error initializing geo alert service:', error);
+    initializeDefaultZones();
   }
+};
+
+// Initialize default zones
+const initializeDefaultZones = () => {
+  geoZones = [
+    {
+      id: 'work_zone_1',
+      name: 'Main Construction Site',
+      center: { latitude: 13.0827, longitude: 80.2707 },
+      radiusInMeters: 500,
+      type: 'work',
+      description: 'Primary work zone for construction teams'
+    },
+    {
+      id: 'restricted_zone_1',
+      name: 'Hazardous Area',
+      center: { latitude: 13.0927, longitude: 80.2807 },
+      radiusInMeters: 200,
+      type: 'restricted',
+      description: 'Dangerous area - authorized personnel only'
+    }
+  ];
+  localStorage.setItem(ZONES_STORAGE_KEY, JSON.stringify(geoZones));
 };
 
 // Calculate distance between two points using Haversine formula
@@ -148,7 +167,11 @@ const createAlert = (
     alertsCache = alertsCache.slice(0, 100);
   }
   
-  localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(alertsCache));
+  try {
+    localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(alertsCache));
+  } catch (error) {
+    console.error('Error storing alerts in localStorage:', error);
+  }
 
   // Show toast for admins
   toast.info(message, {
@@ -207,7 +230,11 @@ const updateWorkerLocation = (
   });
 
   // Update local storage
-  localStorage.setItem(WORKER_ZONE_STATUS_KEY, JSON.stringify(workerZoneStatus));
+  try {
+    localStorage.setItem(WORKER_ZONE_STATUS_KEY, JSON.stringify(workerZoneStatus));
+  } catch (error) {
+    console.error('Error storing worker zone status in localStorage:', error);
+  }
 
   return alerts;
 };
@@ -255,7 +282,11 @@ const markAlertAsRead = (alertId: string): void => {
   alertsCache = alertsCache.map(alert => 
     alert.id === alertId ? { ...alert, read: true } : alert
   );
-  localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(alertsCache));
+  try {
+    localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(alertsCache));
+  } catch (error) {
+    console.error('Error storing alerts in localStorage:', error);
+  }
 };
 
 // Add a new geo zone
@@ -265,13 +296,21 @@ const addGeoZone = (zone: Omit<GeoZone, 'id'>): GeoZone => {
     id: `zone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   };
   geoZones.push(newZone);
-  localStorage.setItem(ZONES_STORAGE_KEY, JSON.stringify(geoZones));
+  try {
+    localStorage.setItem(ZONES_STORAGE_KEY, JSON.stringify(geoZones));
+  } catch (error) {
+    console.error('Error storing geo zones in localStorage:', error);
+  }
   
   // Initialize zone status for all workers
   Object.keys(workerZoneStatus).forEach(workerId => {
     workerZoneStatus[workerId][newZone.id] = false;
   });
-  localStorage.setItem(WORKER_ZONE_STATUS_KEY, JSON.stringify(workerZoneStatus));
+  try {
+    localStorage.setItem(WORKER_ZONE_STATUS_KEY, JSON.stringify(workerZoneStatus));
+  } catch (error) {
+    console.error('Error storing worker zone status in localStorage:', error);
+  }
   
   return newZone;
 };
@@ -282,13 +321,21 @@ const removeGeoZone = (zoneId: string): boolean => {
   geoZones = geoZones.filter(zone => zone.id !== zoneId);
   
   if (geoZones.length !== initialLength) {
-    localStorage.setItem(ZONES_STORAGE_KEY, JSON.stringify(geoZones));
+    try {
+      localStorage.setItem(ZONES_STORAGE_KEY, JSON.stringify(geoZones));
+    } catch (error) {
+      console.error('Error storing geo zones in localStorage:', error);
+    }
     
     // Remove zone status for all workers
     Object.keys(workerZoneStatus).forEach(workerId => {
       delete workerZoneStatus[workerId][zoneId];
     });
-    localStorage.setItem(WORKER_ZONE_STATUS_KEY, JSON.stringify(workerZoneStatus));
+    try {
+      localStorage.setItem(WORKER_ZONE_STATUS_KEY, JSON.stringify(workerZoneStatus));
+    } catch (error) {
+      console.error('Error storing worker zone status in localStorage:', error);
+    }
     
     return true;
   }
@@ -307,7 +354,11 @@ const updateGeoZone = (zoneId: string, updates: Partial<Omit<GeoZone, 'id'>>): G
   if (zoneIndex === -1) return null;
   
   geoZones[zoneIndex] = { ...geoZones[zoneIndex], ...updates };
-  localStorage.setItem(ZONES_STORAGE_KEY, JSON.stringify(geoZones));
+  try {
+    localStorage.setItem(ZONES_STORAGE_KEY, JSON.stringify(geoZones));
+  } catch (error) {
+    console.error('Error storing geo zones in localStorage:', error);
+  }
   
   return geoZones[zoneIndex];
 };

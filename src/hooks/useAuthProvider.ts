@@ -7,7 +7,9 @@ import {
   getAllWorkersFromStorage, 
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
-  confirmOtp 
+  confirmOtp,
+  findWorkerByPhone,
+  findWorkerByEmail
 } from "@/utils/firebase";
 
 export const useAuthProvider = () => {
@@ -29,22 +31,42 @@ export const useAuthProvider = () => {
     }
     
     // Check Supabase session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsLoading(false);
-      
-      if (!session) {
-        // If there's no Supabase session, clear any stored user data
-        setCurrentUser(null);
-        localStorage.removeItem("currentUser");
-      }
-    });
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        setIsLoading(false);
+        
+        if (!session) {
+          // If there's no Supabase session, clear any stored user data
+          // But only if we're not using a local user (admin, business, worker)
+          const storedUser = localStorage.getItem("currentUser");
+          if (storedUser) {
+            try {
+              const user = JSON.parse(storedUser);
+              if (user.userType !== "admin" && user.userType !== "business" && user.userType !== "worker") {
+                setCurrentUser(null);
+                localStorage.removeItem("currentUser");
+              }
+            } catch (error) {
+              console.error("Error parsing stored user:", error);
+              localStorage.removeItem("currentUser");
+              setCurrentUser(null);
+            }
+          } else {
+            setCurrentUser(null);
+          }
+        }
+      });
 
-    return () => {
-      subscription.unsubscribe();
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-      }
-    };
+      return () => {
+        subscription.unsubscribe();
+        if (recaptchaVerifierRef.current) {
+          recaptchaVerifierRef.current.clear();
+        }
+      };
+    } catch (error) {
+      console.error("Error setting up auth state change listener:", error);
+      setIsLoading(false);
+    }
   }, []);
 
   const login = async (email: string, password: string, userType: UserType): Promise<boolean> => {
@@ -115,11 +137,8 @@ export const useAuthProvider = () => {
         });
       }
       
-      // Get all workers from local storage
-      const workers = getAllWorkersFromStorage();
-      
       // Find worker by phone
-      const worker = workers.find(w => w.phone === phone);
+      const worker = await findWorkerByPhone(phone);
       
       if (!worker) {
         throw new Error("Phone number not registered. Please register first.");
@@ -128,10 +147,10 @@ export const useAuthProvider = () => {
       // Set current user immediately if we found the worker (for demo purposes)
       const workerUser: User = {
         id: worker.id,
-        email: worker.email || `worker-${worker.phone}@migii.app`,
-        name: worker.name,
+        email: worker.email || worker["Email Address"] || `worker-${worker.phone}@migii.app`,
+        name: worker.name || worker["Full Name"] || "Worker",
         userType: "worker",
-        phone: worker.phone,
+        phone: worker.phone || worker["Phone Number"] || phone,
       };
       
       setCurrentUser(workerUser);
@@ -161,19 +180,16 @@ export const useAuthProvider = () => {
       
       const phone = verificationId;
       
-      // Get all workers from local storage
-      const workers = getAllWorkersFromStorage();
-      
       // Find worker by phone
-      const worker = workers.find(w => w.phone === phone);
+      const worker = await findWorkerByPhone(phone);
       
       if (worker) {
         const workerUser: User = {
           id: worker.id,
-          email: worker.email || `worker-${worker.phone}@migii.app`,
-          name: worker.name,
+          email: worker.email || worker["Email Address"] || `worker-${worker.phone}@migii.app`,
+          name: worker.name || worker["Full Name"] || "Worker",
           userType: "worker",
-          phone: worker.phone,
+          phone: worker.phone || worker["Phone Number"] || phone,
         };
         
         setCurrentUser(workerUser);
@@ -196,14 +212,25 @@ export const useAuthProvider = () => {
   };
 
   const logout = () => {
-    supabase.auth.signOut().then(() => {
+    try {
+      supabase.auth.signOut().then(() => {
+        setCurrentUser(null);
+        localStorage.removeItem("currentUser");
+        toast.success("Logged out successfully");
+      }).catch((error) => {
+        console.error("Logout error:", error);
+        toast.error("Failed to log out");
+        
+        // Force logout anyway
+        setCurrentUser(null);
+        localStorage.removeItem("currentUser");
+      });
+    } catch (error) {
+      console.error("Exception during logout:", error);
+      // Force logout anyway
       setCurrentUser(null);
       localStorage.removeItem("currentUser");
-      toast.success("Logged out successfully");
-    }).catch((error) => {
-      console.error("Logout error:", error);
-      toast.error("Failed to log out");
-    });
+    }
   };
 
   return {

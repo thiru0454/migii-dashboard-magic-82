@@ -1,4 +1,3 @@
-
 // This is a compatibility layer between Firebase and Supabase
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
@@ -33,8 +32,13 @@ export class RecaptchaVerifier {
 
 // Get all workers from localStorage
 export const getAllWorkersFromStorage = (): MigrantWorker[] => {
-  const workersStr = localStorage.getItem('workers');
-  return workersStr ? JSON.parse(workersStr) : [];
+  try {
+    const workersStr = localStorage.getItem('workers');
+    return workersStr ? JSON.parse(workersStr) : [];
+  } catch (error) {
+    console.error("Error parsing workers from localStorage:", error);
+    return [];
+  }
 };
 
 // Find worker by email
@@ -44,20 +48,28 @@ export const findWorkerByEmail = async (email: string): Promise<MigrantWorker | 
     const { data, error } = await supabase
       .from('workers')
       .select('*')
-      .eq('Email Address', email)
+      .or(`email.eq.${email},email.eq.${email.toLowerCase()},email.eq.${email.toUpperCase()},email.ilike.${email}`)
       .single();
     
     if (error || !data) {
       console.log("Email not found in Supabase, checking localStorage");
       // Fall back to localStorage
       const workers = getAllWorkersFromStorage();
-      return workers.find(w => w.email === email) || null;
+      return workers.find(w => 
+        w.email?.toLowerCase() === email.toLowerCase() || 
+        w["Email Address"]?.toLowerCase() === email.toLowerCase()
+      ) || null;
     }
     
     return data as MigrantWorker;
   } catch (error) {
     console.error("Error finding worker by email:", error);
-    return null;
+    // Fall back to localStorage
+    const workers = getAllWorkersFromStorage();
+    return workers.find(w => 
+      w.email?.toLowerCase() === email.toLowerCase() || 
+      w["Email Address"]?.toLowerCase() === email.toLowerCase()
+    ) || null;
   }
 };
 
@@ -68,20 +80,28 @@ export const findWorkerByPhone = async (phone: string): Promise<MigrantWorker | 
     const { data, error } = await supabase
       .from('workers')
       .select('*')
-      .eq('Phone Number', phone)
+      .or(`phone.eq.${phone},phone.ilike.${phone}`)
       .single();
     
     if (error || !data) {
       console.log("Phone not found in Supabase, checking localStorage");
       // Fall back to localStorage
       const workers = getAllWorkersFromStorage();
-      return workers.find(w => w.phone === phone) || null;
+      return workers.find(w => 
+        w.phone === phone || 
+        w["Phone Number"] === phone
+      ) || null;
     }
     
     return data as MigrantWorker;
   } catch (error) {
     console.error("Error finding worker by phone:", error);
-    return null;
+    // Fall back to localStorage
+    const workers = getAllWorkersFromStorage();
+    return workers.find(w => 
+      w.phone === phone || 
+      w["Phone Number"] === phone
+    ) || null;
   }
 };
 
@@ -132,17 +152,22 @@ export const registerWorkerInStorage = async (worker: {
     localStorage.setItem('workers', JSON.stringify([...existingWorkers, newWorker]));
 
     // Then try to save to Supabase
-    const { data, error } = await supabase
-      .from('workers')
-      .insert([newWorker])
-      .select();
+    try {
+      const { data, error } = await supabase
+        .from('workers')
+        .insert([newWorker])
+        .select();
 
-    if (error) {
-      console.error("Error inserting into Supabase:", error);
+      if (error) {
+        console.error("Error inserting into Supabase:", error);
+        return newWorker;
+      }
+
+      return data?.[0] as MigrantWorker || newWorker;
+    } catch (supabaseError) {
+      console.error("Error inserting into Supabase:", supabaseError);
       return newWorker;
     }
-
-    return data?.[0] as MigrantWorker || newWorker;
   } catch (error) {
     console.error("Error in registerWorkerInStorage:", error);
     throw error;
@@ -159,13 +184,17 @@ export const updateWorkerStatus = async (workerId: string, status: string): Prom
     localStorage.setItem('workers', JSON.stringify(updatedWorkers));
 
     // Then try Supabase update
-    const { error } = await supabase
-      .from('workers')
-      .update({ status })
-      .eq('id', workerId);
+    try {
+      const { error } = await supabase
+        .from('workers')
+        .update({ status })
+        .eq('id', workerId);
 
-    if (error) {
-      console.error("Error updating worker status in Supabase:", error);
+      if (error) {
+        console.error("Error updating worker status in Supabase:", error);
+      }
+    } catch (supabaseError) {
+      console.error("Error updating worker status in Supabase:", supabaseError);
     }
   } catch (error) {
     console.error("Error in updateWorkerStatus:", error);
@@ -195,36 +224,42 @@ export const getAllWorkersRealtime = (callback: (workers: MigrantWorker[]) => vo
     });
 
   // Set up real-time subscription
-  const subscription = supabase
-    .channel('workers-changes')
-    .on('postgres_changes', { 
-      event: '*', 
-      schema: 'public', 
-      table: 'workers' 
-    }, (payload) => {
-      // When a change happens, fetch all workers again
-      supabase
-        .from('workers')
-        .select('*')
-        .then(({ data, error }) => {
-          if (error) {
-            console.error("Error fetching workers after change:", error);
-            return;
-          }
-          
-          if (data) {
-            callback(data as MigrantWorker[]);
-            // Update localStorage
-            localStorage.setItem('workers', JSON.stringify(data));
-          }
-        });
-    })
-    .subscribe();
+  try {
+    const subscription = supabase
+      .channel('workers-changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'workers' 
+      }, (payload) => {
+        // When a change happens, fetch all workers again
+        supabase
+          .from('workers')
+          .select('*')
+          .then(({ data, error }) => {
+            if (error) {
+              console.error("Error fetching workers after change:", error);
+              return;
+            }
+            
+            if (data) {
+              callback(data as MigrantWorker[]);
+              // Update localStorage
+              localStorage.setItem('workers', JSON.stringify(data));
+            }
+          });
+      })
+      .subscribe();
 
-  // Return unsubscribe function
-  return () => {
-    subscription.unsubscribe();
-  };
+    // Return unsubscribe function
+    return () => {
+      subscription.unsubscribe();
+    };
+  } catch (error) {
+    console.error("Error setting up real-time subscription:", error);
+    // Return a dummy unsubscribe function
+    return () => {};
+  }
 };
 
 // Mock phone authentication for demo purposes
@@ -235,10 +270,19 @@ export const signInWithPhoneNumber = async (phoneNumber: string) => {
     
     // Check if phone exists in workers
     const workers = getAllWorkersFromStorage();
-    const worker = workers.find(w => w.phone === phoneNumber);
+    const worker = workers.find(w => w.phone === phoneNumber || w["Phone Number"] === phoneNumber);
     
     if (!worker) {
-      throw new Error("Phone number not registered. Please register first.");
+      // Try to check in Supabase
+      const { data, error } = await supabase
+        .from('workers')
+        .select('*')
+        .or(`phone.eq.${phoneNumber},phone.ilike.${phoneNumber}`)
+        .single();
+        
+      if (error || !data) {
+        throw new Error("Phone number not registered. Please register first.");
+      }
     }
     
     // Return a mock verification ID (we'll use the phone number itself)
@@ -276,18 +320,45 @@ export const confirmOtp = async (verificationId: string, otp: string) => {
 export const getWorkerByContact = async (contact: string): Promise<MigrantWorker | null> => {
   try {
     const { data, error } = await getAllWorkers();
-    if (error || !data) return null;
+    if (error || !data) {
+      // Try localStorage
+      const workers = getAllWorkersFromStorage();
+      const trimmedContact = contact.trim();
+      return (
+        workers.find(
+          (w) =>
+            w["Phone Number"] === trimmedContact ||
+            w["Email Address"] === trimmedContact ||
+            w.phone === trimmedContact ||
+            w.email === trimmedContact
+        ) || null
+      );
+    }
+    
     const trimmedContact = contact.trim();
     return (
       data.find(
         (w: any) =>
           w["Phone Number"] === trimmedContact ||
-          w["Email Address"] === trimmedContact
+          w["Email Address"] === trimmedContact ||
+          w.phone === trimmedContact ||
+          w.email === trimmedContact
       ) || null
     );
   } catch (error) {
     console.error("Error in getWorkerByContact:", error);
-    return null;
+    // Try localStorage as fallback
+    const workers = getAllWorkersFromStorage();
+    const trimmedContact = contact.trim();
+    return (
+      workers.find(
+        (w) =>
+          w["Phone Number"] === trimmedContact ||
+          w["Email Address"] === trimmedContact ||
+          w.phone === trimmedContact ||
+          w.email === trimmedContact
+      ) || null
+    );
   }
 };
 
@@ -296,26 +367,55 @@ export const getWorkerDirectFromSupabase = async (contact: string): Promise<Migr
   try {
     const trimmedContact = contact.trim();
     console.log('[Worker Fetch] Searching for contact:', trimmedContact);
+    
     // Try by phone number first
     let { data, error } = await supabase
       .from('workers')
       .select('*')
-      .eq('Phone Number', trimmedContact)
+      .or(`phone.eq.${trimmedContact},phone.ilike.${trimmedContact},"Phone Number".eq.${trimmedContact},"Phone Number".ilike.${trimmedContact}`)
       .single();
+      
     console.log('[Worker Fetch] By Phone Number:', { data, error });
+    
     if (error || !data) {
       // Try by email if not found by phone
       ({ data, error } = await supabase
         .from('workers')
         .select('*')
-        .eq('Email Address', trimmedContact)
+        .or(`email.eq.${trimmedContact},email.ilike.${trimmedContact},"Email Address".eq.${trimmedContact},"Email Address".ilike.${trimmedContact}`)
         .single());
+        
       console.log('[Worker Fetch] By Email Address:', { data, error });
-      if (error || !data) return null;
+      
+      if (error || !data) {
+        // Try localStorage as fallback
+        const workers = getAllWorkersFromStorage();
+        const worker = workers.find(
+          (w) =>
+            w["Phone Number"] === trimmedContact ||
+            w["Email Address"] === trimmedContact ||
+            w.phone === trimmedContact ||
+            w.email === trimmedContact
+        );
+        
+        return worker || null;
+      }
     }
+    
     return data as MigrantWorker;
   } catch (error) {
     console.error('Error in getWorkerDirectFromSupabase:', error);
-    return null;
+    // Try localStorage as fallback
+    const workers = getAllWorkersFromStorage();
+    const trimmedContact = contact.trim();
+    return (
+      workers.find(
+        (w) =>
+          w["Phone Number"] === trimmedContact ||
+          w["Email Address"] === trimmedContact ||
+          w.phone === trimmedContact ||
+          w.email === trimmedContact
+      ) || null
+    );
   }
 };

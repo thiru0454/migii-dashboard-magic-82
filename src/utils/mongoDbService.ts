@@ -76,8 +76,13 @@ class MongoDbService {
       // Load worker locations
       const storedLocations = localStorage.getItem('worker_locations');
       if (storedLocations) {
-        this.workerLocations = JSON.parse(storedLocations);
-        console.log(`Loaded ${Object.keys(this.workerLocations).length} worker locations`);
+        try {
+          this.workerLocations = JSON.parse(storedLocations);
+          console.log(`Loaded ${Object.keys(this.workerLocations).length} worker locations`);
+        } catch (error) {
+          console.error("Error parsing worker locations:", error);
+          this.workerLocations = {};
+        }
       }
 
       // Load location history
@@ -89,7 +94,12 @@ class MongoDbService {
         const workerId = key.replace('worker_location_history_', '');
         const history = localStorage.getItem(key);
         if (history) {
-          this.locationHistory[workerId] = JSON.parse(history);
+          try {
+            this.locationHistory[workerId] = JSON.parse(history);
+          } catch (error) {
+            console.error(`Error parsing location history for worker ${workerId}:`, error);
+            this.locationHistory[workerId] = [];
+          }
         }
       });
       
@@ -103,16 +113,20 @@ class MongoDbService {
     try {
       const storedWorkers = localStorage.getItem('workers');
       if (storedWorkers) {
-        const parsedWorkers = JSON.parse(storedWorkers);
-        // Index workers by ID for easier access
-        parsedWorkers.forEach((worker: any) => {
-          this.workers[worker.id] = worker;
-        });
-        console.log(`Loaded ${parsedWorkers.length} workers from storage`);
-        
-        // Update MongoDB collections (simulated)
-        this.collections.workers = parsedWorkers;
-        this.saveCollections();
+        try {
+          const parsedWorkers = JSON.parse(storedWorkers);
+          // Index workers by ID for easier access
+          parsedWorkers.forEach((worker: any) => {
+            this.workers[worker.id] = worker;
+          });
+          console.log(`Loaded ${parsedWorkers.length} workers from storage`);
+          
+          // Update MongoDB collections (simulated)
+          this.collections.workers = parsedWorkers;
+          this.saveCollections();
+        } catch (error) {
+          console.error("Error parsing workers from localStorage:", error);
+        }
       }
     } catch (error) {
       console.error("Failed to load workers from storage:", error);

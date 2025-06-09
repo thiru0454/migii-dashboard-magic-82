@@ -14,6 +14,7 @@ import { getAllWorkers } from "@/utils/supabaseClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAuth } from "@/contexts/AuthContext";
+import { getWorkerByContact, getWorkerDirectFromSupabase } from "@/utils/firebase";
 
 const contactSchema = z.object({
   contact: z.string().min(1, { message: "Email or phone number is required" }),
@@ -57,34 +58,55 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       const contactValue = data.contact.trim();
       setContact(contactValue);
       const isEmail = contactValue.includes('@');
-      // Fetch all workers and filter for the matching one
-      const { data: workers, error } = await getAllWorkers();
+      
+      // Try to find worker in Supabase first
       console.log('[WorkerLoginForm] handleSendOTP - contact:', contactValue);
-      console.log('[WorkerLoginForm] handleSendOTP - fetched workers:', workers);
-      if (error || !workers) {
-        setError("Failed to fetch workers from Supabase");
-        setIsLoading(false);
-        return;
+      
+      let worker = null;
+      
+      // Try direct Supabase query first
+      try {
+        worker = await getWorkerDirectFromSupabase(contactValue);
+        console.log('[WorkerLoginForm] handleSendOTP - worker from direct Supabase:', worker);
+      } catch (directError) {
+        console.error("Error in direct Supabase query:", directError);
       }
-      console.log("Fetched workers from Supabase:", workers);
-      console.log("Trying to match contact:", contactValue);
-      const worker = isEmail
-        ? workers.find((w: any) =>
-            (w["Email Address"] && String(w["Email Address"]).trim() === contactValue.trim()) ||
-            (w.email && String(w.email).trim() === contactValue.trim())
-          )
-        : workers.find((w: any) => {
-            const dbPhone = w["Phone Number"] ? String(w["Phone Number"]).trim() : "";
-            const dbPhoneNew = w.phone ? String(w.phone).trim() : "";
-            const inputPhone = contactValue.trim();
-            return dbPhone === inputPhone || dbPhoneNew === inputPhone;
-          });
+      
+      // If direct query failed, try getAllWorkers
+      if (!worker) {
+        try {
+          const { data: workers, error } = await getAllWorkers();
+          console.log('[WorkerLoginForm] handleSendOTP - fetched workers:', workers);
+          
+          if (error || !workers) {
+            console.error("Error fetching workers from Supabase:", error);
+            // Try localStorage
+            worker = await getWorkerByContact(contactValue);
+          } else {
+            // Find matching worker
+            worker = workers.find(
+              (w: any) =>
+                (w["Email Address"] && String(w["Email Address"]).trim().toLowerCase() === contactValue.trim().toLowerCase()) ||
+                (w.email && String(w.email).trim().toLowerCase() === contactValue.trim().toLowerCase()) ||
+                (w["Phone Number"] && String(w["Phone Number"]).trim() === contactValue.trim()) ||
+                (w.phone && String(w.phone).trim() === contactValue.trim())
+            );
+          }
+        } catch (getAllError) {
+          console.error("Error in getAllWorkers:", getAllError);
+          // Try localStorage as last resort
+          worker = await getWorkerByContact(contactValue);
+        }
+      }
+      
       console.log('[WorkerLoginForm] handleSendOTP - matched worker:', worker);
+      
       if (!worker) {
         setError(`No worker found with this ${isEmail ? 'email' : 'phone number'}`);
         setIsLoading(false);
         return;
       }
+      
       // Skip actual OTP sending, just go to OTP step
       setStep("otp");
       setTimeLeft(60);
@@ -111,34 +133,53 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       // Accept '123456' as the only valid OTP
       if (data.otp === '123456') {
         const isEmail = contact.includes('@');
-        // Fetch all workers and filter for the matching one
-        const { data: workers, error } = await getAllWorkers();
-        console.log('[WorkerLoginForm] handleVerifyOTP - contact:', contact);
-        console.log('[WorkerLoginForm] handleVerifyOTP - fetched workers:', workers);
-        if (error || !workers) {
-          setError("Failed to fetch workers from Supabase");
-          setIsLoading(false);
-          return;
+        
+        // Try to find worker
+        let worker = null;
+        
+        // Try direct Supabase query first
+        try {
+          worker = await getWorkerDirectFromSupabase(contact);
+          console.log('[WorkerLoginForm] handleVerifyOTP - worker from direct Supabase:', worker);
+        } catch (directError) {
+          console.error("Error in direct Supabase query:", directError);
         }
-        console.log("Fetched workers from Supabase:", workers);
-        console.log("Trying to match contact:", contact);
-        const worker = isEmail
-          ? workers.find((w: any) =>
-              (w["Email Address"] && String(w["Email Address"]).trim() === contact.trim()) ||
-              (w.email && String(w.email).trim() === contact.trim())
-            )
-          : workers.find((w: any) => {
-              const dbPhone = w["Phone Number"] ? String(w["Phone Number"]).trim() : "";
-              const dbPhoneNew = w.phone ? String(w.phone).trim() : "";
-              const inputPhone = contact.trim();
-              return dbPhone === inputPhone || dbPhoneNew === inputPhone;
-            });
+        
+        // If direct query failed, try getAllWorkers
+        if (!worker) {
+          try {
+            const { data: workers, error } = await getAllWorkers();
+            console.log('[WorkerLoginForm] handleVerifyOTP - fetched workers:', workers);
+            
+            if (error || !workers) {
+              console.error("Error fetching workers from Supabase:", error);
+              // Try localStorage
+              worker = await getWorkerByContact(contact);
+            } else {
+              // Find matching worker
+              worker = workers.find(
+                (w: any) =>
+                  (w["Email Address"] && String(w["Email Address"]).trim().toLowerCase() === contact.trim().toLowerCase()) ||
+                  (w.email && String(w.email).trim().toLowerCase() === contact.trim().toLowerCase()) ||
+                  (w["Phone Number"] && String(w["Phone Number"]).trim() === contact.trim()) ||
+                  (w.phone && String(w.phone).trim() === contact.trim())
+              );
+            }
+          } catch (getAllError) {
+            console.error("Error in getAllWorkers:", getAllError);
+            // Try localStorage as last resort
+            worker = await getWorkerByContact(contact);
+          }
+        }
+        
         console.log('[WorkerLoginForm] handleVerifyOTP - matched worker:', worker);
+        
         if (!worker) {
           setError("Worker not found");
           setIsLoading(false);
           return;
         }
+        
         // Set Auth context's currentUser to the logged-in worker
         const workerUser = {
           id: worker.id,
@@ -147,11 +188,14 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
           userType: "worker",
           phone: worker["Phone Number"] || worker.phone || "",
         };
+        
         localStorage.setItem('currentUser', JSON.stringify(workerUser));
+        
         if (typeof login === 'function') {
           // Use login to set currentUser in context
           await login(workerUser.email, '', 'worker');
         }
+        
         toast.success("Login successful!");
         onSuccess(worker);
       } else {
@@ -171,12 +215,42 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
     try {
       const isEmail = contact.includes('@');
       
-      const worker = isEmail
-        ? await getAllWorkers()
-          .then(({ data }) => data.find((w: any) => (w["Email Address"] && w["Email Address"] === contact) || (w.email && w.email === contact)))
-        : await getAllWorkers()
-          .then(({ data }) => data.find((w: any) => (w["Phone Number"] && w["Phone Number"] === contact) || (w.phone && w.phone === contact)));
-        
+      // Try to find worker
+      let worker = null;
+      
+      // Try direct Supabase query first
+      try {
+        worker = await getWorkerDirectFromSupabase(contact);
+      } catch (directError) {
+        console.error("Error in direct Supabase query:", directError);
+      }
+      
+      // If direct query failed, try getAllWorkers
+      if (!worker) {
+        try {
+          const { data: workers, error } = await getAllWorkers();
+          
+          if (error || !workers) {
+            console.error("Error fetching workers from Supabase:", error);
+            // Try localStorage
+            worker = await getWorkerByContact(contact);
+          } else {
+            // Find matching worker
+            worker = workers.find(
+              (w: any) =>
+                (w["Email Address"] && String(w["Email Address"]).trim().toLowerCase() === contact.trim().toLowerCase()) ||
+                (w.email && String(w.email).trim().toLowerCase() === contact.trim().toLowerCase()) ||
+                (w["Phone Number"] && String(w["Phone Number"]).trim() === contact.trim()) ||
+                (w.phone && String(w.phone).trim() === contact.trim())
+            );
+          }
+        } catch (getAllError) {
+          console.error("Error in getAllWorkers:", getAllError);
+          // Try localStorage as last resort
+          worker = await getWorkerByContact(contact);
+        }
+      }
+      
       if (!worker) {
         setError("Worker not found");
         setIsLoading(false);
@@ -185,7 +259,7 @@ export function WorkerLoginForm({ onSuccess }: WorkerLoginFormProps) {
       
       const emailToUse = isEmail 
         ? contact 
-        : (worker.email || `${contact}@migii.worker.temp`);
+        : (worker.email || worker["Email Address"] || `${contact}@migii.worker.temp`);
         
       const sent = await sendOtpEmail(emailToUse);
       

@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 // Store OTPs temporarily (in a real app, this would be in a database)
@@ -53,7 +52,7 @@ export const sendOtpEmail = async (email: string, otp?: string): Promise<boolean
     const success = mockSendEmail(email, subject, html);
     
     // Always show the OTP in toast for testing purposes
-    toast.success(`OTP sent to ${email}. For testing, use: ${generatedOtp}`);
+    toast.success(`OTP sent to ${email}. For testing, use: 123456`);
     
     return true;
   } catch (error: any) {
