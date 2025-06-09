@@ -1,14 +1,4 @@
-import nodemailer from 'nodemailer';
 import { toast } from "sonner";
-
-// Configure nodemailer with Gmail SMTP
-const transporter = nodemailer.createTransporter({
-  service: 'gmail',
-  auth: {
-    user: 'migiiworker@gmail.com',
-    pass: 'eugt pqma pdgm tuop' // App password
-  }
-});
 
 // Store OTPs temporarily (in a real app, this would be in a database)
 const otpStore: Record<string, { otp: string, timestamp: number }> = {};
@@ -18,28 +8,21 @@ export const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send email using nodemailer
+// Mock email sending function for browser environment
 const sendEmail = async (to: string, subject: string, html: string): Promise<boolean> => {
   try {
-    const mailOptions = {
-      from: 'Migii Worker Portal <migiiworker@gmail.com>',
-      to,
-      subject,
-      html
-    };
-    
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.response);
-    return true;
-  } catch (error) {
-    console.error('Error sending email:', error);
-    
-    // Fallback to mock email for development/demo
+    // Mock email for development/demo - nodemailer cannot run in browser
     console.log(`[Mock Email] To: ${to}, Subject: ${subject}`);
     console.log(`[Mock Email] Content: ${html}`);
     
+    // Simulate async operation
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     // Return true to simulate success in development
     return true;
+  } catch (error) {
+    console.error('Error in mock email service:', error);
+    return false;
   }
 };
 
