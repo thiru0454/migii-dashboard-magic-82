@@ -34,7 +34,7 @@ export function TestSupabaseConnection() {
         >
           {isLoading ? (
             <>
-              <LoadingSpinner size="sm" className="mr-2" />
+              <LoadingSpinner size="sm\" className="mr-2" />
               Testing...
             </>
           ) : 'Run Connection Test'}
