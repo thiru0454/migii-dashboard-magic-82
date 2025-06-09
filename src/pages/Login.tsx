@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const ADMIN_CREDENTIALS = {
   username: "admin@migii.com",
@@ -14,8 +15,8 @@ const ADMIN_CREDENTIALS = {
 };
 
 const BUSINESS_CREDENTIALS = {
-  username: "business@example.com",
-  password: "business123",
+  username: "business@migii.com",
+  password: "business0454",
 };
 
 type LoginMode = "none" | "admin" | "business";
@@ -28,7 +29,21 @@ export default function Login() {
   const [activeTab, setActiveTab] = useState("login");
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, currentUser } = useAuth();
+
+  // Check if user is already logged in
+  useEffect(() => {
+    if (currentUser) {
+      // Redirect based on user type
+      if (currentUser.userType === "admin") {
+        navigate("/admin-dashboard");
+      } else if (currentUser.userType === "business") {
+        navigate("/business-dashboard");
+      } else if (currentUser.userType === "worker") {
+        navigate("/worker/dashboard");
+      }
+    }
+  }, [currentUser, navigate]);
 
   // Check for tab query parameter
   useEffect(() => {
@@ -149,7 +164,12 @@ export default function Login() {
                           className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-all hover:translate-y-[-2px]" 
                           disabled={isSubmitting}
                         >
-                          {isSubmitting ? "Signing in..." : "Sign In as Admin"}
+                          {isSubmitting ? (
+                            <>
+                              <LoadingSpinner size="sm" className="mr-2" />
+                              Signing in...
+                            </>
+                          ) : "Sign In as Admin"}
                         </Button>
                         <Button
                           type="button"
@@ -192,7 +212,12 @@ export default function Login() {
                           className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 transition-all hover:translate-y-[-2px]" 
                           disabled={isSubmitting}
                         >
-                          {isSubmitting ? "Signing in..." : "Sign In as Business"}
+                          {isSubmitting ? (
+                            <>
+                              <LoadingSpinner size="sm" className="mr-2" />
+                              Signing in...
+                            </>
+                          ) : "Sign In as Business"}
                         </Button>
                         <Button
                           type="button"

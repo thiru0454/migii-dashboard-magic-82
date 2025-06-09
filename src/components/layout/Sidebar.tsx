@@ -97,7 +97,7 @@ const businessLinks: SidebarLinkItem[] = [
 const workerLinks: SidebarLinkItem[] = [
   {
     title: "Worker Portal",
-    href: "/worker-dashboard",
+    href: "/worker/dashboard",
     icon: User,
   },
   {
@@ -207,15 +207,6 @@ export function Sidebar() {
           <Menu className="h-6 w-6" />
         )}
       </button>
-
-      {/* Mobile Menu Overlay */}
-      {/* Overlay removed for visibility troubleshooting */}
-      {/* {isMobile && mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )} */}
 
       {/* Sidebar */}
       <aside
