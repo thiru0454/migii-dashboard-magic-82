@@ -372,7 +372,7 @@ export const getWorkerDirectFromSupabase = async (contact: string): Promise<Migr
     let { data, error } = await supabase
       .from('workers')
       .select('*')
-      .or(`phone.eq.${trimmedContact},phone.ilike.${trimmedContact},"Phone Number".eq.${trimmedContact},"Phone Number".ilike.${trimmedContact}`)
+      .or(`phone.eq.${trimmedContact},phone.ilike.${trimmedContact}`)
       .single();
       
     console.log('[Worker Fetch] By Phone Number:', { data, error });
@@ -382,7 +382,7 @@ export const getWorkerDirectFromSupabase = async (contact: string): Promise<Migr
       ({ data, error } = await supabase
         .from('workers')
         .select('*')
-        .or(`email.eq.${trimmedContact},email.ilike.${trimmedContact},"Email Address".eq.${trimmedContact},"Email Address".ilike.${trimmedContact}`)
+        .or(`email.eq.${trimmedContact},email.ilike.${trimmedContact}`)
         .single());
         
       console.log('[Worker Fetch] By Email Address:', { data, error });
