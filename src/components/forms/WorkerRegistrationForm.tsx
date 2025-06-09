@@ -76,18 +76,7 @@ export function WorkerRegistrationForm({ onSuccess }: WorkerRegistrationFormProp
       // Register worker in Supabase
       const registeredWorker = await registerNewWorker(workerData);
       
-      // Send registration confirmation email if email is provided
-      if (values.email) {
-        await sendRegistrationEmail({
-          name: values.name,
-          email: values.email,
-          id: registeredWorker.id,
-          phone: values.phone,
-          skill: values.skill
-        });
-      }
-      
-      toast.success('Worker registered successfully!');
+      toast.success('Worker updated to Supabase!');
       
       if (onSuccess) {
         onSuccess(registeredWorker);

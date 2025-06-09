@@ -35,18 +35,31 @@ export async function registerNewWorker(workerData: Omit<{
       throw new Error('Missing required fields');
     }
 
-    // Map fields to match database schema with standard naming conventions
+    // Map fields to match MigrantWorker type structure
+    // We need to match both camelCase properties and those with spaces
     const workerPayload = {
+      // Standard fields
       name: workerData.name,
       age: parsedAge,
       phone: workerData.phone,
       email: workerData.email || "",
       aadhaar: workerData.aadhaar,
       skill: workerData.skill,
-      origin_state: workerData.originState,
-      photoUrl: workerData.photoUrl || null,
+      origin_state: workerData.originState, // Use snake_case for database
+      photo_url: workerData.photoUrl || null, // Use snake_case for database
       status: "active" as const,
+      // Fields with spaces (needed for MigrantWorker type)
+      "Full Name": workerData.name,
+      "Age": parsedAge,
+      "Phone Number": workerData.phone,
+      "Email Address": workerData.email || "",
+      "Primary Skill": workerData.skill,
+      "Origin State": workerData.originState,
+      "Photo URL": workerData.photoUrl || null,
+      "Aadhaar Number": workerData.aadhaar,
+      // Required fields from MigrantWorker type
       registrationDate: new Date().toISOString(),
+      // Geographic data
       latitude: typeof workerData.latitude === 'number' ? workerData.latitude : null,
       longitude: typeof workerData.longitude === 'number' ? workerData.longitude : null
     };
@@ -69,44 +82,9 @@ export async function registerNewWorker(workerData: Omit<{
         toast.error('Invalid input format. Please check your entries.');
         return null;
       }
-      
-      // If Supabase fails, store in localStorage as fallback
-      if (!data) {
-        console.log('Storing worker in localStorage as fallback');
-        const workerId = `worker_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-        const newWorker = {
-          ...workerPayload,
-          id: workerId
-        };
-        
-        // Get existing workers from localStorage
-        const existingWorkers = localStorage.getItem('workers');
-        const workers = existingWorkers ? JSON.parse(existingWorkers) : [];
-        
-        // Add new worker
-        workers.push(newWorker);
-        
-        // Save back to localStorage
-        localStorage.setItem('workers', JSON.stringify(workers));
-        
-        toast.success('Worker registered successfully (local storage)!');
-        return newWorker;
-      }
-      
       toast.error(error.message || 'Failed to register worker');
       throw error;
     }
-    
-    // Also store in localStorage for redundancy
-    try {
-      const existingWorkers = localStorage.getItem('workers');
-      const workers = existingWorkers ? JSON.parse(existingWorkers) : [];
-      workers.push(data);
-      localStorage.setItem('workers', JSON.stringify(workers));
-    } catch (storageError) {
-      console.error('Error storing worker in localStorage:', storageError);
-    }
-    
     toast.success('Worker registered successfully!');
     return data;
   } catch (error) {
@@ -119,16 +97,7 @@ export async function registerNewWorker(workerData: Omit<{
 export async function getWorkerById(id: string) {
   try {
     const { data, error } = await getWorker(id);
-    if (error) {
-      // Try localStorage as fallback
-      const storedWorkers = localStorage.getItem('workers');
-      if (storedWorkers) {
-        const workers = JSON.parse(storedWorkers);
-        const worker = workers.find((w: MigrantWorker) => w.id === id);
-        if (worker) return worker;
-      }
-      throw error;
-    }
+    if (error) throw error;
     return data;
   } catch (error) {
     console.error('Error fetching worker:', error);
@@ -143,37 +112,10 @@ export async function updateWorkerDetails(id: string, updates: Partial<MigrantWo
     const { updated_at, ...workerUpdates } = updates as Partial<MigrantWorker & { updated_at?: string }>;
     
     // Now pass the cleaned updates object to the updateWorker function
+    // and add the updated_at as a separate parameter if needed by the API
     const { data, error } = await updateWorker(id, workerUpdates);
     
-    if (error) {
-      // Try to update in localStorage as fallback
-      const storedWorkers = localStorage.getItem('workers');
-      if (storedWorkers) {
-        const workers = JSON.parse(storedWorkers);
-        const updatedWorkers = workers.map((w: MigrantWorker) => 
-          w.id === id ? { ...w, ...workerUpdates } : w
-        );
-        localStorage.setItem('workers', JSON.stringify(updatedWorkers));
-        const updatedWorker = updatedWorkers.find((w: MigrantWorker) => w.id === id);
-        if (updatedWorker) return updatedWorker;
-      }
-      throw error;
-    }
-    
-    // Also update in localStorage for redundancy
-    try {
-      const storedWorkers = localStorage.getItem('workers');
-      if (storedWorkers) {
-        const workers = JSON.parse(storedWorkers);
-        const updatedWorkers = workers.map((w: MigrantWorker) => 
-          w.id === id ? { ...w, ...workerUpdates } : w
-        );
-        localStorage.setItem('workers', JSON.stringify(updatedWorkers));
-      }
-    } catch (storageError) {
-      console.error('Error updating worker in localStorage:', storageError);
-    }
-    
+    if (error) throw error;
     return data;
   } catch (error) {
     console.error('Error updating worker:', error);
@@ -184,19 +126,6 @@ export async function updateWorkerDetails(id: string, updates: Partial<MigrantWo
 export async function deleteWorkerById(id: string) {
   try {
     const { error } = await deleteWorker(id);
-    
-    // Also delete from localStorage
-    try {
-      const storedWorkers = localStorage.getItem('workers');
-      if (storedWorkers) {
-        const workers = JSON.parse(storedWorkers);
-        const filteredWorkers = workers.filter((w: MigrantWorker) => w.id !== id);
-        localStorage.setItem('workers', JSON.stringify(filteredWorkers));
-      }
-    } catch (storageError) {
-      console.error('Error deleting worker from localStorage:', storageError);
-    }
-    
     if (error) throw error;
   } catch (error) {
     console.error('Error deleting worker:', error);
@@ -207,14 +136,7 @@ export async function deleteWorkerById(id: string) {
 export async function getAllRegisteredWorkers() {
   try {
     const { data, error } = await getAllWorkers();
-    if (error) {
-      // Try localStorage as fallback
-      const storedWorkers = localStorage.getItem('workers');
-      if (storedWorkers) {
-        return JSON.parse(storedWorkers);
-      }
-      throw error;
-    }
+    if (error) throw error;
     return data;
   } catch (error) {
     console.error('Error fetching workers:', error);
