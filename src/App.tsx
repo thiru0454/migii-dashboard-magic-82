@@ -82,12 +82,12 @@ const App = () => (
                     <Route path="/settings" element={<Settings />} />
                     
                     {/* Redirects */}
-                    <Route path="/admin" element={<Navigate to="/login?tab=admin" replace />} />
-                    <Route path="/business" element={<Navigate to="/login?tab=business" replace />} />
-                    <Route path="/worker" element={<Navigate to="/login?tab=worker" replace />} />
-                    <Route path="/register" element={<Navigate to="/worker-registration" replace />} />
-                    <Route path="/signin" element={<Navigate to="/login" replace />} />
-                    <Route path="/index" element={<Navigate to="/" replace />} />
+                    <Route path="/admin" element={<Navigate to="/login?tab=admin\" replace />} />
+                    <Route path="/business" element={<Navigate to="/login?tab=business\" replace />} />
+                    <Route path="/worker" element={<Navigate to="/login?tab=worker\" replace />} />
+                    <Route path="/register" element={<Navigate to="/worker-registration\" replace />} />
+                    <Route path="/signin" element={<Navigate to="/login\" replace />} />
+                    <Route path="/index" element={<Navigate to="/\" replace />} />
                     
                     {/* Catch-all */}
                     <Route path="*" element={<NotFound />} />

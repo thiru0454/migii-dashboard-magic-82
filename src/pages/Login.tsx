@@ -123,7 +123,7 @@ export default function Login() {
                   <CardContent className="px-4 md:px-6 pb-8">
                     {mode === "none" && (
                       <div className="space-y-4">
-                        <Button className="w-full transition-all hover:translate-y-[-2px]" variant="outline" onClick={() => { setMode("admin"); resetForm(); }}>
+                        <Button className="w-full transition-all hover:translate-y-[-2px]\" variant="outline\" onClick={() => { setMode("admin"); resetForm(); }}>
                           Admin Login
                         </Button>
                         <Button className="w-full transition-all hover:translate-y-[-2px]" variant="outline" onClick={() => { setMode("business"); resetForm(); }}>
@@ -166,7 +166,7 @@ export default function Login() {
                         >
                           {isSubmitting ? (
                             <>
-                              <LoadingSpinner size="sm" className="mr-2" />
+                              <LoadingSpinner size="sm\" className="mr-2" />
                               Signing in...
                             </>
                           ) : "Sign In as Admin"}
@@ -214,7 +214,7 @@ export default function Login() {
                         >
                           {isSubmitting ? (
                             <>
-                              <LoadingSpinner size="sm" className="mr-2" />
+                              <LoadingSpinner size="sm\" className="mr-2" />
                               Signing in...
                             </>
                           ) : "Sign In as Business"}
