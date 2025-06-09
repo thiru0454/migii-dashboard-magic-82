@@ -26,9 +26,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Test Supabase connection
 export async function testSupabaseConnection() {
   try {
+    // Use a simple query that doesn't depend on specific tables or RLS policies
     const { data, error } = await supabase
-      .from('workers')
-      .select('count', { count: 'exact', head: true });
+      .from('information_schema.tables')
+      .select('table_name')
+      .limit(1);
     
     if (error) {
       console.error('Supabase connection test failed:', error);
