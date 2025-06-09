@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserPlus, UserMinus, Loader2, RefreshCw } from "lucide-react";
 import { MigrantWorker, Worker } from "@/types/worker";
 import { useWorkers } from "@/hooks/useWorkers";
-import { assignWorkerToBusiness } from "@/utils/supabaseClient"; 
+import { assignWorkerToBusiness } from "@/services/workerService"; 
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { MigrantWorker } from "@/types/worker";
-import { getAllWorkers, subscribeToWorkers, assignWorkerToBusiness } from "@/utils/supabaseClient";
+import { getAllWorkers, subscribeToWorkers } from "@/utils/supabaseClient";
+import { assignWorkerToBusiness } from "@/services/workerService";
 
 export function useWorkers() {
   const [workers, setWorkers] = useState<MigrantWorker[]>([]);
