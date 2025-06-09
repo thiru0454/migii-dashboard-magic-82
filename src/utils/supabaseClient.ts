@@ -113,3 +113,47 @@ export async function getWorker(id: string) {
     return { data: null, error };
   }
 }
+
+// Update a worker
+export async function updateWorker(id: string, workerData: any) {
+  try {
+    const { data, error } = await supabase
+      .from('workers')
+      .update(workerData)
+      .eq('id', id)
+      .select('*')
+      .single();
+      
+    if (error) {
+      console.error('Supabase error updating worker:', error);
+      throw error;
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error updating worker:', error);
+    return { data: null, error };
+  }
+}
+
+// Delete a worker
+export async function deleteWorker(id: string) {
+  try {
+    const { data, error } = await supabase
+      .from('workers')
+      .delete()
+      .eq('id', id)
+      .select('*')
+      .single();
+      
+    if (error) {
+      console.error('Supabase error deleting worker:', error);
+      throw error;
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error deleting worker:', error);
+    return { data: null, error };
+  }
+}
